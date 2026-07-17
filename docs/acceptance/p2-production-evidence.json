@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "runId": "p2-20260717095831-116ef52a",
+  "environment": "beelink",
+  "report": "remote:/home/beelink/yujianAI/data/p2/reports/production-acceptance.json",
+  "status": "passed-scope",
+  "checks": {
+    "postgres": {
+      "status": "passed",
+      "transactionOutbox": "visible-in-one-commit",
+      "cas": "stale-writer-rejected",
+      "migrations": 8,
+      "productionApi": "started-and-restarted"
+    },
+    "redis": {
+      "status": "passed",
+      "fixedWindow": { "allowed": 20, "limit": 20, "clients": 2, "requests": 100 },
+      "tokenQuota": { "successful": 3, "maxConcurrent": 3, "requests": 30, "release": "no-leak" },
+      "rebuild": "container-delete-up"
+    },
+    "kms": {
+      "status": "passed",
+      "provider": "openbao",
+      "transport": "https",
+      "raftVoters": 3,
+      "leaderFailoverRead": "passed",
+      "secretPersistence": "absent"
+    },
+    "apiKey": {
+      "status": "passed",
+      "create": "one-time-secret",
+      "rotate": "old-and-new-grace-accepted",
+      "revoke": "old-and-new-rejected",
+      "secretPersistence": "absent"
+    },
+    "isolation": {
+      "status": "passed",
+      "existingServiceRestartCount": 0
+    }
+  },
+  "scopeBoundary": {
+    "sameHostRaftOnly": true,
+    "notProven": ["cross-host-ha", "auto-unseal", "backup-restore", "webhook-delivery", "data-rights-executor"]
+  }
+}

@@ -10,7 +10,9 @@ function required(name) {
 }
 
 const databaseUrl = required("YUJIAN_DATABASE_URL");
-const kmsAddress = required("YUJIAN_KMS_ADDR").replace(/\/$/u, "");
+const kmsAddresses = required("YUJIAN_KMS_ADDR").split(",").map((value) => value.trim()).filter(Boolean);
+const kmsAddress = kmsAddresses[0]?.replace(/\/$/u, "");
+if (kmsAddress === undefined) throw new Error("YUJIAN_KMS_ADDR must contain an address");
 const kmsToken = required("YUJIAN_KMS_TOKEN");
 const kmsAdminToken = required("YUJIAN_KMS_ADMIN_TOKEN");
 const secretRef = `yujian/p2/smoke-${randomUUID()}`;
@@ -34,7 +36,7 @@ try {
     signal: AbortSignal.timeout(5_000),
   });
   if (!write.ok) throw new Error(`OpenBao write failed with HTTP ${write.status}`);
-  const resolved = await createOpenBaoSecretResolver(kmsAddress, kmsToken).resolve(secretRef);
+  const resolved = await createOpenBaoSecretResolver(kmsAddresses.join(","), kmsToken).resolve(secretRef);
   if (Buffer.compare(Buffer.from(resolved), secret) !== 0) throw new Error("OpenBao secret round-trip mismatch");
 
   console.log(JSON.stringify({

@@ -222,6 +222,22 @@ npm run db:migrate
 - Egress 到期后 retention worker 调用对象删除 adapter，写入 `deletedAt` 和 `deletionEvidenceUri`；删除失败不能标记完成，重复 worker 执行不产生第二次账本结果。
 - webhook retry/DLQ、data-rights evidence、KMS secret resolver 均不把明文 secret 写入数据库或日志。
 
+### 7.1 P2-01/02/03 production acceptance（2026-07-17）
+
+Beelink 已执行真实 production platform-api 验收脚本：
+
+```bash
+cd /home/beelink/yujianAI
+./tools/p2/run-production-acceptance.sh
+```
+
+通过证据包括 PostgreSQL 事务 outbox/CAS、生产 API 启动与重启、双 Redis client 限流/Token
+quota 竞争、Redis 容器删除重建、API key rotate grace/revoke 传播、三节点 OpenBao HTTPS/Raft
+健康与 leader stop 后 resolver 读回。脱敏报告为
+`/home/beelink/yujianAI/data/p2/reports/production-acceptance.json`，run id
+`p2-20260717095831-116ef52a`。三节点位于同一 Beelink，仅证明单主机 process/container quorum；
+跨主机/AZ HA、auto-unseal、Webhook 真实投递、备份恢复和 data-rights executor 仍未通过。
+
 ## 8. 报告和最终判定
 
 P1 汇总报告使用 `docs/acceptance/p1-evidence.example.json` 的结构，由

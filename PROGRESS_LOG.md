@@ -763,7 +763,63 @@ git status --short --branch
 rg -n "SESSION HANDOFF|Beelink|rtc-node|MediaOpsRequestError" PROGRESS_LOG.md README.md services packages
 ```
 
-## 📌 SESSION HANDOFF STATUS — P2 data runtime
+## 📌 SESSION HANDOFF STATUS — P2-01/02/03 production acceptance
+
+### Current Work
+
+P2-01/02/03 已从部署烟测提升为 Beelink 真实 production acceptance。运行环境为
+`beelink@100.110.127.117:/home/beelink/yujianAI`，Compose project 为 `yujian-p2`，
+不触碰既有 `ai-phone-staging-*` 或 `livekit-qkxy-*` 容器。
+
+### Evidence
+
+- 运行命令：`./tools/p2/run-production-acceptance.sh`。
+- run id：`p2-20260717095831-116ef52a`；脱敏报告：
+  `/home/beelink/yujianAI/data/p2/reports/production-acceptance.json`。
+- PostgreSQL：8/8 migration；production platform-api 真实启动与重启；usage、audit、outbox
+  同一事务可见；两个 store writer 的 stale CAS 被拒绝。
+- Redis：两个 client 进行 100 次限流竞争，严格 20 次放行；30 次 token reservation 仅 3
+  个并发成功，全部 release 无泄漏；删除并重建 Redis 容器后恢复。
+- KMS：OpenBao 2.4.1 三节点 HTTPS/Raft、3 voters；停止 leader 后通过 survivor resolver
+  读回同一 32-byte secret；随后 acceptance secret 已删除。API key create/rotate/revoke
+  传播通过，snapshot 和报告无一次性 secret。
+- `./infra/p2/beelink/deploy.sh smoke` 再次通过：`raftPeers=3`、`raftVoters=3`。
+- PostgreSQL 清理核验：临时 snapshot/audit/usage/outbox 均为 0，migration count=8。
+- 既有五个 AI Phone/LiveKit 容器 restart count 保持 0；报告、runtime.env、HA init
+  artifact 均为 0600。P2 OpenBao TLS 目录为 0700，证书/私钥不进入数据库。
+
+### Current Gate Judgment
+
+P2-01/02/03：**production-accepted（范围内通过）**。P2 完整 Gate：**未关闭**，仍缺
+P2-04 注册/邀请/SSO/onboarding/持久化 RBAC、P2-05 Webhook 签名/重试/DLQ/replay 真实投递、
+P2-06 PostgreSQL 备份恢复/数据权利执行器，以及 owner/security/data 签字。三节点 KMS 位于
+同一台 Beelink，只证明单主机 process/container quorum；跨主机/AZ HA、auto-unseal 和正式
+生产 KMS 合规仍未证明。
+
+### Background Tasks
+
+无。
+
+### Next Session Priorities
+
+1. 保持 P2-01/02/03 证据与实现同步，不把同主机 Raft 写成跨故障域 HA。
+2. 关闭 P2-04：注册/邀请/SSO/onboarding、持久化 RBAC、跨 tenant IDOR 和恢复审计。
+3. 关闭 P2-05：真实 webhook 签名、重试、DLQ、requeue、乱序/重复和跨副本恢复。
+4. 关闭 P2-06：PostgreSQL 备份恢复、RPO/RTO、Redis 重建演练和 data-rights deletion evidence。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short --branch
+npm run build -w @yujian/platform-api
+ssh beelink@100.110.127.117 'cd /home/beelink/yujianAI && ./infra/p2/beelink/deploy.sh status'
+```
+
+## 📌 SESSION HANDOFF STATUS — P2 data runtime (superseded)
+
+> This earlier smoke-only handoff is retained for history. The authoritative current status is the
+> `P2-01/02/03 production acceptance` handoff above.
 
 ### Current Work
 

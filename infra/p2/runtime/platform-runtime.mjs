@@ -39,20 +39,35 @@ function createRedisEvalClient(client) {
   };
 }
 
+function kmsAddresses(address) {
+  const addresses = address.split(",").map((value) => value.trim()).filter(Boolean);
+  if (addresses.length === 0 || addresses.some((value) => !/^https?:\/\//u.test(value))) throw new Error("KMS address list is invalid");
+  return addresses.map((value) => value.replace(/\/$/u, ""));
+}
+
 export function createOpenBaoSecretResolver(address, token) {
+  const addresses = kmsAddresses(address);
   return {
     async resolve(secretRef) {
-      const response = await fetch(`${address.replace(/\/$/u, "")}/v1/kv/data/${openBaoPath(secretRef)}`, {
-        headers: { "X-Vault-Token": token, accept: "application/json" },
-        signal: AbortSignal.timeout(5_000),
-      });
-      if (!response.ok) throw new Error(`KMS secret lookup failed with HTTP ${response.status}`);
-      const payload = await response.json();
-      const encoded = payload?.data?.data?.value;
-      if (typeof encoded !== "string" || !/^[A-Za-z0-9+/]+={0,2}$/u.test(encoded)) throw new Error("KMS secret payload is invalid");
-      const secret = Buffer.from(encoded, "base64");
-      if (secret.length < 32) throw new Error("KMS secret is shorter than 32 bytes");
-      return secret;
+      let lastError;
+      for (const base of addresses) {
+        try {
+          const response = await fetch(`${base}/v1/kv/data/${openBaoPath(secretRef)}`, {
+            headers: { "X-Vault-Token": token, accept: "application/json" },
+            signal: AbortSignal.timeout(5_000),
+          });
+          if (!response.ok) throw new Error(`KMS secret lookup failed with HTTP ${response.status}`);
+          const payload = await response.json();
+          const encoded = payload?.data?.data?.value;
+          if (typeof encoded !== "string" || !/^[A-Za-z0-9+/]+={0,2}$/u.test(encoded)) throw new Error("KMS secret payload is invalid");
+          const secret = Buffer.from(encoded, "base64");
+          if (secret.length < 32) throw new Error("KMS secret is shorter than 32 bytes");
+          return secret;
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      throw lastError instanceof Error ? lastError : new Error("KMS secret lookup failed");
     },
   };
 }

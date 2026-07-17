@@ -113,6 +113,11 @@ M1 Beelink 双节点专项还必须记录：
 - 撤销传播在目标时间内完成。
 - 日志、trace、support bundle 无 secret。
 
+2026-07-17 Beelink production acceptance 已覆盖上述控制面 secret 子集：API key 一次性返回、
+rotate grace、revoke 传播、snapshot/报告无一次性 secret；OpenBao 三节点 HTTPS/Raft 在停止
+leader 后仍可通过 survivor resolver 读取，随后测试 secret 已删除。跨主机 KMS HA、auto-unseal
+和生产合规签字仍不在本次通过范围。
+
 ### 5.3 Onboarding
 
 - 新用户从注册到两端音频不超过目标时间。
@@ -135,6 +140,10 @@ M1 Beelink 双节点专项还必须记录：
 - production platform-api 必须启动 `OutboxPublisherWorker`；停止 HTTP server 时 worker 先停止领取，
   多副本依靠 PostgreSQL `SKIP LOCKED` 不重复投递。
 
+2026-07-17 Beelink production acceptance：两个 Redis client 的 100 次固定窗口竞争严格放行
+20 次；30 次 token reservation 仅 3 个成功，全部 release 后无计数泄漏；Redis 容器删除重建
+后 sentinel/服务恢复。该证据仍是单主机 Redis 实例，不是跨故障域 Redis HA。
+
 ### 5.5 控制面和媒体恢复
 
 - platform runtime 缺少 persistence、rate limiter、resource usage 或 token quota 时启动失败。
@@ -146,6 +155,11 @@ M1 Beelink 双节点专项还必须记录：
 - media-ops 重启后从 `004_media_ops.sql` snapshot 恢复资源、幂等指纹和 transfer/hangup 结果。
 - media-ops/Agent Control 多副本 stale snapshot 写入触发 CAS 冲突，不得覆盖新状态。
 - snapshot 写入失败时请求不返回成功；恢复后的重复请求不能再次调用上游 provider。
+
+2026-07-17 Beelink P2-01 production acceptance：事务内 usage、audit、outbox 三条记录可见，
+两个 store writer 的 stale CAS 被拒绝；production platform-api 真实启动、重启后 API key
+metadata 恢复，Redis rebuild 和 OpenBao leader stop/start+unseal 均通过。报告位于
+`/home/beelink/yujianAI/data/p2/reports/production-acceptance.json`；P2-04/05/06 尚未关闭。
 
 ## 6. Gate 3：媒体质量与容量
 
