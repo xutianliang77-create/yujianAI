@@ -30,7 +30,7 @@ export async function loadPlatformRuntime(
     throw new Error("platform runtime module returned invalid storePersistence adapter");
   }
   const persistence = dependencies.persistence;
-  if (persistence !== undefined && (typeof persistence !== "object" || persistence === null || typeof persistence.getEnvironment !== "function" || typeof persistence.quotaSnapshot !== "function" || typeof persistence.begin !== "function" || typeof persistence.claimOutbox !== "function" || typeof persistence.markOutboxPublished !== "function")) {
+  if (persistence !== undefined && (typeof persistence !== "object" || persistence === null || typeof persistence.getEnvironment !== "function" || typeof persistence.quotaSnapshot !== "function" || typeof persistence.begin !== "function" || typeof persistence.claimOutbox !== "function" || typeof persistence.renewOutboxClaim !== "function" || typeof persistence.markOutboxPublished !== "function")) {
     throw new Error("platform runtime module returned invalid platform persistence adapter");
   }
   if (persistence !== undefined && ((persistence.listUsage !== undefined && typeof persistence.listUsage !== "function") || (persistence.listAudit !== undefined && typeof persistence.listAudit !== "function"))) {

@@ -96,6 +96,10 @@ media-ops。两者必须同时设置；未设置时媒体路由明确返回 `UPS
 environment/quota、usage upsert、事务 outbox 和 `SKIP LOCKED` 边界；`RedisLeaseStore`
 提供短期原子租约，但尚未替代进程内限流器。
 
+outbox 领取使用不出 PostgreSQL adapter 的私有 claim token。publisher 对正在投递和同批
+排队的事件定期 heartbeat，只有当前 token 持有者能标记 published/failed；外部接收方仍应使用
+`x-yujian-event-id` 幂等去重，因为远程成功与 delivery ledger 提交之间仍是 at-least-once 语义。
+
 `PostgresPlatformResourceUsageProvider` 可作为 runtime module 的 `resourceUsage` 实现，读取
 Ingress/Egress/SIP 活跃任务、Agent observed replicas 和当前分钟 token usage；LiveKit 房间、
 participant、track 等实时计数仍必须由 RTC telemetry/provider adapter 覆盖，不能把 SQL 的

@@ -7,7 +7,7 @@
 P2/P3 不能用内存 adapter、健康检查或一次性演示替代。2026-07-17 已在 Beelink 的
 `/home/beelink/yujianAI/data/p2` 部署独立 PostgreSQL、Redis 和 OpenBao（KMS/secret boundary），
 并完成 P2-01/02/03 的 8 条 migration、事务 outbox/CAS、Redis 竞争、OpenBao
-三节点 HTTPS/Raft 和 API key 生命周期验收。P2-04/05/06 实现及第 9–10 条 migration
+三节点 HTTPS/Raft 和 API key 生命周期验收。P2-04/05/06 实现及第 9–11 条 migration
 已在仓库就绪；最终双机验收运行 `p2-closure-20260717104540-c0c4ba0e` 期间 Beelink
 重启后死机，未产生完整报告，因此不能把 P2 Gate 写成已关闭。
 
@@ -19,7 +19,7 @@ P2/P3 不能用内存 adapter、健康检查或一次性演示替代。2026-07-1
 | P2-02 | Redis rate limit、token quota、lease、实时 usage provider | **production-accepted**：两个 Redis client 100 次竞争严格 20 次放行；30 次 token quota 仅 3 个并发；容器删除重建后恢复 | 跨主机 Redis/Sentinel/Cluster 故障域仍未验收 |
 | P2-03 | 外部 KMS/secret resolver 与 API key rotate/revoke | **production-accepted**：OpenBao 三节点 HTTPS/Raft、leader 停止后读取恢复；API key rotate grace/revoke 传播通过；snapshot/报告无一次性 secret | 当前为单主机 quorum；auto-unseal、跨主机 HA 和生产 KMS 合规签字仍缺 |
 | P2-04 | 注册、邀请、SSO/OIDC、onboarding、持久化 RBAC | **implementation-ready / acceptance-interrupted**：新增 OIDC 自助 onboarding、邀请接受、PostgreSQL member scope resolver、持久角色优先于 token role claim、跨 tenant 拒绝与双机 RTC probe；本地 18/18 platform-api 测试通过；最终本机客户端 join 被 Beelink 死机中断 | 新用户到第一条 Room、跨 tenant IDOR、审计报告的单次完整脱敏报告 |
-| P2-05 | Webhook destination、outbox worker、DLQ/requeue 生产接线 | **implementation-ready / partial-live-observed**：新增 event+destination delivery ledger、claim lease、一次一投的 DB attempt、HMAC/KMS、DLQ/requeue 和确定性 restart fault injection；Beelink 已实际走到 HMAC/retry/DLQ/requeue，未形成最终报告 | 签名、重试、乱序、replay、恢复后不重复投递的完整报告 |
+| P2-05 | Webhook destination、outbox worker、DLQ/requeue 生产接线 | **implementation-ready / partial-live-observed**：新增 event+destination delivery ledger、私有 claim token、heartbeat/ownership CAS、一次一投的 DB attempt、HMAC/KMS、DLQ/requeue 和确定性 restart/slow-delivery fault injection；Beelink 已实际走到 HMAC/retry/DLQ/requeue，未形成最终报告 | 签名、重试、乱序、replay、慢投递续租和恢复后不重复已确认目标的完整报告 |
 | P2-06 | 备份恢复和数据权利执行器 | **implementation-ready / not production-accepted**：PostgreSQL executor/worker、0600 prepared→committed evidence、持久 receipt、请求级事务锁、processing heartbeat/stale 回收、isolated `pg_dump` restore 和 Redis 从 PG 真值重建脚本已完成；本地 3/3 data-rights 测试通过；死机前未执行到真实备份恢复 | PostgreSQL restore、Redis 重建、删除/导出 evidence 和 RPO/RTO |
 
 P2 进入条件：Gate 0 已关闭，P1/M1 完整 Gate 1 已关闭，并由 `data-owner`、

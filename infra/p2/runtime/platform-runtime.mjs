@@ -106,7 +106,7 @@ export async function createPlatformRuntime({ config: _config }) {
   const publisher = new OutboxPublisher(
     persistence,
     new PersistentWebhookDestinationProvider(destinations, createOpenBaoSecretResolver(required("YUJIAN_KMS_ADDR"), required("YUJIAN_KMS_TOKEN"))),
-    { maxAttempts: 5, timeoutMs: 5_000, baseBackoffMs: 1_000 },
+    { maxAttempts: 5, timeoutMs: 5_000, baseBackoffMs: 1_000, claimHeartbeatMs: Number(process.env.YUJIAN_OUTBOX_CLAIM_HEARTBEAT_MS ?? 20_000) },
   );
   const outboxWorker = new OutboxPublisherWorker(publisher);
   const dataRightsWorker = new PostgresDataRightsWorker(pool, dataRights, dataRightsExecutor);

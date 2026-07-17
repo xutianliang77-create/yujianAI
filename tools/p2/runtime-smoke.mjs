@@ -23,7 +23,7 @@ const runtime = await createPlatformRuntime({ config: {} });
 try {
   const migrations = await pool.query("SELECT count(*)::int AS count FROM yujian_schema_migrations");
   const migrationCount = Number(migrations.rows[0]?.count);
-  if (migrationCount !== 10) throw new Error(`expected 10 migrations, found ${migrationCount}`);
+  if (migrationCount !== 11) throw new Error(`expected 11 migrations, found ${migrationCount}`);
 
   const rateLimit = await runtime.rateLimiter.check("yujian:p2:runtime-smoke");
   if (!rateLimit.allowed || rateLimit.limit < 1) throw new Error("Redis rate limiter adapter is not operational");

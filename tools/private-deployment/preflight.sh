@@ -10,7 +10,7 @@ test -f "$chart_dir/Chart.yaml"
 test -f "$chart_dir/values.schema.json"
 node tools/private-deployment/verify-offline-manifest.mjs "$YUJIAN_OFFLINE_MANIFEST"
 node tools/private-deployment/upgrade-preflight.mjs "$release_manifest"
-for migration in 001_platform.sql 002_domain_expansion.sql 003_agent_control.sql 004_media_ops.sql 005_outbox_delivery.sql 006_platform_store.sql 007_webhook_destinations.sql 008_rtc_telemetry.sql 009_p2_closure.sql 010_data_rights_recovery.sql; do
+for migration in 001_platform.sql 002_domain_expansion.sql 003_agent_control.sql 004_media_ops.sql 005_outbox_delivery.sql 006_platform_store.sql 007_webhook_destinations.sql 008_rtc_telemetry.sql 009_p2_closure.sql 010_data_rights_recovery.sql 011_outbox_claim_ownership.sql; do
   test -f "infra/database/migrations/$migration" || { echo "missing migration: $migration" >&2; exit 1; }
 done
 command -v kubectl >/dev/null

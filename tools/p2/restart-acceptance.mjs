@@ -30,7 +30,7 @@ await client.quit();
 
 const pool = new pg.Pool({ connectionString: required("YUJIAN_DATABASE_URL"), max: 2 });
 const migrations = await pool.query("SELECT count(*)::int AS count FROM yujian_schema_migrations");
-if (Number(migrations.rows[0]?.count) !== 10) throw new Error("PostgreSQL migration state did not survive restart");
+if (Number(migrations.rows[0]?.count) !== 11) throw new Error("PostgreSQL migration state did not survive restart");
 if (cleanup) {
   await pool.query("DELETE FROM platform_store_snapshots WHERE snapshot_id = 'default'");
   await pool.query("DELETE FROM outbox_events WHERE event_id = $1", [report.cleanup.outboxId]);

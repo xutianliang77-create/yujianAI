@@ -66,6 +66,7 @@ const webhookServer = createHttpServer(async (request, response) => {
   const ids = receiver.eventIds.get(path) ?? [];
   ids.push(id); receiver.eventIds.set(path, ids);
   const rule = receiver.rules.get(path) ?? { failures: 0, alwaysFail: false };
+  if ((rule.delayMs ?? 0) > 0) await sleep(rule.delayMs);
   if (rule.alwaysFail || rule.failures > 0) {
     if (rule.failures > 0) rule.failures -= 1;
     receiver.rules.set(path, rule);
@@ -125,6 +126,7 @@ async function startApi() {
       YUJIAN_OIDC_ISSUER: issuer,
       YUJIAN_OIDC_AUDIENCE: audience,
       YUJIAN_OIDC_JWKS_URI: `${issuer}/jwks`,
+      YUJIAN_OUTBOX_CLAIM_HEARTBEAT_MS: "100",
     },
   });
   await waitFor(async () => {
@@ -259,9 +261,17 @@ try {
   }
   await waitFor(async () => Number((await pool.query("SELECT count(*) AS count FROM outbox_events WHERE published_at IS NULL AND dead_lettered_at IS NULL")).rows[0]?.count) === 0, "pre-existing outbox events did not drain");
   let version = environment.version;
+  resetReceiver({ failures: 0, alwaysFail: false, delayMs: 350 }, { failures: 0, alwaysFail: false });
+  const heartbeatRequest = `${runId}-claim-heartbeat`;
+  let update = await api(`/platform/v1/environments/${environment.environmentId}`, ownerToken, { method: "PATCH", headers: { "x-request-id": heartbeatRequest }, body: JSON.stringify({ version, name: "Slow delivery heartbeat" }) });
+  if (update.status !== 200) throw new Error("webhook heartbeat trigger failed"); version = update.payload.data.version;
+  const heartbeatEvent = await eventForRequest(heartbeatRequest); await waitPublished(heartbeatEvent.event_id);
+  const claimRenewals = Number((await pool.query("SELECT claim_renewal_count FROM outbox_events WHERE event_id = $1", [heartbeatEvent.event_id])).rows[0]?.claim_renewal_count);
+  if (claimRenewals < 3) throw new Error("slow webhook delivery did not periodically renew outbox claim ownership");
+
   resetReceiver({ failures: 0, alwaysFail: false }, { failures: 1, alwaysFail: false });
   const partialRequest = `${runId}-partial`;
-  let update = await api(`/platform/v1/environments/${environment.environmentId}`, ownerToken, { method: "PATCH", headers: { "x-request-id": partialRequest }, body: JSON.stringify({ version, name: "Partial retry" }) });
+  update = await api(`/platform/v1/environments/${environment.environmentId}`, ownerToken, { method: "PATCH", headers: { "x-request-id": partialRequest }, body: JSON.stringify({ version, name: "Partial retry" }) });
   if (update.status !== 200) throw new Error("webhook partial-retry trigger failed"); version = update.payload.data.version;
   const partialEvent = await eventForRequest(partialRequest); await waitPublished(partialEvent.event_id);
   if (!receiver.validSignatures || receiver.hits.get("/stable") !== 1 || receiver.hits.get("/retry") !== 2) throw new Error("per-destination retry ledger or HMAC verification failed");
@@ -300,7 +310,7 @@ try {
   if (deliveryRows !== 6) throw new Error(`webhook delivery ledger expected 6 rows, found ${deliveryRows}`);
   const secretRows = await pool.query("SELECT secret_ref, url FROM webhook_destinations WHERE tenant_id = $1", [tenant.tenantId]);
   if (JSON.stringify(secretRows.rows).includes(webhookSecret.toString("base64"))) throw new Error("webhook secret was persisted in PostgreSQL");
-  results.p2_05 = { hmac: "verified", retry: "per-destination", dlq: "terminal-after-five-attempts", requeue: "recovered", restart: "acknowledged-target-not-duplicated", deliveryLedgerRows: deliveryRows, secretPersistence: "reference-only" };
+  results.p2_05 = { hmac: "verified", retry: "per-destination", claimHeartbeat: { status: "renewed", count: claimRenewals }, dlq: "terminal-after-five-attempts", requeue: "recovered", restart: "acknowledged-target-not-duplicated", deliveryLedgerRows: deliveryRows, secretPersistence: "reference-only" };
 
   const rights = await runDataRightsClosure({ api, pool, tenantId: tenant.tenantId, ownerToken, runId, waitFor });
   results.p2_06 = rights.result;

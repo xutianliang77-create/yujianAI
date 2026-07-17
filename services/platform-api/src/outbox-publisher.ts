@@ -17,12 +17,18 @@ export interface OutboxPublisherOptions {
   maxAttempts: number;
   timeoutMs: number;
   baseBackoffMs?: number;
+  claimHeartbeatMs?: number;
 }
 
 export interface OutboxPublisherWorkerOptions {
   pollIntervalMs?: number;
   batchSize?: number;
   onError?: (error: unknown) => void;
+}
+
+interface OutboxClaimHeartbeat {
+  check(): Promise<void>;
+  stop(): Promise<void>;
 }
 
 export class OutboxPublisher {
@@ -36,6 +42,7 @@ export class OutboxPublisher {
     if (!Number.isInteger(options.maxAttempts) || options.maxAttempts < 1 || options.maxAttempts > 20) throw new RangeError("outbox maxAttempts must be 1-20");
     if (!Number.isInteger(options.timeoutMs) || options.timeoutMs < 100 || options.timeoutMs > 120_000) throw new RangeError("outbox timeoutMs must be 100-120000ms");
     if (options.baseBackoffMs !== undefined && (!Number.isInteger(options.baseBackoffMs) || options.baseBackoffMs < 100 || options.baseBackoffMs > 300_000)) throw new RangeError("outbox baseBackoffMs is invalid");
+    if (options.claimHeartbeatMs !== undefined && (!Number.isInteger(options.claimHeartbeatMs) || options.claimHeartbeatMs < 100 || options.claimHeartbeatMs > 30_000)) throw new RangeError("outbox claimHeartbeatMs is invalid");
     for (const destination of Array.isArray(destinations) ? destinations : []) {
       OutboxPublisher.validateDestination(destination);
     }
@@ -67,17 +74,12 @@ export class OutboxPublisher {
 
   async publishBatch(limit = 100): Promise<{ published: number; failed: number }> {
     const events = await this.persistence.claimOutbox(limit);
+    const heartbeats = new Map(events.map((event) => [event.eventId, this.startClaimHeartbeat(event.eventId)]));
     let published = 0;
     let failed = 0;
     for (const event of events) {
       try {
-        const destinations = (await this.destinationsFor(event)).filter((destination) => destination.eventTypes.includes(event.eventType));
-        for (const destination of destinations) {
-          if (await this.persistence.isWebhookDelivered?.(event.eventId, destination.destinationId)) continue;
-          await this.deliver(event, destination);
-          await this.persistence.markWebhookDelivered?.(event.eventId, destination.destinationId, new Date().toISOString());
-        }
-        await this.persistence.markOutboxPublished(event.eventId, new Date().toISOString());
+        await this.publishEvent(event, heartbeats.get(event.eventId)!);
         published += 1;
       } catch (error) {
         failed += 1;
@@ -103,6 +105,45 @@ export class OutboxPublisher {
       }
     }
     return { published, failed };
+  }
+
+  private startClaimHeartbeat(eventId: string): OutboxClaimHeartbeat {
+    let heartbeatError: unknown;
+    const renew = async () => this.persistence.renewOutboxClaim(eventId);
+    let heartbeat = renew().catch((error) => { heartbeatError ??= error; });
+    const check = async () => {
+      await heartbeat;
+      if (heartbeatError !== undefined) throw heartbeatError;
+    };
+    const timer = setInterval(() => {
+      heartbeat = heartbeat.then(async () => {
+        if (heartbeatError === undefined) await renew();
+      }).catch((error) => { heartbeatError ??= error; });
+    }, this.options.claimHeartbeatMs ?? 20_000);
+    return {
+      check,
+      stop: async () => {
+        clearInterval(timer);
+        await check();
+      },
+    };
+  }
+
+  private async publishEvent(event: OutboxEventV1, claimHeartbeat: OutboxClaimHeartbeat): Promise<void> {
+    try {
+      const destinations = (await this.destinationsFor(event)).filter((destination) => destination.eventTypes.includes(event.eventType));
+      await claimHeartbeat.check();
+      for (const destination of destinations) {
+        if (await this.persistence.isWebhookDelivered?.(event.eventId, destination.destinationId)) continue;
+        await this.deliver(event, destination);
+        await this.persistence.markWebhookDelivered?.(event.eventId, destination.destinationId, new Date().toISOString());
+        await claimHeartbeat.check();
+      }
+    } finally {
+      await claimHeartbeat.stop();
+    }
+    await this.persistence.renewOutboxClaim(event.eventId);
+    await this.persistence.markOutboxPublished(event.eventId, new Date().toISOString());
   }
 
   private async deliver(event: OutboxEventV1, destination: WebhookDestination): Promise<void> {

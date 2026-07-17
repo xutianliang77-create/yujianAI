@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import { createHmac, randomUUID } from "node:crypto";
 import test from "node:test";
 import { OutboxPublisher } from "../dist/outbox-publisher.js";
+import { PostgresPlatformPersistence } from "../dist/postgres-persistence.js";
 
 function event(eventId = `event-${randomUUID()}`) {
   return {
@@ -56,6 +57,7 @@ test("OutboxPublisher signs and delivers webhook events", async () => {
       const result = await new OutboxPublisher(
         {
           claimOutbox: async () => [successfulEvent],
+          renewOutboxClaim: async () => undefined,
           markOutboxPublished: async (eventId) => published.push(eventId),
         },
         [{ destinationId: "destination-1", url, secret, eventTypes: ["yujian.audit.recorded.v1"] }],
@@ -82,6 +84,7 @@ test("OutboxPublisher records terminal failures and supports requeue", async () 
   const publisher = new OutboxPublisher(
     {
       claimOutbox: async () => [failedEvent],
+      renewOutboxClaim: async () => undefined,
       markOutboxFailed: async (eventId, error, nextAttemptAt, deadLetteredAt) => {
         failed.push({ eventId, error, nextAttemptAt, deadLetteredAt });
       },
@@ -122,6 +125,7 @@ test("OutboxPublisher does not redeliver a destination already acknowledged befo
   }, async (url) => {
     const persistence = {
       claimOutbox: async () => [deliveryEvent],
+      renewOutboxClaim: async () => undefined,
       markOutboxPublished: async () => undefined,
       markOutboxFailed: async () => undefined,
       isWebhookDelivered: async (eventId, destinationId) => delivered.has(`${eventId}:${destinationId}`),
@@ -136,4 +140,79 @@ test("OutboxPublisher does not redeliver a destination already acknowledged befo
     assert.deepEqual(await publisher.publishBatch(), { published: 1, failed: 0 });
   });
   assert.deepEqual(hits, { stable: 1, retry: 2 });
+});
+
+test("OutboxPublisher renews active and queued claims during a slow delivery", async () => {
+  const slowEvent = event("event-slow-delivery");
+  const queuedEvent = event("event-queued-delivery");
+  const renewals = new Map();
+  let requests = 0;
+  await withHttpServer((_request, response) => {
+    requests += 1;
+    setTimeout(() => response.writeHead(204).end(), requests === 1 ? 350 : 0);
+  }, async (url) => {
+    const result = await new OutboxPublisher({
+      claimOutbox: async () => [slowEvent, queuedEvent],
+      renewOutboxClaim: async (eventId) => { renewals.set(eventId, (renewals.get(eventId) ?? 0) + 1); },
+      markOutboxPublished: async () => undefined,
+    }, [{ destinationId: "slow", url, secret: Buffer.alloc(32, 3), eventTypes: [slowEvent.eventType] }], {
+      maxAttempts: 1,
+      timeoutMs: 1_000,
+      claimHeartbeatMs: 100,
+    }).publishBatch();
+    assert.deepEqual(result, { published: 2, failed: 0 });
+  });
+  assert.ok(renewals.get(slowEvent.eventId) >= 4, `slow claim renewals: ${renewals.get(slowEvent.eventId)}`);
+  assert.ok(renewals.get(queuedEvent.eventId) >= 4, `queued claim renewals: ${renewals.get(queuedEvent.eventId)}`);
+});
+
+test("PostgresPlatformPersistence uses the same private claim token for renew and publish", async () => {
+  const source = event("event-owned-claim");
+  const row = {
+    event_id: source.eventId,
+    aggregate_type: source.aggregateType,
+    aggregate_id: source.aggregateId,
+    event_type: source.eventType,
+    schema_version: source.schemaVersion,
+    producer: source.producer,
+    tenant_id: source.tenantId,
+    project_id: source.projectId,
+    environment_id: source.environmentId,
+    resource: source.resource,
+    payload: source.payload,
+    occurred_at: source.occurredAt,
+    dedupe_key: source.dedupeKey,
+    trace_id: null,
+    published_at: null,
+    attempt_count: 0,
+  };
+  let claimToken;
+  const connection = {
+    query: async (sql, values = []) => {
+      if (sql.includes("SELECT * FROM outbox_events")) return { rows: [row] };
+      if (sql.includes("SET attempt_count")) claimToken = values[1];
+      return { rows: [] };
+    },
+    release: async () => undefined,
+  };
+  const pool = {
+    connect: async () => connection,
+    query: async (sql, values = []) => {
+      if (sql.includes("SET claimed_until")) {
+        assert.equal(values[1], claimToken);
+        return { rows: [{ event_id: source.eventId }] };
+      }
+      if (sql.includes("SET published_at")) {
+        assert.equal(values[2], claimToken);
+        return { rows: [{ event_id: source.eventId }] };
+      }
+      throw new Error(`unexpected SQL: ${sql}`);
+    },
+  };
+  const persistence = new PostgresPlatformPersistence(pool);
+  assert.equal((await persistence.claimOutbox(1))[0].eventId, source.eventId);
+  assert.equal(typeof claimToken, "string");
+  await persistence.renewOutboxClaim(source.eventId);
+  await persistence.markOutboxPublished(source.eventId, new Date().toISOString());
+  await assert.rejects(persistence.renewOutboxClaim(source.eventId), /not claimed/u);
 });
