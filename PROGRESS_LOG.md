@@ -816,10 +816,62 @@ npm run build -w @yujian/platform-api
 ssh beelink@100.110.127.117 'cd /home/beelink/yujianAI && ./infra/p2/beelink/deploy.sh status'
 ```
 
+## 📌 SESSION HANDOFF STATUS — P2-04/05/06 implementation-ready, acceptance interrupted
+
+### Current Work
+
+P2-04/05/06 源码、数据合同、migration 和可重复验收工具已就绪。P2-04 包含 OIDC
+onboarding、邀请/接受、PostgreSQL 持久 RBAC、跨 tenant 拒绝和第一条 Room 客户端
+probe；P2-05 包含按 event+destination 持久投递账本、claim lease、HMAC、重试、DLQ/
+requeue 和重启恢复；P2-06 包含 data-rights executor/worker、prepared→committed 0600
+evidence、PostgreSQL 隔离恢复和 Redis 从 PostgreSQL 真值重建。
+
+本地审查另外修复了两个根因：onboarding 内部幂等键改为按已验证身份隔离，
+邀请/直接创建成员将目标状态纳入幂等指纹；data-rights 删除在证据无法准备时
+现在会在 DELETE 之前回滚，不再出现先删数据后发现证据目录不可写的情况。
+
+### Verification
+
+- `npm run check`：通过；全 workspace lint 通过，共 35 个单元/合同测试通过、0 失败。
+- `npm run openapi:verify`：58 operations / 58 unique operationIds 通过。
+- `npm run verify:upstream`：11 个 LiveKit upstream component 本地 manifest 校验通过。
+- P2 shell/Node 验收工具语法检查通过；`git diff --check` 通过。
+
+### Production Acceptance Status
+
+最终双机运行 `p2-closure-20260717104540-c0c4ba0e` 由 Beelink 作服务器、当前
+Mac 作 RTC 客户端。Beelink 发出系统重启广播后失去 SSH，用户已确认死机。
+本次没有产生完整脱敏报告：P2-04/05/06 均为 **not-passed**，完整 P2 Gate 为
+**not-passed**。P2-05 在早先的未完整运行中已实际观察到 HMAC/retry/DLQ/requeue，
+但不以部分观察代替完整验收。状态证据见 `docs/acceptance/p2-closure-evidence.json`。
+
+### Background Tasks
+
+无。已停止所有 Beelink 连接和操作，不尝试重启服务器。
+
+### Next Session Priorities
+
+1. 只在用户确认 Beelink 恢复后，检查宿主机、GPU、P2 Compose 和既有五个容器状态。
+2. 清理中断运行的临时 tenant/outbox/KMS/probe artifact，但不动 `ai-phone-staging-*`
+   和 `livekit-qkxy-*` 服务。
+3. 从 Mac 运行 `./tools/p2/run-closure-with-client.sh`，只在完整报告、备份、清理和
+   protected restart count 均核验后关闭 P2-04/05/06。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short --branch
+npm run check
+npm run openapi:verify
+# 仅在用户确认 Beelink 已恢复后：
+./tools/p2/run-closure-with-client.sh
+```
+
 ## 📌 SESSION HANDOFF STATUS — P2 data runtime (superseded)
 
 > This earlier smoke-only handoff is retained for history. The authoritative current status is the
-> `P2-01/02/03 production acceptance` handoff above.
+> `P2-04/05/06 implementation-ready, acceptance interrupted` handoff above.
 
 ### Current Work
 

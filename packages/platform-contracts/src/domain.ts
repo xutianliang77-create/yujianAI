@@ -36,7 +36,7 @@ export interface TenantMemberV1 {
   memberId: string;
   subject: string;
   roles: readonly PlatformRoleV1[];
-  status: "active" | "suspended" | "removed";
+  status: "invited" | "active" | "suspended" | "removed";
   createdAt: TimestampV1;
   updatedAt: TimestampV1;
   version: number;
@@ -99,6 +99,20 @@ export interface CreateApiKeyRequestV1 {
 export interface CreateTenantMemberRequestV1 {
   subject: string;
   roles: readonly PlatformRoleV1[];
+}
+
+export interface OnboardTenantRequestV1 {
+  tenantDisplayName: string;
+  projectName: string;
+  projectSlug: string;
+  environmentName: string;
+}
+
+export interface OnboardTenantResultV1 {
+  tenant: TenantV1;
+  member: TenantMemberV1;
+  project: ProjectV1;
+  environment: EnvironmentV1;
 }
 
 export interface UpdateTenantMemberRequestV1 {

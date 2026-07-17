@@ -73,3 +73,5 @@ export {
 export type { HttpAdapterOptions } from "./http-adapters.js";
 export { OidcIdentityAdapter, OidcPlatformIdentityBridge } from "./oidc-identity.js";
 export type { OidcIdentityOptions, OidcPlatformScope, OidcPlatformScopeResolver } from "./oidc-identity.js";
+export { PostgresOidcPlatformScopeResolver } from "./postgres-oidc-scope.js";
+export type { OidcScopeSqlPool, OidcScopeSqlResult } from "./postgres-oidc-scope.js";

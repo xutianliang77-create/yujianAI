@@ -108,3 +108,32 @@ test("OutboxPublisher records terminal failures and supports requeue", async () 
   assert.deepEqual(requeued, ["event-failure"]);
   assert.equal(publisher.deadLetters.has("event-failure"), false);
 });
+
+test("OutboxPublisher does not redeliver a destination already acknowledged before another destination retries", async () => {
+  const deliveryEvent = event("event-partial-retry");
+  const delivered = new Set();
+  const hits = { stable: 0, retry: 0 };
+  let retryFails = true;
+  await withHttpServer((request, response) => {
+    const name = request.url?.slice(1) ?? "";
+    hits[name] += 1;
+    if (name === "retry" && retryFails) response.writeHead(503).end();
+    else response.writeHead(204).end();
+  }, async (url) => {
+    const persistence = {
+      claimOutbox: async () => [deliveryEvent],
+      markOutboxPublished: async () => undefined,
+      markOutboxFailed: async () => undefined,
+      isWebhookDelivered: async (eventId, destinationId) => delivered.has(`${eventId}:${destinationId}`),
+      markWebhookDelivered: async (eventId, destinationId) => delivered.add(`${eventId}:${destinationId}`),
+    };
+    const publisher = new OutboxPublisher(persistence, [
+      { destinationId: "stable", url: `${url}/stable`, secret: Buffer.alloc(32, 1), eventTypes: [deliveryEvent.eventType] },
+      { destinationId: "retry", url: `${url}/retry`, secret: Buffer.alloc(32, 2), eventTypes: [deliveryEvent.eventType] },
+    ], { maxAttempts: 5, timeoutMs: 500, baseBackoffMs: 100 });
+    assert.deepEqual(await publisher.publishBatch(), { published: 0, failed: 1 });
+    retryFails = false;
+    assert.deepEqual(await publisher.publishBatch(), { published: 1, failed: 0 });
+  });
+  assert.deepEqual(hits, { stable: 1, retry: 2 });
+});

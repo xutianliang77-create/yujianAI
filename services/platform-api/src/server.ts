@@ -24,6 +24,7 @@ import {
   parseCreateApiKeyRequest,
   parseCreateEnvironmentRequest,
   parseCreateTenantMemberRequest,
+  parseOnboardTenantRequest,
   parseCreateProjectRequest,
   parseCreateTenantRequest,
   parseIssueRoomTokenRequest,
@@ -120,8 +121,16 @@ export interface PlatformDataRightsService {
 /** Deployment-owned OIDC/SAML bridge; it maps a verified subject to a scoped platform credential. */
 export type PlatformIdentityCredential = Omit<PlatformCredential, "credential">;
 
+export interface PlatformIdentitySubject {
+  subject: string;
+  tenantId?: string;
+  roles: readonly string[];
+}
+
 export interface PlatformIdentityProvider {
   authenticate(accessToken: string, request: IncomingMessage): Promise<PlatformIdentityCredential | undefined>;
+  /** Verifies an identity before it has a platform scope, for registration and invitation acceptance. */
+  authenticateSubject?(accessToken: string, request: IncomingMessage): Promise<PlatformIdentitySubject | undefined>;
 }
 
 export interface PlatformOutboxReplayService {
@@ -498,6 +507,58 @@ export function createPlatformServer(
       }
 
       const path = url.pathname.split("/").filter(Boolean);
+      const isOnboarding = method === "POST" && url.pathname === "/platform/v1/onboarding";
+      const invitationAccept = method === "POST"
+        ? url.pathname.match(/^\/platform\/v1\/invitations\/([^/:]+):accept$/u)
+        : null;
+      if (isOnboarding || invitationAccept !== null) {
+        if (identityProvider?.authenticateSubject === undefined) {
+          statusCode = 503;
+          sendPlatformError(response, requestId, statusCode, { code: "UPSTREAM_UNAVAILABLE", message: "OIDC identity onboarding is not configured", retryable: true });
+          return;
+        }
+        const authorization = request.headers.authorization;
+        if (typeof authorization !== "string" || !authorization.startsWith("Bearer ")) {
+          statusCode = 401;
+          sendPlatformError(response, requestId, statusCode, { code: "AUTHENTICATION_FAILED", message: "A verified OIDC identity is required", retryable: false });
+          return;
+        }
+        let identity: PlatformIdentitySubject | undefined;
+        try { identity = await identityProvider.authenticateSubject(authorization.slice("Bearer ".length), request); }
+        catch { identity = undefined; }
+        if (identity === undefined) {
+          statusCode = 401;
+          sendPlatformError(response, requestId, statusCode, { code: "AUTHENTICATION_FAILED", message: "OIDC identity verification failed", retryable: false });
+          return;
+        }
+        if (invitationAccept !== null) {
+          const member = store.getMember(invitationAccept[1] ?? "");
+          if (member.subject !== identity.subject || member.status !== "invited") {
+            statusCode = 403;
+            sendPlatformError(response, requestId, statusCode, { code: "AUTHORIZATION_FAILED", message: "The invitation cannot be accepted by this identity", retryable: false });
+            return;
+          }
+          const accepted = store.updateMember(member.memberId, { status: "active" });
+          await persistAudit(store, persistence, { tenantId: accepted.tenantId, actorType: "human", actorId: identity.subject, action: "tenant.invitation.accept", resourceType: "tenant-member", resourceId: accepted.memberId, requestId, result: "success", riskLevel: "medium", occurredAt: new Date().toISOString() });
+          await persistStore();
+          statusCode = 200;
+          sendJson(response, statusCode, { apiVersion: PLATFORM_API_VERSION, requestId, data: accepted });
+          return;
+        }
+        if (!contentTypeIsJson(request)) {
+          statusCode = 400;
+          sendPlatformError(response, requestId, statusCode, { code: "VALIDATION_FAILED", message: "Content-Type must be application/json", retryable: false });
+          return;
+        }
+        const endpoint = nodePool.nodes[0]?.wsUrl;
+        if (endpoint === undefined) throw new Error("RTC endpoint is unavailable for onboarding");
+        const onboarded = store.onboardTenant(identity.subject, parseOnboardTenantRequest(await readJsonBody(request)), endpoint, requiredIdempotencyKeyFrom(request));
+        await persistAudit(store, persistence, { tenantId: onboarded.tenant.tenantId, projectId: onboarded.project.projectId, environmentId: onboarded.environment.environmentId, actorType: "human", actorId: identity.subject, action: "tenant.onboard", resourceType: "tenant", resourceId: onboarded.tenant.tenantId, requestId, result: "success", riskLevel: "medium", occurredAt: new Date().toISOString() });
+        await persistStore();
+        statusCode = 201;
+        sendJson(response, statusCode, { apiVersion: PLATFORM_API_VERSION, requestId, data: onboarded });
+        return;
+      }
       const isTenantGet = method === "GET" && path.length === 4 && path[0] === "platform" && path[1] === "v1" && path[2] === "tenants";
       const isProjectGet = method === "GET" && path.length === 4 && path[0] === "platform" && path[1] === "v1" && path[2] === "projects";
       const isEnvironmentGet = method === "GET" && path.length === 4 && path[0] === "platform" && path[1] === "v1" && path[2] === "environments";
@@ -867,6 +928,9 @@ export function createPlatformServer(
         path[1] === "v1" &&
         path[2] === "tenants" &&
         path[4] === "members";
+      const isMemberInvite =
+        method === "POST" && path.length === 5 && path[0] === "platform" && path[1] === "v1" &&
+        path[2] === "tenants" && path[4] === "invitations";
       const isMemberList =
         method === "GET" &&
         path.length === 5 &&
@@ -880,7 +944,7 @@ export function createPlatformServer(
         path[0] === "platform" &&
         path[1] === "v1" &&
         path[2] === "tenant-members";
-      if (isApiKeyCreate || isApiKeyMutation || isApiKeyList || isApiKeyGet || isMemberCreate || isMemberList || isMemberUpdate) {
+      if (isApiKeyCreate || isApiKeyMutation || isApiKeyList || isApiKeyGet || isMemberCreate || isMemberInvite || isMemberList || isMemberUpdate) {
         if (isApiKeyList || isApiKeyGet) {
           const credential = await resolveRequestCredential(request, config, store, identityProvider);
           const admin = bearerCredentialMatches(request.headers, adminCredential);
@@ -914,14 +978,24 @@ export function createPlatformServer(
           sendJson(response, statusCode, { apiVersion: PLATFORM_API_VERSION, requestId, data: metadata });
           return;
         }
-        if (isMemberCreate || isMemberList || isMemberUpdate) {
-          if (!bearerCredentialMatches(request.headers, adminCredential)) {
-            statusCode = adminCredential === undefined ? 401 : 403;
+        if (isMemberCreate || isMemberInvite || isMemberList || isMemberUpdate) {
+          const admin = bearerCredentialMatches(request.headers, adminCredential);
+          const credential = admin ? undefined : await resolveRequestCredential(request, config, store, identityProvider);
+          const permission = isMemberList ? "member.read" : "member.write";
+          if (!admin && credential === undefined) {
+            statusCode = 401;
             sendPlatformError(response, requestId, statusCode, {
-              code: adminCredential === undefined ? "AUTHENTICATION_FAILED" : "AUTHORIZATION_FAILED",
-              message: "A control-plane admin credential is required",
+              code: "AUTHENTICATION_FAILED",
+              message: "A valid member-management credential is required",
               retryable: false,
             });
+            return;
+          }
+          const currentMember = isMemberUpdate ? store.getMember(path[3] ?? "") : undefined;
+          const tenantId = currentMember?.tenantId ?? path[3] ?? "";
+          if (!admin && (credential?.tenantId !== tenantId || !credentialAllows(credential, permission))) {
+            statusCode = 403;
+            sendPlatformError(response, requestId, statusCode, { code: "AUTHORIZATION_FAILED", message: "The credential cannot manage this tenant's members", retryable: false });
             return;
           }
           if (isMemberList) {
@@ -939,8 +1013,8 @@ export function createPlatformServer(
             });
             return;
           }
-          if (isMemberCreate) {
-            const member = store.createMember(
+          if (isMemberCreate || isMemberInvite) {
+            const member = (isMemberInvite ? store.inviteMember.bind(store) : store.createMember.bind(store))(
               path[3] ?? "",
               parseCreateTenantMemberRequest(await readJsonBody(request)),
               requiredIdempotencyKeyFrom(request),
@@ -948,8 +1022,8 @@ export function createPlatformServer(
             await persistAudit(store, persistence, {
               tenantId: member.tenantId,
               actorType: "service",
-              actorId: "platform-admin",
-              action: "tenant.member.create",
+              actorId: admin ? "platform-admin" : "platform-credential",
+              action: isMemberInvite ? "tenant.invitation.create" : "tenant.member.create",
               resourceType: "tenant-member",
               resourceId: member.memberId,
               requestId,
@@ -969,7 +1043,7 @@ export function createPlatformServer(
           await persistAudit(store, persistence, {
             tenantId: member.tenantId,
             actorType: "service",
-            actorId: "platform-admin",
+            actorId: admin ? "platform-admin" : "platform-credential",
             action: "tenant.member.update",
             resourceType: "tenant-member",
             resourceId: member.memberId,

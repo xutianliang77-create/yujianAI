@@ -137,3 +137,5 @@ export class DataRightsService {
 
 export { PostgresDataRightsService } from "./postgres-service.js";
 export type { DataRightsSqlConnection, DataRightsSqlPool, DataRightsSqlResult } from "./postgres-service.js";
+export { PostgresDataRightsExecutor, PostgresDataRightsWorker } from "./postgres-executor.js";
+export type { DataRightsWorkerOptions } from "./postgres-executor.js";

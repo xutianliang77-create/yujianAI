@@ -98,6 +98,9 @@ export class PostgresWebhookDestinationPersistence implements WebhookDestination
        VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,now(),now())
        ON CONFLICT (destination_id) DO UPDATE SET url = EXCLUDED.url, secret_ref = EXCLUDED.secret_ref,
          event_types = EXCLUDED.event_types, status = EXCLUDED.status, updated_at = now()
+       WHERE webhook_destinations.tenant_id = EXCLUDED.tenant_id
+         AND webhook_destinations.project_id = EXCLUDED.project_id
+         AND webhook_destinations.environment_id = EXCLUDED.environment_id
        RETURNING *`,
       [input.destinationId, input.tenantId, input.projectId, input.environmentId, input.url, input.secretRef, JSON.stringify(input.eventTypes), input.status],
     );

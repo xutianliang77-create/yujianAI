@@ -127,6 +127,23 @@ paths:
         "403": { $ref: "#/components/responses/AuthorizationError" }
         "503": { $ref: "#/components/responses/DependencyUnavailable" }
 
+  /platform/v1/onboarding:
+    post:
+      tags: [control-plane]
+      operationId: onboardTenant
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OnboardTenantRequest" }
+      responses:
+        "201": { $ref: "#/components/responses/OnboardTenantCreated" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+        "503": { $ref: "#/components/responses/UpstreamUnavailableError" }
   /platform/v1/tenants:
     post:
       tags: [control-plane]
@@ -333,6 +350,36 @@ paths:
         "200": { $ref: "#/components/responses/Member" }
         "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/AuthenticationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+  /platform/v1/tenants/{tenantId}/invitations:
+    post:
+      tags: [control-plane]
+      operationId: inviteMember
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/TenantId" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateMemberRequest" }
+      responses:
+        "201": { $ref: "#/components/responses/MemberCreated" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+  /platform/v1/invitations/{memberId}:accept:
+    post:
+      tags: [control-plane]
+      operationId: acceptInvitation
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/MemberId" }]
+      responses:
+        "200": { $ref: "#/components/responses/Member" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
         "404": { $ref: "#/components/responses/NotFoundError" }
 
   /platform/v1/environments/{environmentId}/quotas:
@@ -800,6 +847,9 @@ components:
     MemberList:
       description: member list
       content: { application/json: { schema: { $ref: "#/components/schemas/MemberListEnvelope" } } }
+    OnboardTenantCreated:
+      description: tenant onboarding completed
+      content: { application/json: { schema: { $ref: "#/components/schemas/OnboardTenantEnvelope" } } }
     QuotaSnapshot:
       description: quota snapshot
       content: { application/json: { schema: { $ref: "#/components/schemas/QuotaEnvelope" } } }
@@ -950,6 +1000,15 @@ components:
       properties:
         subject: { type: string, minLength: 1, maxLength: 128 }
         roles: { type: array, minItems: 1, maxItems: 32, items: { type: string } }
+    OnboardTenantRequest:
+      type: object
+      required: [tenantDisplayName, projectName, projectSlug, environmentName]
+      additionalProperties: false
+      properties:
+        tenantDisplayName: { type: string, minLength: 1, maxLength: 128 }
+        projectName: { type: string, minLength: 1, maxLength: 128 }
+        projectSlug: { type: string, pattern: '^[a-z][a-z0-9-]{2,63}$' }
+        environmentName: { type: string, minLength: 1, maxLength: 128 }
     UpdateMemberRequest:
       type: object
       minProperties: 1
@@ -1049,7 +1108,20 @@ components:
     Tenant: { type: object, additionalProperties: true, required: [tenantId, status] }
     Project: { type: object, additionalProperties: true, required: [projectId, tenantId, status] }
     Environment: { type: object, additionalProperties: true, required: [environmentId, tenantId, projectId, status] }
-    Member: { type: object, additionalProperties: true, required: [memberId, tenantId, subject, roles, status] }
+    Member:
+      type: object
+      additionalProperties: true
+      required: [memberId, tenantId, subject, roles, status]
+      properties:
+        status: { type: string, enum: [invited, active, suspended, removed] }
+    OnboardTenantResult:
+      type: object
+      required: [tenant, member, project, environment]
+      properties:
+        tenant: { $ref: "#/components/schemas/Tenant" }
+        member: { $ref: "#/components/schemas/Member" }
+        project: { $ref: "#/components/schemas/Project" }
+        environment: { $ref: "#/components/schemas/Environment" }
     ApiKeyMetadata: { type: object, additionalProperties: true, required: [apiKeyId, tenantId, projectId, environmentId, status] }
     IssuedApiKey: { type: object, required: [metadata, secret], properties: { metadata: { $ref: "#/components/schemas/ApiKeyMetadata" }, secret: { type: string } } }
     QuotaSnapshot: { type: object, additionalProperties: true, required: [environmentId, policy, observedAt] }
@@ -1161,6 +1233,7 @@ components:
     ApiKeyListEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { type: object, required: [apiKeys], properties: { apiKeys: { type: array, items: { $ref: "#/components/schemas/ApiKeyMetadata" } } } } } }
     MemberEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/Member" } } }
     MemberListEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { type: object, required: [members], properties: { members: { type: array, items: { $ref: "#/components/schemas/Member" } } } } } }
+    OnboardTenantEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/OnboardTenantResult" } } }
     QuotaEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/QuotaSnapshot" } } }
     UsageListEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { type: object, required: [records], properties: { records: { type: array, items: { $ref: "#/components/schemas/UsageRecord" } } } } } }
     AuditListEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { type: array, items: { $ref: "#/components/schemas/AuditEvent" } } } }

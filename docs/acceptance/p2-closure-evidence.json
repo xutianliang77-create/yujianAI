@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "runId": "p2-closure-20260717104540-c0c4ba0e",
+  "environment": {
+    "server": "beelink",
+    "client": "local-mac"
+  },
+  "generatedAt": "2026-07-17T11:01:02Z",
+  "status": "acceptance-interrupted",
+  "interruption": {
+    "stage": "external-rtc-client-handoff",
+    "observedEvent": "server-broadcast-reboot-then-unreachable",
+    "operatorConfirmation": "beelink-dead",
+    "completeReportProduced": false
+  },
+  "localVerification": {
+    "platformApiTests": { "status": "passed", "passed": 18, "failed": 0 },
+    "dataRightsTests": { "status": "passed", "passed": 2, "failed": 0 },
+    "openapiOperations": { "status": "passed", "count": 58 },
+    "upstreamManifest": { "status": "passed", "components": 11 }
+  },
+  "liveObservationsBeforeInterruption": {
+    "p2_04": "flow-reached-external-rtc-client-handoff",
+    "p2_05": "hmac-retry-dlq-requeue-observed-in-earlier-incomplete-run",
+    "p2_06": "not-reached"
+  },
+  "gate": {
+    "p2_04": "not-passed",
+    "p2_05": "not-passed",
+    "p2_06": "not-passed",
+    "fullP2": "not-passed"
+  },
+  "resumeCommand": "./tools/p2/run-closure-with-client.sh"
+}

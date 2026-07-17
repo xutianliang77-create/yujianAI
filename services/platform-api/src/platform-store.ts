@@ -8,6 +8,8 @@ import type {
   EnvironmentV1,
   ApiKeyMetadataV1,
   IssuedApiKeyV1,
+  OnboardTenantRequestV1,
+  OnboardTenantResultV1,
   OutboxEventV1,
   PlatformScopeV1,
   ProjectV1,
@@ -317,6 +319,34 @@ export class PlatformStore {
     return tenant;
   }
 
+  onboardTenant(
+    subject: string,
+    input: OnboardTenantRequestV1,
+    endpoint: string,
+    idempotencyKey: string,
+  ): OnboardTenantResultV1 {
+    const scopedIdempotencyKey = scopedKey(idempotencyKey, subject);
+    const fingerprint = JSON.stringify({ subject, input, endpoint });
+    const cached = this.cached<OnboardTenantResultV1>("onboarding", scopedIdempotencyKey, fingerprint);
+    if (cached !== undefined) return cached;
+    if ([...this.members.values()].some((member) => member.subject === subject && member.status !== "removed")) {
+      throw new PlatformStoreError("RESOURCE_CONFLICT", "identity is already registered");
+    }
+    const tenant = this.createTenant({ displayName: input.tenantDisplayName }, `${scopedIdempotencyKey}:tenant`);
+    const member = this.createMember(tenant.tenantId, { subject, roles: ["tenant_owner"] }, `${scopedIdempotencyKey}:owner`);
+    const project = this.createProject({ tenantId: tenant.tenantId, name: input.projectName, slug: input.projectSlug }, `${scopedIdempotencyKey}:project`);
+    const environment = this.createEnvironment({
+      tenantId: tenant.tenantId,
+      projectId: project.projectId,
+      name: input.environmentName,
+      type: "dev",
+      endpoint,
+    }, `${scopedIdempotencyKey}:environment`);
+    const result = { tenant, member, project, environment };
+    this.saveIdempotency("onboarding", scopedIdempotencyKey, result, fingerprint);
+    return result;
+  }
+
   createProject(input: CreateProjectRequestV1, idempotencyKey?: string): ProjectV1 {
     const tenant = this.tenants.get(input.tenantId);
     if (tenant === undefined) throw new PlatformStoreError("RESOURCE_NOT_FOUND", "tenant not found");
@@ -514,9 +544,26 @@ export class PlatformStore {
     input: CreateTenantMemberRequestV1,
     idempotencyKey?: string,
   ): TenantMemberV1 {
+    return this.createMemberWithStatus(tenantId, input, "active", idempotencyKey);
+  }
+
+  inviteMember(
+    tenantId: string,
+    input: CreateTenantMemberRequestV1,
+    idempotencyKey?: string,
+  ): TenantMemberV1 {
+    return this.createMemberWithStatus(tenantId, input, "invited", idempotencyKey);
+  }
+
+  private createMemberWithStatus(
+    tenantId: string,
+    input: CreateTenantMemberRequestV1,
+    status: "active" | "invited",
+    idempotencyKey?: string,
+  ): TenantMemberV1 {
     if (!this.tenants.has(tenantId)) throw new PlatformStoreError("RESOURCE_NOT_FOUND", "tenant not found");
     const scopedIdempotencyKey = scopedKey(idempotencyKey, tenantId);
-    const fingerprint = JSON.stringify(input);
+    const fingerprint = JSON.stringify({ input, status });
     const cached = this.cached<TenantMemberV1>("member", scopedIdempotencyKey, fingerprint);
     if (cached !== undefined) return cached;
     if ([...this.members.values()].some((member) => member.tenantId === tenantId && member.subject === input.subject && member.status !== "removed")) {
@@ -528,13 +575,19 @@ export class PlatformStore {
       memberId: id("mem"),
       subject: input.subject,
       roles: [...new Set(input.roles)],
-      status: "active",
+      status,
       createdAt: now,
       updatedAt: now,
       version: 1,
     };
     this.members.set(member.memberId, member);
     this.saveIdempotency("member", scopedIdempotencyKey, member, fingerprint);
+    return member;
+  }
+
+  getMember(memberId: string): TenantMemberV1 {
+    const member = this.members.get(memberId);
+    if (member === undefined) throw new PlatformStoreError("RESOURCE_NOT_FOUND", "tenant member not found");
     return member;
   }
 

@@ -157,7 +157,7 @@ export class OidcPlatformIdentityBridge {
   ) {}
 
   async authenticate(accessToken: string, request: unknown): Promise<OidcPlatformScope | undefined> {
-    const identity = await this.oidc.validateAccessToken(accessToken);
+    const identity = await this.authenticateSubject(accessToken);
     const scope = await this.scopeResolver.resolve(identity, request);
     if (scope === undefined) return undefined;
     if (
@@ -165,5 +165,9 @@ export class OidcPlatformIdentityBridge {
       scope.tenantId.length > 128 || scope.projectId.length > 128 || scope.environmentId.length > 128
     ) throw new Error("OIDC scope resolver returned invalid resource scope");
     return scope;
+  }
+
+  async authenticateSubject(accessToken: string): Promise<{ subject: string; tenantId?: string; roles: readonly string[] }> {
+    return this.oidc.validateAccessToken(accessToken);
   }
 }

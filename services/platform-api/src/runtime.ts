@@ -40,6 +40,9 @@ export async function loadPlatformRuntime(
   if (identity !== undefined && (typeof identity !== "object" || identity === null || typeof identity.authenticate !== "function")) {
     throw new Error("platform runtime module returned invalid identity provider");
   }
+  if (identity?.authenticateSubject !== undefined && typeof identity.authenticateSubject !== "function") {
+    throw new Error("platform runtime module returned invalid identity subject verifier");
+  }
   const outboxReplay = dependencies.outboxReplay;
   if (outboxReplay !== undefined && (typeof outboxReplay !== "object" || outboxReplay === null || typeof outboxReplay.requeueDeadLetter !== "function")) {
     throw new Error("platform runtime module returned invalid outbox replay service");

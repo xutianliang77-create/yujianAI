@@ -23,6 +23,7 @@ export type {
   PlatformDataRightsService,
   PlatformIdentityProvider,
   PlatformIdentityCredential,
+  PlatformIdentitySubject,
   PlatformOutboxReplayService,
   PlatformBackgroundWorker,
   PlatformTelemetryPersistence,

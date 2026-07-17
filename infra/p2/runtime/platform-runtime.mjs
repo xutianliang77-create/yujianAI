@@ -1,6 +1,8 @@
 import { Buffer } from "node:buffer";
 import pg from "pg";
 import { createClient } from "redis";
+import { PostgresDataRightsExecutor, PostgresDataRightsService, PostgresDataRightsWorker } from "@yujian/data-rights";
+import { OidcIdentityAdapter, OidcPlatformIdentityBridge, PostgresOidcPlatformScopeResolver } from "@yujian/platform-adapters";
 import {
   OutboxPublisher,
   OutboxPublisherWorker,
@@ -45,6 +47,24 @@ function kmsAddresses(address) {
   return addresses.map((value) => value.replace(/\/$/u, ""));
 }
 
+class CompositeWorker {
+  constructor(workers) { this.workers = workers; }
+  start() { for (const worker of this.workers) worker.start(); }
+  async stop() { for (const worker of [...this.workers].reverse()) await worker.stop(); }
+}
+
+function createIdentity(pool) {
+  const issuer = process.env.YUJIAN_OIDC_ISSUER;
+  const audience = process.env.YUJIAN_OIDC_AUDIENCE;
+  const jwksUri = process.env.YUJIAN_OIDC_JWKS_URI;
+  if (issuer === undefined && audience === undefined && jwksUri === undefined) return undefined;
+  if (!issuer || !audience) throw new Error("YUJIAN_OIDC_ISSUER and YUJIAN_OIDC_AUDIENCE must be set together");
+  return new OidcPlatformIdentityBridge(
+    new OidcIdentityAdapter({ issuer, audience, ...(jwksUri ? { jwksUri } : {}) }),
+    new PostgresOidcPlatformScopeResolver(pool),
+  );
+}
+
 export function createOpenBaoSecretResolver(address, token) {
   const addresses = kmsAddresses(address);
   return {
@@ -81,23 +101,29 @@ export async function createPlatformRuntime({ config: _config }) {
   const redisEval = createRedisEvalClient(redis);
   const persistence = new PostgresPlatformPersistence(pool);
   const destinations = new PostgresWebhookDestinationPersistence(pool);
+  const dataRights = new PostgresDataRightsService(pool);
+  const dataRightsExecutor = new PostgresDataRightsExecutor(pool, `${required("YUJIAN_DATA_ROOT")}/p2/data-rights`);
   const publisher = new OutboxPublisher(
     persistence,
     new PersistentWebhookDestinationProvider(destinations, createOpenBaoSecretResolver(required("YUJIAN_KMS_ADDR"), required("YUJIAN_KMS_TOKEN"))),
     { maxAttempts: 5, timeoutMs: 5_000, baseBackoffMs: 1_000 },
   );
+  const outboxWorker = new OutboxPublisherWorker(publisher);
+  const dataRightsWorker = new PostgresDataRightsWorker(pool, dataRights, dataRightsExecutor);
   return {
     close: async () => {
       if (redis.isOpen) await redis.quit();
       await pool.end();
     },
     persistence,
+    identity: createIdentity(pool),
+    dataRights,
     storePersistence: new PostgresPlatformStorePersistence(pool),
     resourceUsage: new PostgresPlatformResourceUsageProvider(pool),
     rateLimiter: new RedisRateLimiter(redisEval),
     tokenQuota: new RedisTokenQuotaProvider(redisEval),
     outboxReplay: publisher,
-    outboxWorker: new OutboxPublisherWorker(publisher),
+    outboxWorker: new CompositeWorker([outboxWorker, dataRightsWorker]),
     webhookDestinations: destinations,
     telemetryPersistence: new PostgresRtcTelemetryPersistence(pool),
   };

@@ -42,9 +42,9 @@ ensure_dirs() {
   umask 077
   mkdir -p "$DATA_ROOT/p2" "$DATA_ROOT/p2/postgres" "$DATA_ROOT/p2/redis" \
     "$DATA_ROOT/p2/openbao" "$DATA_ROOT/p2/openbao-a" "$DATA_ROOT/p2/openbao-b" \
-    "$DATA_ROOT/p2/openbao-c" "$TLS_DIR" "$DATA_ROOT/p2/reports"
+    "$DATA_ROOT/p2/openbao-c" "$TLS_DIR" "$DATA_ROOT/p2/reports" "$DATA_ROOT/p2/backups" "$DATA_ROOT/p2/data-rights"
   chmod 755 "$DATA_ROOT" "$DATA_ROOT/p2"
-  chmod 700 "$DATA_ROOT/p2/reports" "$TLS_DIR"
+  chmod 700 "$DATA_ROOT/p2/reports" "$DATA_ROOT/p2/backups" "$DATA_ROOT/p2/data-rights" "$TLS_DIR"
 }
 
 ensure_env() {

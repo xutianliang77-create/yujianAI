@@ -73,19 +73,9 @@ export class OutboxPublisher {
       try {
         const destinations = (await this.destinationsFor(event)).filter((destination) => destination.eventTypes.includes(event.eventType));
         for (const destination of destinations) {
-          let delivered = false;
-          let lastError: unknown;
-          for (let attempt = 1; attempt <= this.options.maxAttempts; attempt += 1) {
-            try {
-              await this.deliver(event, destination);
-              delivered = true;
-              break;
-            } catch (error) {
-              lastError = error;
-              if (attempt < this.options.maxAttempts) await new Promise((resolve) => setTimeout(resolve, Math.min((this.options.baseBackoffMs ?? 1_000) * 2 ** (attempt - 1), 300_000)));
-            }
-          }
-          if (!delivered) throw lastError instanceof Error ? lastError : new Error("webhook delivery failed");
+          if (await this.persistence.isWebhookDelivered?.(event.eventId, destination.destinationId)) continue;
+          await this.deliver(event, destination);
+          await this.persistence.markWebhookDelivered?.(event.eventId, destination.destinationId, new Date().toISOString());
         }
         await this.persistence.markOutboxPublished(event.eventId, new Date().toISOString());
         published += 1;
