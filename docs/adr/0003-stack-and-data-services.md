@@ -2,6 +2,10 @@
 
 状态：accepted（生产 adapter 仍按环境替换）
 
+Owner：`platform-owner`
+评审人：`data-owner`、`sre-owner`、`release-owner`
+关闭前置：首区、HA 拓扑、队列/分析仓和生产迁移演练结论
+
 | 平面 | 首版选择 | 约束 |
 | --- | --- | --- |
 | 控制面 API | Node.js 22+/TypeScript，HTTP JSON | 合同先行，单文件默认不超过 350 行 |

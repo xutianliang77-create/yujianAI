@@ -126,8 +126,9 @@ claim；客户端应使用响应中的 `url`，不自行拼接节点地址。
 
 当前代码切片已实现 Tenant/Project/Environment、API key、成员、Quota/Usage/Audit、
 endpoint discovery、Room/Participant adapter 和 RTC telemetry 的内存 adapter，并提供
-Agent 与 SIP/Ingress/Egress 状态机骨架；它们全部等待 Beelink 运行验证，且不能替代生产
-PostgreSQL/KMS/Redis、provider、webhook 和合规实现。
+Agent 与 SIP/Ingress/Egress 状态机骨架。M1 A-C 的双节点 Node、Web/Flutter Web 音频、
+Data/RPC 已有运行证据；其余 Agent、SIP/Ingress/Egress 和生产依赖仍等待 Beelink/部署
+环境验证，不能替代 PostgreSQL/KMS/Redis、provider、webhook 和合规实现。
 
 生产 platform-api 通过 `YUJIAN_PLATFORM_RUNTIME_MODULE` 加载部署方维护的 ESM runtime
 module；该模块注入 `PostgresPlatformPersistence`、Redis/KMS、billing 和 data-rights adapter，

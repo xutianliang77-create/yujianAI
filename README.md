@@ -62,12 +62,15 @@ tools/                 上游同步、许可证、构建和仓库工具
 
 ## 当前阶段
 
-设计基线已获批准，当前已按 M0-M7 开发计划展开完整的合同、服务、适配器、部署和发布骨架：
+设计基线已获批准，当前状态为 **M1 A-C 运行基线通过，完整 Gate 1 未通过，D/E 尚未执行**。
+M0-M7 的合同、服务、适配器、部署和发布骨架已展开，但骨架不等于对应 Gate 已关闭：
 
 - 已冻结 LiveKit 官方稳定版本、commit、npm 包和容器 digest。
 - 已建立新平台合同、官方 Server SDK 兼容层和最小 Token/Endpoint API。
 - 已按官方 Server/Node/Web/Flutter SDK 编写双节点 Room、Participant、Data、RPC 和音频
-  Track 兼容测试场景；按照当前验收约束，运行验证统一等待 Beelink 开机。
+  Track 兼容测试场景。2026-07-17 已完成 Beelink 服务器端 A/B 与本机 Web/Flutter Web
+  客户端 C 验收；报告分别记录于 `outputs/beelink/20260717T075738Z`（Beelink）和
+  `outputs/client/20260717T080332Z`（本机）。
 - 自有服务、命令和场景采用 `yujian` / `rtc` 命名；`LiveKit` 仅保留在官方依赖、
   协议兼容和上游归属边界。
 - 尚未 fork 或修改 LiveKit 媒体核心，也未复制任何旧项目源码。
@@ -76,8 +79,9 @@ tools/                 上游同步、许可证、构建和仓库工具
 - 正在把单一内部 key 升级为绑定 `tenantId / projectId / environmentId` 的环境级
   credential，并建立工作区外 clean mirror、空 patch queue 和 Beelink 手动验收 CI。
 - 本轮已实现 `YujianRtcNodePool`：控制面可管理 primary/secondary RTC 入口，`/readyz`
-  并行检查全部节点，token 响应返回选中的 `nodeId`；同时将 Flutter 兼容 target 扩展为
-  双节点音频 Track 发布/订阅。上述新增代码等待 Beelink 开机验收。
+  并行检查全部节点，token 响应返回选中的 `nodeId`；Flutter Web 已完成双节点音频
+  Track 发布/订阅验证。视频、屏幕共享、TURN/弱网、reconnect、原生 iOS/Android 和
+  Python Agent 尚未纳入本次通过范围。
 - 控制面已加入 Tenant/Project/Environment、API key 生命周期、成员/RBAC、Room/Participant
   adapter、quota/usage/audit/outbox 和 RTC telemetry 合同；Agent、SIP/Ingress/Egress、
   私有化 Helm 与商业/SLO 合同已建立状态机和部署骨架。它们尚未在 Beelink 运行验证，也
@@ -87,8 +91,8 @@ tools/                 上游同步、许可证、构建和仓库工具
   边界；高风险能力默认关闭，生产 Gate 与法务/合规签字仍是发布前置条件。
 - Node Agent worker 已提供官方 `@livekit/rtc-node` 的 `LiveKitAgentRoomConnector`；Python
   worker 已提供基于官方 `livekit.rtc.Room` 的可选 `LiveKitAgentRoomConnector`，两者只负责按
-  dispatch 建立/关闭 Room 会话，token 签发和业务授权仍由控制面完成。两种实现均等待 Beelink
-  运行验证。
+  dispatch 建立/关闭 Room 会话，token 签发和业务授权仍由控制面完成。D（RTX 5090 Agent）
+  和 Python Agent 运行验证尚未执行。
 - 平台 runtime 现在支持注入部署侧 `PlatformIdentityProvider`；OIDC/SAML 适配器负责验证
   token，部署侧映射最小 tenant/project/environment scope 后再进入统一 RBAC，静态 credential
   和 API key 仍走原有路径。
@@ -112,6 +116,5 @@ tools/                 上游同步、许可证、构建和仓库工具
 - 私有化预检会调用 `tools/private-deployment/verify-offline-manifest.mjs` 校验离线包结构；
   提供 `YUJIAN_OFFLINE_ARTIFACT_ROOT` 时还会拒绝未解析的 digest 占位符并检查 artifact 文件。
 
-此前双节点、音频、Web 和 Flutter 结果是在测试策略切换前完成的历史基线。自
-2026-07-17 起，Mac 工作区不执行测试、构建、Docker 或浏览器验证；新增变更统一等待
-Beelink 开机后运行 `npm run beelink:acceptance`，在执行前均视为未验证。
+历史暂停记录仍保留在 `PROGRESS_LOG.md`，但不覆盖本轮通过证据。当前新增变更必须重新
+执行受影响的 Gate；本次 A-C 通过不自动关闭完整 Gate 1，也不替代 D/E 的运行证据。

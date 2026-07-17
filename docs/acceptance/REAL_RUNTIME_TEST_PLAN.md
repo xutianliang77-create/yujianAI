@@ -107,16 +107,18 @@ compose=(docker compose \
 
 "${compose[@]}" config --quiet
 "${compose[@]}" ps
-curl --fail --silent http://127.0.0.1:7880/
-curl --fail --silent http://127.0.0.1:7980/
+primary_port="${YUJIAN_RTC_PRIMARY_PORT:-7880}"
+secondary_port="${YUJIAN_RTC_SECONDARY_PORT:-7980}"
+curl --fail --silent "http://127.0.0.1:${primary_port}/"
+curl --fail --silent "http://127.0.0.1:${secondary_port}/"
 "${compose[@]}" logs --no-color --tail=300 yujian-rtc-a yujian-rtc-b redis
 ```
 
 只重跑 Node/双节点音频：
 
 ```bash
-export YUJIAN_RTC_PRIMARY_URL="ws://${YUJIAN_RTC_NODE_IP}:7880"
-export YUJIAN_RTC_SECONDARY_URL="ws://${YUJIAN_RTC_NODE_IP}:7980"
+export YUJIAN_RTC_PRIMARY_URL="ws://${YUJIAN_RTC_NODE_IP}:${YUJIAN_RTC_PRIMARY_PORT:-7880}"
+export YUJIAN_RTC_SECONDARY_URL="ws://${YUJIAN_RTC_NODE_IP}:${YUJIAN_RTC_SECONDARY_PORT:-7980}"
 npm run test:integration:rtc
 ```
 

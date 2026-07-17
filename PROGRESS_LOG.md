@@ -11,6 +11,44 @@
 - 验收结束后已清理本项目 `local-yujian-rtc-*`、`local-redis-1` 和测试网络；Beelink 上既有服务保持运行，无后台测试进程。
 - 手机原生 Android/iOS target 尚未纳入当前仓库；本次客户端证据是本机 Chrome 的 Web/Flutter Web，不宣称原生手机通过。
 
+## 📌 2026-07-17 P0 文档状态与证据同步完成
+
+- 统一当前状态为：**M1 A-C baseline passed；完整 Gate 1 未通过；D/E 尚未执行**。
+- 已更新 `README.md`、`docs/README.md`、技术设计、开发计划、验收计划、开发完成审计、
+  `docs/compatibility/MATRIX.md` 和 `tests/compatibility/compatibility-matrix.json`。
+- 兼容矩阵现在区分 `passed-baseline` 与完整 Gate 通过；Web/Flutter/Node 绑定
+  `20260717T080332Z` / `20260717T075738Z` 证据，Python 为 `deferred-runtime`，iOS/Android
+  仍为 `planned`。
+- 修正真实运行方案的故障诊断命令，使其使用 `YUJIAN_RTC_PRIMARY_PORT` /
+  `YUJIAN_RTC_SECONDARY_PORT`，支持本轮隔离端口 `17880/17980`。
+- 服务器端报告仍在 Beelink `/home/beelink/yujianAI/outputs/beelink/20260717T075738Z`；
+  客户端 summary 已在本仓库 `outputs/client/20260717T080332Z/summary.txt`。
+
+### P0 后续门禁
+
+1. P1/M0-M1：ADR/合规 owner、clean upstream 可复现证据、完整 SDK、视频/屏幕、TURN/弱网、
+   reconnect、Webhook、SBOM/签名和 nightly sandbox。
+2. P2/M2：真实 PostgreSQL、Redis、KMS、注册/邀请/SSO/onboarding、持久化 RBAC、分布式限流
+   和恢复演练。
+3. P3/M3-M7：24/72 小时稳定性、5090 Agent/provider、SIP/媒体、私有化、账单、安全和合规。
+
+## 📌 2026-07-17 P1 第一批实现
+
+- 新增 `docs/governance/OWNERS.md` 和 `docs/planning/P1_M0_M1_CLOSURE_PLAN.md`，为 ADR、
+  合规、RTC、数据、Agent、SRE、供应链和发布建立角色责任与 Gate 退出证据；个人 owner
+  尚未指派，不虚构签字状态。
+- ADR-0001..0004 已补充 owner、评审人和关闭前置；合规清单明确角色 owner 不等于法律结论。
+- Web 兼容 target 增加合成 camera 与 screen-share video Track 发布/订阅和 RTP bytes 检查；
+  已完成 esbuild 语法构建，尚未在 Beelink/Chrome 重新运行，因此状态为 implemented-deferred。
+- 新增 `services/platform-api/test/outbox-publisher.test.mjs`，覆盖 webhook HMAC、成功投递、
+  terminal failure、DLQ 和 requeue；按用户约束未在本机执行，需在 Beelink 重新运行 workspace test。
+- 未改变当前 Gate 判定：仍为 M1 A-C baseline passed，完整 Gate 1 未通过，D/E 尚未执行。
+- P2/P3 已单独记录在 `docs/planning/P2_P3_RUNTIME_CLOSURE_PLAN.md`：P2 等待部署方真实
+  PostgreSQL/Redis/KMS/身份 provider，P3 在 M0-M2 Gate 关闭前保持 gate-locked。
+- 只读核对 Beelink：当前仅有既有 `livekit-qkxy-*`、`ai-phone-staging-*` 服务和 Redis
+  `127.0.0.1:6379`；未发现 PostgreSQL `5432`、语见 platform-api/MediaOps 端口或本项目
+  runtime module。既有服务未修改；RTX 5090/驱动可见。
+
 ## 📌 2026-07-17 双端真实验证暂停记录
 
 用户要求暂停真实验证，以避免与无界AI在 Beelink 上的测试冲突。当前状态：

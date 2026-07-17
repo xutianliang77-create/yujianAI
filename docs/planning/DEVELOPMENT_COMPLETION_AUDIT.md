@@ -4,25 +4,27 @@
 日期：2026-07-17  
 审计范围：`docs/planning/01-development-tasks-and-plan.md` 的 M0-M7 任务，以及
 `docs/acceptance/01-acceptance-tasks-and-plan.md` 的 Gate 要求。  
-审计方式：只检查当前工作区的源码、配置和文档；本轮不运行测试、构建、Docker、浏览器
-或 Flutter 命令。  
+审计方式：检查当前工作区的源码、配置、文档及 2026-07-17 A-C 运行证据；服务器端报告
+位于 Beelink 的 `outputs/beelink/20260717T075738Z`，客户端 summary 位于本仓库的
+`outputs/client/20260717T080332Z/`。本审计不把 A-C 证据扩展为完整 Gate 1，也不把它扩展为
+D/E 证据。
 
 ## 1. 状态定义
 
 - **done**：工作区已有与任务直接对应的实现或正式记录；运行验证仍需单独看验收状态。
 - **partial**：只实现了任务的一部分，或只有设计/脚本，没有完整可运行闭环。
 - **missing**：没有可证明任务已实现的当前工作区产物。
-- **deferred**：实现已存在，但按用户要求必须等 Beelink 开机后验证；不能把历史 Mac
-  结果当作本轮证据。
+- **baseline-passed**：指定范围的可重复运行证据已通过，但不代表该里程碑或 Gate 全部通过。
+- **deferred**：实现已存在，但仍缺指定环境、外部依赖或目标 SDK 的运行证据。
 
-`done` 不等于 Gate 通过。代码、部署和合同在 Beelink 验收前均保持“未验证”状态。
+`done` 或 `baseline-passed` 都不等于 Gate 通过。必须按 Gate 的完整验收条件判断发布状态。
 
 ## 2. M0：决策与治理
 
 | 任务 | 状态 | 当前证据 | 缺口/后续 |
 | --- | --- | --- | --- |
 | M0-01 品牌、模式和非目标 | done | `README.md`、`docs/product/BRAND_AND_PRODUCT_CHARTER.md`；明确不做翻译 | 正式商标、域名和商业边界仍待决策 |
-| M0-02 冻结上游版本 | done | `infra/upstream/livekit-versions.json` 含 11 个组件 tag/commit 和镜像 digest | Beelink 重新执行联网校验 |
+| M0-02 冻结上游版本 | done | `infra/upstream/livekit-versions.json` 含 11 个组件 tag/commit 和镜像 digest；2026-07-17 Beelink acceptance 已完成联网 manifest 校验 | 保留可复现 clean mirror 报告 |
 | M0-03 mirror/fork/patch queue | partial | clean mirror sync、patch queue replay guard、周度 GitHub workflow | 工作区外首次同步、fork 权限和冲突报警仍无运行证据 |
 | M0-04 许可证/NOTICE/商标评审 | partial | `infra/upstream/THIRD_PARTY_NOTICES.md`、上游策略文档 | 法律签字、商标边界、SBOM 归档和发布检查未完成 |
 | M0-05 平台 ID/OpenAPI/事件/矩阵 | partial | `packages/platform-contracts`、OpenAPI、`tools/api/verify-openapi.rb` 门禁、兼容矩阵、事件合同和审批模板 | 完整 SDK 矩阵和变更审批运行证据仍缺 |
@@ -41,17 +43,18 @@ mirror/许可证证据。
 | --- | --- | --- | --- |
 | M1-01 镜像 LiveKit 组件 | partial | 版本 manifest 覆盖 Server/Protocol/SIP/Ingress/Egress/Agents/SDK | 未提供所有组件的构建/发布镜像和运行配置 |
 | M1-02 clean upstream 镜像 | partial | Beelink/local compose 使用官方固定 digest、无语见媒体 patch | clean mirror 构建产物和 digest 复现报告缺失 |
-| M1-03 单区 RTC、Redis、TURN、观测 | partial | 双 Server+Redis healthcheck、TURN 配置边界、Prometheus/OTel 配置和 SLO | TURN 集群真实镜像、生产 TLS、指标端点和告警运行证据 |
-| M1-04 JS/Flutter/iOS/Android/Node/Python 矩阵 | partial | Web/Flutter/Node harness、iOS/Android/Python target README、机器可读矩阵 | iOS/Android/Python 实际运行和 Beelink 证据 |
-| M1-05 Token/RoomService/Webhook/Data/RPC 合同 | partial | token、RoomService、Data/RPC、官方 WebhookReceiver 签名/replay adapter | 完整 webhook 生命周期/错误矩阵和运行证据 |
-| M1-06 音频/视频/屏幕/弱网基线 | partial | Node/Web/Flutter 音频 Track 目标和 harness | 视频、屏幕共享、TURN/弱网注入、质量指标采集未实现 |
+| M1-03 单区 RTC、Redis、TURN、观测 | partial | 双 Server+Redis healthcheck、2026-07-17 双节点 ready 和 Node PCM 音频通过、TURN 配置边界、Prometheus/OTel 配置和 SLO | TURN 集群真实镜像、生产 TLS、指标端点和告警运行证据 |
+| M1-04 JS/Flutter/iOS/Android/Node/Python 矩阵 | partial | Web/Flutter/Node A-C baseline passed；iOS/Android/Python target README、机器可读矩阵 | iOS/Android/Python 实际运行和完整 SDK Gate 证据 |
+| M1-05 Token/RoomService/Webhook/Data/RPC 合同 | partial | Node/Web/Flutter baseline 的 token、RoomService、Data/RPC 通过；官方 WebhookReceiver 签名/replay adapter；新增 publisher HMAC/成功/失败/DLQ/requeue 单测 | 完整 webhook 生命周期/错误矩阵和运行证据 |
+| M1-06 音频/视频/屏幕/弱网基线 | partial | Node/Web/Flutter 音频 Track、TrackSubscribed、RTP bytes > 0 通过；Web 已加入合成 camera/screen Track 实现但尚未重新运行 | 视频/屏幕运行证据、TURN/弱网注入、reconnect 和质量指标采集 |
 | M1-07 自动重放 patch queue | partial | patch queue replay guard、clean mirror sync 和 CI workflow | 非空 patch 的冲突失败、clean build 和报告未建立 |
 | M1-08 周期上游同步 | partial | `.github/workflows/upstream-sync.yml` 周度任务 | owner、差异通知和升级演练缺失 |
 | M1-09 许可证/SBOM/漏洞/签名流水线 | partial | SBOM generator、supply-chain workflow、NOTICE/license policy | 容器 SBOM、签名验证、漏洞门禁和当前运行证据 |
 | M1-10 nightly sandbox | partial | `infra/sandbox` profile/README 和 nightly metadata workflow | 实际租户隔离、自动销毁和访问入口未实现 |
 
-**M1 结论：partial；Gate 1 deferred/未通过。** 双节点音频和 Flutter 双入口代码待
-Beelink 验证，不能替代完整 SDK、TURN、视频和安全矩阵。
+**M1 结论：partial；A-C baseline passed，完整 Gate 1 未通过。** 已有 Beelink 双节点
+Node 与本机 Web/Flutter Web 音频、Data、RPC 证据；不能替代完整 SDK、TURN、视频、
+屏幕共享、reconnect、Webhook、iOS/Android/Python 和安全矩阵。
 
 ## 4. M2：中国控制面最小闭环
 
@@ -164,7 +167,7 @@ join/leave adapter；registry/provider、网络策略、真实 job lifecycle 和
 | Gate | 状态 | 当前证据 | 主要缺口 |
 | --- | --- | --- | --- |
 | Gate 0 设计/上游 | partial | 章程、版本 manifest、ADR、合规清单、OpenAPI/矩阵和 DoD | 法律签字、生成门禁和评审记录 |
-| Gate 1 LiveKit 兼容 | deferred | Node/Web/Flutter/双节点音频目标、官方固定镜像 | Beelink 复验；Webhook、视频、TURN、iOS/Android/Python、SBOM |
+| Gate 1 LiveKit 兼容 | partial（A-C baseline passed） | Beelink 双节点 Node 与本机 Web/Flutter Web 的 token、join、音频、Data/RPC、RTP bytes 证据；报告 run id `20260717T075738Z` / `20260717T080332Z` | Webhook、视频、屏幕共享、TURN/弱网、reconnect、iOS/Android/Python、SBOM/签名 |
 | Gate 2 控制面 | partial | scoped token、CRUD、API key/KMS boundary、quota、`PostgresPlatformPersistence`、`PostgresPlatformStorePersistence`、Redis lease/token reservation、outbox/webhook、usage、Room adapter、`YUJIAN_PLATFORM_RUNTIME_MODULE` 注入入口、migration runner、静态 console 和 OpenAPI 门禁 | 外部 runtime module（含 `storePersistence`）、真实 PG/KMS/Redis、SSO、注册/邀请和 Beelink 运行证据 |
 | Gate 3 媒体/容量 | partial | Helm/PG/Redis/TURN boundary、telemetry、capacity/probe/runbook | 真实 TURN/网络矩阵、24/72h、容量和质量指标 |
 | Gate 4 Agent | partial | worker、deployment、provider、tool policy、deadline/circuit skeleton | 全部 Agent 生命周期、真实 provider/GPU 和故障场景 |
@@ -177,23 +180,22 @@ join/leave adapter；registry/provider、网络策略、真实 job lifecycle 和
 
 ## 11. 当前交付判定和推荐顺序
 
-当前仓库是 **M0-M7 的合同、服务骨架、适配器边界和部署/发布骨架**，仍不是可宣称 Gate
-全部通过的生产“开发完毕”。按用户要求，本审计没有把测试缺失当作实现缺失，也没有在 Mac
-执行测试；Beelink 开机后只能验证实现，不能替代法律签字、真实 provider、HA 运维和生产
-持久化证据。
+当前仓库是 **M0-M7 的合同、服务骨架、适配器边界和部署/发布骨架，加上 M1 A-C
+运行基线**，仍不是可宣称 Gate 全部通过的生产“开发完毕”。A-C 只能证明已覆盖的
+Node/Web/Flutter Web 音频场景；不能替代法律签字、真实 provider、HA 运维和生产持久化证据。
 
 建议下一轮实现顺序：
 
-1. 在 Beelink 开机后执行唯一运行验收，先确认新增源码可构建、合同和官方 SDK 兼容。
-2. 将 M2 内存 adapter 替换为 PostgreSQL/KMS/Redis，并完成 webhook、SSO、分布式 quota。
-3. 接入真实 TURN/观测、worker/provider、运营商和对象存储，再逐个关闭 M3-M7 Gate。
+1. 先补齐 M0/M1：ADR/合规 owner、clean upstream 可复现证据、完整 SDK、视频/屏幕、TURN/弱网、reconnect、Webhook、SBOM/签名和 nightly sandbox。
+2. 将 M2 内存 adapter 接入 PostgreSQL/KMS/Redis，并完成注册/邀请/SSO/onboarding、持久化 RBAC、分布式限流和恢复演练。
+3. 再接入真实 TURN/观测、5090 Agent/provider、运营商和对象存储，逐个关闭 M3-M7 Gate。
 4. 法律/合规、财务、SRE 和发布负责人完成签字后，才可进入 Preview/GA。
 
 ## 12. 本轮恢复清单
 
 ```text
-1. Beelink 开机后执行 npm run beelink:preflight
-2. 执行 npm run beelink:acceptance，保存 outputs/beelink/<run-id>/
-3. 回写 PROGRESS_LOG.md：区分“实现证据”和“运行证据”
-4. 以本文件为基线，将 partial/missing 任务拆成可审查 PR
+1. 保留并归档 Beelink `20260717T075738Z` 服务器报告，不含 secret。
+2. 以 `20260717T080332Z` 客户端报告回写 Web/Flutter baseline 证据。
+3. 将 Gate 1 缺口拆成视频/屏幕、TURN/弱网/reconnect、Webhook、SDK、SBOM 五组可审查任务。
+4. 以本文件为基线，将 partial/deferred 任务拆成可审查 PR，并在每个 PR 绑定 Gate 和证据路径。
 ```
