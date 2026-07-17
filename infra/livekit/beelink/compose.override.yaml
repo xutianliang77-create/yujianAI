@@ -9,17 +9,17 @@ services:
     environment:
       YUJIAN_RTC_NODE_ID: yujian-rtc-a
       LIVEKIT_CONFIG: |
-        port: 7880
+        port: ${YUJIAN_RTC_PRIMARY_PORT:-7880}
         rtc:
-          tcp_port: 7881
-          udp_port: 7882
+          tcp_port: ${YUJIAN_RTC_PRIMARY_TCP_PORT:-7881}
+          udp_port: ${YUJIAN_RTC_PRIMARY_UDP_PORT:-7882}
           node_ip: ${YUJIAN_RTC_NODE_IP:?set YUJIAN_RTC_NODE_IP}
         redis:
           address: redis:6379
         keys:
           ${LIVEKIT_API_KEY:?set LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET:?set LIVEKIT_API_SECRET}
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:7880/"]
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:${YUJIAN_RTC_PRIMARY_PORT:-7880}/"]
       interval: 5s
       timeout: 2s
       retries: 20
@@ -34,17 +34,17 @@ services:
     environment:
       YUJIAN_RTC_NODE_ID: yujian-rtc-b
       LIVEKIT_CONFIG: |
-        port: 7980
+        port: ${YUJIAN_RTC_SECONDARY_PORT:-7980}
         rtc:
-          tcp_port: 7981
-          udp_port: 7982
+          tcp_port: ${YUJIAN_RTC_SECONDARY_TCP_PORT:-7981}
+          udp_port: ${YUJIAN_RTC_SECONDARY_UDP_PORT:-7982}
           node_ip: ${YUJIAN_RTC_NODE_IP:?set YUJIAN_RTC_NODE_IP}
         redis:
           address: redis:6379
         keys:
           ${LIVEKIT_API_KEY:?set LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET:?set LIVEKIT_API_SECRET}
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:7980/"]
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:${YUJIAN_RTC_SECONDARY_PORT:-7980}/"]
       interval: 5s
       timeout: 2s
       retries: 20
