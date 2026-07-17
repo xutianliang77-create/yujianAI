@@ -24,6 +24,7 @@ export async function loadPlatformRuntime(
   if (candidate === undefined) throw new Error("platform runtime module must export createPlatformRuntime or default");
   const dependencies = typeof candidate === "function" ? await candidate({ config }) : candidate;
   if (typeof dependencies !== "object" || dependencies === null || Array.isArray(dependencies)) throw new Error("platform runtime module returned invalid dependencies");
+  if (dependencies.close !== undefined && typeof dependencies.close !== "function") throw new Error("platform runtime module returned an invalid close hook");
   const storePersistence = dependencies.storePersistence;
   if (storePersistence !== undefined && (typeof storePersistence !== "object" || storePersistence === null || typeof storePersistence.load !== "function" || typeof storePersistence.save !== "function")) {
     throw new Error("platform runtime module returned invalid storePersistence adapter");

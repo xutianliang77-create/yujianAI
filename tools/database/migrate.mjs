@@ -21,7 +21,7 @@ if (url.protocol !== "postgres:" && url.protocol !== "postgresql:") throw new Er
 if (url.username.length === 0 || url.pathname.length <= 1) throw new Error("YUJIAN_DATABASE_URL must include user and database");
 
 const migrations = readdirSync(migrationDirectory)
-  .filter((name) => /^\d+_[a-z0-9-]+\.sql$/u.test(name))
+  .filter((name) => /^\d+_[a-z0-9_-]+\.sql$/u.test(name))
   .sort();
 if (migrations.length === 0) throw new Error("no database migrations found");
 

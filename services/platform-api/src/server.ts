@@ -136,6 +136,8 @@ export interface PlatformBackgroundWorker {
 export interface PlatformTelemetryPersistence extends RtcTelemetryPersistence {}
 
 export interface PlatformServerDependencies {
+  /** Closes deployment-owned clients such as PostgreSQL pools and Redis connections. */
+  close?: () => Promise<void>;
   readinessCheck?: () => Promise<YujianRtcProbeResult | YujianRtcReadiness>;
   logger?: (event: PlatformLogEvent) => void;
   store?: PlatformStore;

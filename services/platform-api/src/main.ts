@@ -14,7 +14,7 @@ const serverPromise = loadPlatformRuntime(runtimeSpecifier, config).then((depend
     if (dependencies.outboxWorker === undefined) throw new Error("production platform api requires an outbox delivery worker");
     if (dependencies.persistence.listUsage === undefined || dependencies.persistence.listAudit === undefined) throw new Error("production platform api requires durable usage and audit readers");
   }
-  return { server: createPlatformServer(config, dependencies), worker: dependencies.outboxWorker };
+  return { server: createPlatformServer(config, dependencies), worker: dependencies.outboxWorker, close: dependencies.close };
 });
 
 let runtime: Awaited<typeof serverPromise> | undefined;
@@ -46,6 +46,7 @@ function shutdown(signal: string) {
   const activeRuntime = runtime;
   void (async () => {
     await activeRuntime.worker?.stop();
+    await activeRuntime.close?.();
     activeRuntime.server.close((error) => {
       if (error) {
         console.error(

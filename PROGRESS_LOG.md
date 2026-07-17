@@ -762,3 +762,39 @@ cd /Users/xutianliang/Downloads/语见AI
 git status --short --branch
 rg -n "SESSION HANDOFF|Beelink|rtc-node|MediaOpsRequestError" PROGRESS_LOG.md README.md services packages
 ```
+
+## 📌 SESSION HANDOFF STATUS — P2 data runtime
+
+### Current Work
+
+P2-01/02/03 已在 Beelink `beelink@100.110.127.117:/home/beelink/yujianAI` 部署并完成真实烟测。
+使用独立 Compose project `yujian-p2`，不复用、不重启既有 `ai-phone-staging-*` 或
+`livekit-qkxy-*` 容器。PostgreSQL 16.4、Redis 7.2.7-alpine、OpenBao 2.4.1 均固定 amd64
+digest，服务绑定 127.0.0.1:15432/16379/18200，数据目录为 `data/p2`。
+
+### Evidence
+
+- 首次启动修复了非 root 镜像 UID 与 bind mount 权限；PostgreSQL/OpenBao/Redis 均 healthy。
+- 修复 migration runner 文件名过滤缺少下划线的根因；`001` 至 `008` 共 8 条 migration 已应用。
+- `npm ci`、platform-api build、`node --check` 通过；runtime module 已接入 PostgreSQL
+  persistence/store/resource usage、Redis rate limiter/token quota、OpenBao webhook resolver、
+  outbox worker 和 telemetry persistence。
+- `tools/p2/runtime-smoke.mjs` 通过：PostgreSQL migration count=8、store 查询、Redis 原子
+  counter、OpenBao 32-byte secret write/read/delete round-trip；runtime close hook 通过。
+- 三服务 `compose restart` 后再次通过 health、8 条 migration、Redis adapter、KMS round-trip。
+- 既有 5 个服务容器 restart count 保持 0；没有触碰 LiveKit/ai-phone 服务。
+
+### Remaining P2 Work
+
+P2 完整 Gate 仍未关闭：注册/邀请/SSO/onboarding、持久化 RBAC、API key rotate/revoke 的
+端到端业务流、多副本限流竞争、Webhook 签名/重试/DLQ/requeue、PostgreSQL 备份恢复、Redis
+重建、数据权利执行器和 owner 签字尚待完成。P1 完整 Gate 1 也仍保持未通过。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short --branch
+npm run build -w @yujian/platform-api
+ssh beelink@100.110.127.117 'cd /home/beelink/yujianAI && ./infra/p2/beelink/deploy.sh status'
+```
