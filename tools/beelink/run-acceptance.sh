@@ -34,7 +34,11 @@ cleanup() {
   if [[ -n "$compatibility_server_pid" ]]; then
     kill "$compatibility_server_pid" >/dev/null 2>&1 || true
   fi
-  docker compose "${compose_files[@]}" down >/dev/null 2>&1 || true
+  docker compose "${compose_files[@]}" logs --no-color --tail=300 \
+    yujian-rtc-a yujian-rtc-b redis >"$report_directory/rtc.log" 2>&1 || true
+  if [[ "${YUJIAN_KEEP_RTC_UP:-false}" != "true" ]]; then
+    docker compose "${compose_files[@]}" down >/dev/null 2>&1 || true
+  fi
 }
 trap cleanup EXIT
 
@@ -45,15 +49,6 @@ npm run verify:upstream:network
 npm run upstream:mirror:sync
 npm run check
 
-(
-  cd tests/compatibility/flutter
-  PUB_HOSTED_URL=https://pub.dev flutter pub get
-  dart analyze
-  flutter test
-  flutter build web --base-href /flutter/
-)
-npm run build:compat:web
-
 docker compose "${compose_files[@]}" config --quiet
 docker compose "${compose_files[@]}" up -d --wait
 docker compose "${compose_files[@]}" ps
@@ -62,21 +57,6 @@ export YUJIAN_RTC_PRIMARY_URL="ws://${YUJIAN_RTC_NODE_IP}:7880"
 export YUJIAN_RTC_SECONDARY_URL="ws://${YUJIAN_RTC_NODE_IP}:7980"
 npm run test:integration:rtc
 
-YUJIAN_RTC_API_KEY="$LIVEKIT_API_KEY" \
-YUJIAN_RTC_API_SECRET="$LIVEKIT_API_SECRET" \
-node tools/compatibility/serve-web-harness.mjs &
-compatibility_server_pid="$!"
-
-for _ in {1..100}; do
-  if curl --fail --silent http://127.0.0.1:4173/healthz >/dev/null; then
-    break
-  fi
-  sleep 0.1
-done
-curl --fail --silent http://127.0.0.1:4173/healthz >/dev/null
-YUJIAN_WEB_COMPAT_URL=http://127.0.0.1:4173 \
-node tools/compatibility/run-browser-acceptance.mjs
-
-printf 'status=passed\nrun_id=%s\ncompleted_at=%s\n' \
-  "$run_id" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >"$report_directory/summary.txt"
-echo "Beelink acceptance passed; report: $report_directory"
+printf 'status=passed\nrun_id=%s\nserver_runtime=passed\nclient_runtime=separate\nrtc_kept_up=%s\ncompleted_at=%s\n' \
+  "$run_id" "${YUJIAN_KEEP_RTC_UP:-false}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >"$report_directory/summary.txt"
+echo "Beelink server acceptance passed; report: $report_directory"

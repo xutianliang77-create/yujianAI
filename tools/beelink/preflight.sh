@@ -14,7 +14,7 @@ require_command() {
 [[ "$(uname -m)" == "x86_64" ]] || fail "x86_64 is required"
 : "${YUJIAN_RTC_NODE_IP:?YUJIAN_RTC_NODE_IP must be set}"
 
-for command_name in tailscale nvidia-smi docker node npm flutter dart curl; do
+for command_name in tailscale nvidia-smi docker node npm curl; do
   require_command "$command_name"
 done
 docker compose version >/dev/null 2>&1 || fail "Docker Compose v2 is required"
@@ -33,19 +33,9 @@ mapfile -t gpu_names < <(nvidia-smi --query-gpu=name --format=csv,noheader)
 [[ "${gpu_names[0]}" == *"RTX 5090"* ]] ||
   fail "the GPU must be an RTX 5090, found ${gpu_names[0]}"
 
-chrome_found=false
-for chrome_name in "${YUJIAN_CHROME_BIN:-}" google-chrome google-chrome-stable chromium chromium-browser; do
-  [[ -n "$chrome_name" ]] || continue
-  if command -v "$chrome_name" >/dev/null 2>&1; then
-    chrome_found=true
-    break
-  fi
-done
-[[ "$chrome_found" == true ]] || fail "Chrome or Chromium is required"
-
 echo "Beelink preflight passed"
 echo "OS: $(uname -srmo)"
 echo "Node: $(node --version)"
-echo "Flutter: $(flutter --version 2>/dev/null | sed -n '1p')"
 echo "GPU: ${gpu_names[0]}"
 echo "Tailscale IP: $YUJIAN_RTC_NODE_IP"
+echo "Client SDK/browser checks: run on the client host"

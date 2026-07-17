@@ -25,6 +25,8 @@
     "compat:web:serve": "npm run build:compat:web && node tools/compatibility/serve-web-harness.mjs",
     "beelink:preflight": "bash tools/beelink/preflight.sh",
     "beelink:acceptance": "bash tools/beelink/run-acceptance.sh",
+    "client:preflight": "bash tools/client/preflight.sh",
+    "client:acceptance": "bash tools/client/run-acceptance.sh",
     "ops:probe": "node tools/ops/synthetic-probe.mjs",
     "ops:support-bundle": "node tools/ops/create-support-bundle.mjs",
     "release:preflight": "node tools/release/preflight.mjs",

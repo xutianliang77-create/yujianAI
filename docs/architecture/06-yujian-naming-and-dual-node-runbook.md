@@ -54,8 +54,9 @@ production 配置。
 
 ## 3. Beelink 启动与验收
 
-Mac 工作区只编写代码和合同；按项目约束，Mac 不运行测试、构建、Docker、Flutter 或
-浏览器验证。Beelink 开机后，在仓库根目录注入短期测试凭据，再执行唯一入口：
+Beelink 是服务器端，Mac 和手机是客户端。Beelink 只运行服务器预检、Docker、LiveKit
+和 Node 集成测试；Flutter、Chrome 和客户端兼容性验证在本机或手机执行。Beelink 开机后，
+在仓库根目录注入短期测试凭据，再执行服务器入口：
 
 ```bash
 export YUJIAN_RTC_NODE_IP=100.110.127.117
@@ -66,10 +67,11 @@ npm run beelink:preflight
 npm run beelink:acceptance
 ```
 
-`beelink:preflight` 检查 Linux AMD64、Tailscale 地址、Docker、Node 24、Flutter、Chrome
-和唯一 RTX 5090。`beelink:acceptance` 随后执行上游联网校验、合同/单元测试、双节点
-Room/Participant/Data/RPC/音频 Track 测试以及真实 Chrome Web/Flutter Web 兼容测试。
-报告写入被 Git 忽略的 `outputs/beelink/<run-id>/`；脚本退出时关闭测试节点。
+`beelink:preflight` 检查 Linux AMD64、Tailscale 地址、Docker、Node 24 和唯一 RTX 5090。
+`beelink:acceptance` 随后执行上游联网校验、合同/单元测试和双节点 Room/Participant/Data/RPC/
+音频 Track 测试。客户端另执行 `npm run client:preflight` 与 `npm run client:acceptance`，
+完成 Flutter Web 构建和真实 Chrome 兼容性验证。设置 `YUJIAN_KEEP_RTC_UP=true` 可在服务器
+阶段结束后保留测试节点供客户端连接。
 
 在 Beelink 开机并完成该入口前，任何新改动均标记为“已实现、未验证”，不得把 Mac 历史
 运行结果当作本轮验收证据。

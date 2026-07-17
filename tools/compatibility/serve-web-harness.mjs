@@ -8,7 +8,7 @@ const flutterRoot = new URL(
   "../../tests/compatibility/flutter/build/web/",
   import.meta.url,
 );
-const host = "127.0.0.1";
+const host = process.env.YUJIAN_WEB_COMPAT_HOST ?? "127.0.0.1";
 const port = Number.parseInt(process.env.YUJIAN_WEB_COMPAT_PORT ?? "4173", 10);
 const primaryUrl = requiredEnvironment("YUJIAN_RTC_PRIMARY_URL");
 const secondaryUrl = requiredEnvironment("YUJIAN_RTC_SECONDARY_URL");

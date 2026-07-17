@@ -29,10 +29,9 @@ npm run test:integration:rtc
 
 该测试通过官方 `RoomServiceClient` 创建/查询/删除 Room，通过语见平台 API 签发
 Room token，再用官方 `@livekit/rtc-node` 从两个节点入口连接 Participant，验证环境
-隔离、可靠 Data、RPC 和非静音 PCM 音频 Track。当前所有测试统一在 Beelink 服务器
-执行；本机只编写代码与测试，不运行验证。
+隔离、可靠 Data、RPC 和非静音 PCM 音频 Track。服务器测试在 Beelink 执行；本机和手机运行客户端兼容性验证。服务器入口是 `npm run beelink:acceptance`，客户端入口是 `npm run client:acceptance`。
 
-跨 SDK 兼容 target：
+跨 SDK 兼容 target（在客户端主机运行）：
 
 - `compatibility/web/`：固定 `livekit-client 2.20.1`，真实 Chrome 验证双节点、Data、
   RPC 和音频 Track RTP。

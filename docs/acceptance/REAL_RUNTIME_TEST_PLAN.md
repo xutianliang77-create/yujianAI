@@ -2,7 +2,7 @@
 
 版本：v1.0  
 适用环境：Beelink `beelink@100.110.127.117`，Linux x86_64，唯一 NVIDIA RTX 5090  
-原则：Mac 只准备代码；真实测试、构建、Docker、Flutter、Chrome、LiveKit 和 GPU 操作只在 Beelink 执行。
+原则：Beelink 只运行服务器端、Docker、LiveKit/RTC、Node 集成测试和 GPU 预检；本机和手机作为客户端运行 Web/Flutter 客户端验证。
 
 ## 1. 测试分层
 
@@ -10,11 +10,11 @@
 | --- | --- | --- | --- |
 | A | 环境、依赖、合同和源码门禁 | `npm run beelink:preflight`、`npm run check` | 预检和工作区检查成功 |
 | B | 双 LiveKit 节点实时兼容 | `npm run test:integration:rtc` | 双节点 ready、Room/Data/RPC/Node PCM 音频通过 |
-| C | Web/Flutter Web 音频 Track | `npm run beelink:acceptance` 内置浏览器阶段 | Web、Flutter Web `TrackSubscribed` 且 RTP bytes > 0 |
+| C | 本机 Web/Flutter Web 音频 Track | 本机 `npm run client:acceptance` | Web、Flutter Web `TrackSubscribed` 且 RTP bytes > 0 |
 | D | RTX 5090 Agent 生命周期 | `infra/agent/beelink/compose.yaml` + Agent Control API | 容器只获得 1 张 RTX 5090，register→claim→handler→complete 闭环 |
 | E | 生产持久化与媒体留存 | PostgreSQL/Redis/KMS/runtime module | 重启恢复、CAS、到期删除和 deletion evidence |
 
-A-C 是当前可直接执行的基线；D-E 需要部署侧 runtime module、Agent handler、对象存储和短期测试凭据，不能只用健康检查代替。
+A-C 是当前可直接执行的基线；D-E 需要部署侧 runtime module、Agent handler、对象存储和短期测试凭据，不能只用健康检查代替。手机原生 Android/iOS target 尚未纳入当前仓库，不能把 Flutter Web 浏览器结果宣称为原生手机通过。
 
 ## 2. 开始前固定版本和凭据
 
@@ -32,7 +32,6 @@ YUJIAN_RTC_NODE_IP=100.110.127.117
 LIVEKIT_API_KEY=<8-64 位 URL-safe 测试 key>
 LIVEKIT_API_SECRET=<32-128 位 URL-safe 测试 secret>
 YUJIAN_PLATFORM_TEST_CREDENTIAL=<32-128 位 URL-safe 测试 credential>
-# YUJIAN_CHROME_BIN=/usr/bin/google-chrome
 ```
 
 不要把该文件复制到仓库或写入测试报告。
@@ -41,7 +40,8 @@ YUJIAN_PLATFORM_TEST_CREDENTIAL=<32-128 位 URL-safe 测试 credential>
 
 ```bash
 ssh beelink@100.110.127.117
-cd /srv/yujianAI
+cd /home/beelink/yujianAI
+export PATH=/home/beelink/.local/node-v24.18.0-linux-x64/bin:$PATH
 
 git rev-parse HEAD
 git status --short
@@ -50,26 +50,37 @@ source ~/.config/yujian/acceptance.env
 set +a
 
 npm run beelink:preflight
-npm run beelink:acceptance
+YUJIAN_KEEP_RTC_UP=true npm run beelink:acceptance
 ```
 
-`beelink:acceptance` 的实际顺序是：
+Beelink 服务器阶段的实际顺序是：
 
-1. Linux/AMD64、Tailscale 地址、Docker、Node 24、Flutter、Dart、Chrome、唯一 RTX 5090 预检。
+1. Linux/AMD64、Tailscale 地址、Docker、Node 24、唯一 RTX 5090 预检。
 2. `npm ci`、上游联网 manifest 校验、clean mirror 同步和全部 workspace check。
-3. Flutter `pub get`、`dart analyze`、Flutter 单测和 Web 构建。
-4. Web harness 构建。
-5. 双 LiveKit 节点和共享 Redis 启动，并等待健康状态。
-6. Node 集成测试：Room 创建/查询、平台 token、primary/secondary 入房、跨节点 participant、可靠 Data、RPC、PCM 音频 Track 和 RMS。
-7. Headless Chrome Web/Flutter Web 兼容测试；测试参数使用 fake media device，只用于确定性兼容测试。
-8. 写入 `outputs/beelink/<run-id>/acceptance.log` 和 `summary.txt`，退出时关闭测试 RTC 容器。
+3. 双 LiveKit 节点和共享 Redis 启动，并等待健康状态。
+4. Node 集成测试：Room 创建/查询、平台 token、primary/secondary 入房、跨节点 participant、可靠 Data、RPC、PCM 音频 Track 和 RMS。
+5. 写入 `outputs/beelink/<run-id>/acceptance.log`、`rtc.log` 和 `summary.txt`；设置 `YUJIAN_KEEP_RTC_UP=true` 时保留 RTC 容器供客户端连接。
+
+随后在本机执行客户端阶段：
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+export YUJIAN_RTC_PRIMARY_URL=ws://100.110.127.117:7880
+export YUJIAN_RTC_SECONDARY_URL=ws://100.110.127.117:7980
+export LIVEKIT_API_KEY=<与 Beelink 阶段相同的短期 key>
+export LIVEKIT_API_SECRET=<与 Beelink 阶段相同的短期 secret>
+npm run client:preflight
+npm run client:acceptance
+```
+
+该阶段在本机执行 Flutter pub/analyze/test/Web 构建、Web harness 和真实 Chrome Web/Flutter Web 入房；客户端报告写入 `outputs/client/<run-id>/`。手机可将 harness 绑定到本机局域网地址（`YUJIAN_WEB_COMPAT_HOST=0.0.0.0`）后，用手机浏览器访问 `http://<本机局域网IP>:4173/flutter/` 做补充手测；这不等同于原生 Android/iOS target 验收。
 
 ### A-C 通过条件
 
 - `/readyz` 同时报告 `primary`、`secondary` healthy。
 - 两个入口能进入同一个 Room，且 `nodeId` 按配置返回。
 - Node 音频的 `source=microphone`、publisher identity 正确，远端 RMS 大于 1000。
-- Web 和 Flutter Web 收到 `TrackSubscribed`，远端音频 `bytesReceived > 0`。
+- 本机 Web 和 Flutter Web 收到 `TrackSubscribed`，远端音频 `bytesReceived > 0`。
 - Data/RPC、token claim、tenant/project/environment attributes 全部匹配。
 - 任何凭据、JWT、真实媒体正文不出现在日志和报告中。
 
@@ -190,7 +201,7 @@ npm run db:migrate
 
 判定规则：
 
-- A-C 全部通过：可标记“Beelink 双节点音频/Web/Flutter 基线通过”。
+- A-C 全部通过：可标记“Beelink 双节点服务器 + 客户端 Web/Flutter 基线通过”。
 - D 通过：才可标记“单 RTX 5090 Agent runtime 通过”。
 - E 通过：才可标记“生产持久化/媒体留存链路通过”。
 - 任一阶段缺证据，只标记 `deferred` 或 `blocked`，不能汇总成 GA/生产通过。
