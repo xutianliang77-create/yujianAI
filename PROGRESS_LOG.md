@@ -61,6 +61,24 @@
 - 下一步：在无界AI测试窗口结束且确认隔离端口后，先在 Beelink 重新运行服务器验收，再运行本机
   Web/Flutter client acceptance；之后补 iOS/Android/Python、TURN/弱网和质量聚合报告。
 
+## 📌 2026-07-17 P1 实现层收尾（运行证据仍待 Beelink/设备）
+
+- Web、Flutter、Node 兼容 harness 均补入合成 camera/screen、mute/unpublish 或 reconnect
+  生命周期覆盖；Node 使用官方 RTC Node `VideoSource`/`VideoStream`，不修改 LiveKit 上游。
+- 新增官方 Python `livekit.rtc.Room` join/leave smoke：`tests/compatibility/python/room_smoke.py`；
+  仅接受短期 token，未在本机安装或执行 Python Agents。
+- 新增 Linux `tools/compatibility/run-netem.sh`，支持显式网卡的 loss/delay/jitter/rate 和退出清理；
+  仅用于 Beelink/Linux 弱网实验，不能替代 TURN/TCP/TLS 证据。
+- 新增 SBOM 结构校验、cosign blob 签名校验、P1 evidence schema verifier，并将 SBOM verifier
+  接入 supply-chain/release workflow；新增 digest/短期凭据/自动清理的 nightly sandbox runner 和定时 workflow。
+- 这些改动是 P1 implementation-deferred，不改变 Gate 判定：个人 owner/法律结论、iOS/Android/Python
+  运行、真实视频/屏幕、TURN/弱网、Webhook 端到端、SBOM/签名产物和 nightly 报告仍未形成。
+- 本轮未启动任何 Beelink、Chrome、Flutter、Python、手机或网络故障测试；下一步必须在确认无界AI
+  测试窗口结束后按 `docs/acceptance/REAL_RUNTIME_TEST_PLAN.md` 生成 P1 evidence JSON。
+- 2026-07-17T08:47Z 只读核对 Beelink：已有 `ai-phone-staging-*`、`livekit-qkxy-*` 和 Redis
+  `127.0.0.1:6379` 运行；7880/7881 已被现有 LiveKit 占用，未发现本项目隔离端口或 runtime module。
+  RTX 5090 可见；因存在其他项目服务，本轮未启动任何 P1 验收或网络故障注入。
+
 ## 📌 2026-07-17 双端真实验证暂停记录
 
 用户要求暂停真实验证，以避免与无界AI在 Beelink 上的测试冲突。当前状态：

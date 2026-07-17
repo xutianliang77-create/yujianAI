@@ -1,6 +1,8 @@
 name: Nightly developer sandbox metadata
 
 on:
+  schedule:
+    - cron: "41 2 * * *"
   workflow_dispatch:
 
 permissions:
@@ -9,6 +11,12 @@ permissions:
 jobs:
   manifest:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      YUJIAN_SANDBOX_RTC_IMAGE: ${{ secrets.YUJIAN_SANDBOX_RTC_IMAGE }}
+      YUJIAN_SANDBOX_REDIS_IMAGE: ${{ secrets.YUJIAN_SANDBOX_REDIS_IMAGE }}
+      YUJIAN_SANDBOX_API_KEY: ${{ secrets.YUJIAN_SANDBOX_API_KEY }}
+      YUJIAN_SANDBOX_API_SECRET: ${{ secrets.YUJIAN_SANDBOX_API_SECRET }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -20,4 +28,5 @@ jobs:
           test -f infra/upstream/livekit-versions.json
           test -f docs/api/openapi.yaml
           npm run openapi:verify
-          echo "Sandbox deployment is intentionally externalized; no test or public endpoint is started here."
+      - name: Run isolated sandbox lifecycle
+        run: infra/sandbox/run-nightly.sh

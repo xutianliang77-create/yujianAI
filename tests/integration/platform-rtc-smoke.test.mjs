@@ -26,10 +26,16 @@ const {
   AudioStream,
   dispose,
   LocalAudioTrack,
+  LocalVideoTrack,
   Room,
   RoomEvent,
+  SimulateScenarioKind,
   TrackPublishOptions,
   TrackSource,
+  VideoBufferType,
+  VideoFrame,
+  VideoSource,
+  VideoStream,
 } = await import("@livekit/rtc-node");
 
 function requiredEnvironment(name) {
@@ -40,11 +46,12 @@ function requiredEnvironment(name) {
   return value;
 }
 
-function waitForEvent(emitter, event, timeoutMessage) {
+function waitForEvent(emitter, event, timeoutMessage, predicate = () => true) {
   let listener;
   let timeout;
   const promise = new Promise((resolve, reject) => {
     listener = (...args) => {
+      if (!predicate(...args)) return;
       clearTimeout(timeout);
       resolve(args);
     };
@@ -272,6 +279,77 @@ test("platform API and media stay compatible across two pinned LiveKit nodes", a
       await reader?.cancel().catch(() => {});
       await localTrack.close().catch(() => {});
     }
+
+    const videoWidth = 160;
+    const videoHeight = 90;
+    const videoFrame = new VideoFrame(
+      new Uint8Array(videoWidth * videoHeight * 4).fill(0x20),
+      videoWidth,
+      videoHeight,
+      VideoBufferType.RGBA,
+    );
+    const cameraSource = new VideoSource(videoWidth, videoHeight);
+    const cameraTrack = LocalVideoTrack.createVideoTrack("compatibility-camera", cameraSource);
+    const cameraOptions = new TrackPublishOptions();
+    cameraOptions.source = TrackSource.SOURCE_CAMERA;
+    const cameraSubscribed = waitForEvent(
+      secondParticipant,
+      RoomEvent.TrackSubscribed,
+      "camera track was not subscribed in time",
+      (_track, publication, participant) =>
+        publication.source === TrackSource.SOURCE_CAMERA && participant.identity === "integration-first",
+    );
+    const cameraPublication = await firstParticipant.localParticipant.publishTrack(cameraTrack, cameraOptions);
+    const [remoteCameraTrack] = await cameraSubscribed;
+    const cameraReader = new VideoStream(remoteCameraTrack).getReader();
+    cameraSource.captureFrame(videoFrame);
+    const cameraFrame = await cameraReader.read();
+    assert.equal(cameraFrame.done, false);
+    assert.equal(cameraFrame.value.frame.width, videoWidth);
+    assert.equal(cameraFrame.value.frame.height, videoHeight);
+    await cameraReader.cancel().catch(() => {});
+
+    const screenSource = new VideoSource(videoWidth, videoHeight);
+    const screenTrack = LocalVideoTrack.createVideoTrack("compatibility-screen", screenSource);
+    const screenOptions = new TrackPublishOptions();
+    screenOptions.source = TrackSource.SOURCE_SCREENSHARE;
+    const screenSubscribed = waitForEvent(
+      secondParticipant,
+      RoomEvent.TrackSubscribed,
+      "screen-share track was not subscribed in time",
+      (_track, publication, participant) =>
+        publication.source === TrackSource.SOURCE_SCREENSHARE && participant.identity === "integration-first",
+    );
+    const screenPublication = await firstParticipant.localParticipant.publishTrack(screenTrack, screenOptions);
+    const [remoteScreenTrack] = await screenSubscribed;
+    const screenReader = new VideoStream(remoteScreenTrack).getReader();
+    screenSource.captureFrame(videoFrame);
+    const screenFrame = await screenReader.read();
+    assert.equal(screenFrame.done, false);
+    assert.equal(screenFrame.value.frame.width, videoWidth);
+    assert.equal(screenFrame.value.frame.height, videoHeight);
+    await screenReader.cancel().catch(() => {});
+
+    const reconnecting = waitForEvent(
+      secondParticipant,
+      RoomEvent.Reconnecting,
+      "Node synthetic reconnect did not emit reconnecting",
+    );
+    const reconnected = waitForEvent(
+      secondParticipant,
+      RoomEvent.Reconnected,
+      "Node synthetic reconnect did not emit reconnected",
+    );
+    await Promise.all([
+      secondParticipant.simulateScenario(SimulateScenarioKind.SIMULATE_FULL_RECONNECT),
+      reconnecting,
+      reconnected,
+    ]);
+
+    await firstParticipant.localParticipant.unpublishTrack(cameraPublication.sid);
+    await firstParticipant.localParticipant.unpublishTrack(screenPublication.sid);
+    await cameraTrack.close().catch(() => {});
+    await screenTrack.close().catch(() => {});
   } finally {
     await Promise.allSettled([
       firstParticipant.disconnect(),

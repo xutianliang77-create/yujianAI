@@ -128,6 +128,20 @@ function waitForRemoteTrack(room, source, message) {
   );
 }
 
+function waitForRemoteTrackLifecycle(room, event, source, message) {
+  return withTimeout(
+    new Promise((resolve) => {
+      const listener = (publication, participant) => {
+        if (publication?.source !== source) return;
+        room.off(event, listener);
+        resolve([publication, participant]);
+      };
+      room.on(event, listener);
+    }),
+    message,
+  );
+}
+
 async function runCompatibilityTest() {
   if (!isBrowserSupported()) throw new Error("browser does not support WebRTC");
   runButton.disabled = true;
@@ -209,6 +223,23 @@ async function runCompatibilityTest() {
     const audioStats = await waitForRemoteAudioStats(remoteTrack);
     if (!audioStats) throw new Error("remote audio Track did not receive RTP bytes");
 
+    const muted = waitForRemoteTrackLifecycle(
+      secondaryRoom,
+      RoomEvent.TrackMuted,
+      Track.Source.Microphone,
+      "remote audio Track did not emit muted",
+    );
+    await localAudioTrack.mute();
+    await muted;
+    const unmuted = waitForRemoteTrackLifecycle(
+      secondaryRoom,
+      RoomEvent.TrackUnmuted,
+      Track.Source.Microphone,
+      "remote audio Track did not emit unmuted",
+    );
+    await localAudioTrack.unmute();
+    await unmuted;
+
     const cameraSubscribed = waitForRemoteTrack(
       secondaryRoom,
       Track.Source.Camera,
@@ -239,6 +270,15 @@ async function runCompatibilityTest() {
     const cameraStats = await waitForRemoteVideoStats(cameraTrack);
     const screenStats = await waitForRemoteVideoStats(screenTrack);
     if (!cameraStats || !screenStats) throw new Error("remote video Track did not receive RTP bytes");
+
+    const unpublished = waitForRemoteTrackLifecycle(
+      secondaryRoom,
+      RoomEvent.TrackUnpublished,
+      Track.Source.Microphone,
+      "remote audio Track did not emit unpublished",
+    );
+    await primaryRoom.localParticipant.unpublishTrack(localAudioTrack);
+    await unpublished;
 
     // SDK-internal fault injection only; real TURN/weak-network recovery remains deferred.
     await runSyntheticReconnect(secondaryRoom);

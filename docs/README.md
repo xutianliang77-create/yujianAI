@@ -13,6 +13,10 @@ TURN/弱网、reconnect、Webhook、iOS/Android/Python、SBOM/签名等缺口未
 尚未执行。运行证据见 [PROGRESS_LOG.md](../PROGRESS_LOG.md) 和
 [真实运行测试方案](acceptance/REAL_RUNTIME_TEST_PLAN.md)。
 
+P1 implementation slice 已补入 Web/Flutter/Node 媒体生命周期、Python Room smoke、Linux
+netem、SBOM/签名校验、上游 patch replay、nightly sandbox 和 P1 evidence schema；这些入口
+仍必须在 Beelink/声明设备/CI 生成脱敏报告，不能直接升级 Gate 状态。
+
 ## 核心交付
 
 | 文档 | 内容 |

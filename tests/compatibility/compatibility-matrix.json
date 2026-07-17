@@ -23,6 +23,8 @@
         "camera_subscribe",
         "screen_share_publish",
         "screen_share_subscribe",
+        "audio_mute",
+        "audio_unpublish",
         "receiver_quality_sample",
         "synthetic_reconnect"
       ],
@@ -32,17 +34,28 @@
       "sdk": "livekit_client@2.8.1",
       "status": "passed-baseline",
       "verifiedFlows": ["token", "join", "audio_publish", "audio_subscribe"],
-      "implementedDeferredFlows": ["data_rpc"],
+      "implementedDeferredFlows": ["data_rpc", "audio_mute", "audio_unpublish"],
       "evidenceRef": "client"
     },
     "node": {
       "sdk": "@livekit/rtc-node@0.13.31",
       "status": "passed-baseline",
       "verifiedFlows": ["token", "join", "audio_publish", "audio_subscribe", "data_rpc"],
+      "implementedDeferredFlows": [
+        "camera_publish",
+        "camera_subscribe",
+        "screen_share_publish",
+        "screen_share_subscribe",
+        "synthetic_reconnect"
+      ],
       "evidenceRef": "server"
     },
     "ios": { "sdk": "official-pinned", "status": "planned" },
     "android": { "sdk": "official-pinned", "status": "planned" },
-    "python": { "sdk": "livekit-agents@1.6.5", "status": "deferred-runtime" }
+    "python": {
+      "sdk": "livekit-agents@1.6.5",
+      "status": "deferred-runtime",
+      "implementedDeferredFlows": ["room_join", "room_leave"]
+    }
   }
 }

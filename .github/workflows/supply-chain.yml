@@ -15,7 +15,7 @@ jobs:
         with:
           node-version: 24
       - run: mkdir -p outputs/sbom
-      - run: node tools/supply-chain/generate-sbom.mjs
+      - run: npm run supply-chain:verify
       - uses: actions/upload-artifact@v4
         with:
           name: yujian-sbom

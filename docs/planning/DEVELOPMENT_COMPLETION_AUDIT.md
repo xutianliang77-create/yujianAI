@@ -44,13 +44,13 @@ mirror/许可证证据。
 | M1-01 镜像 LiveKit 组件 | partial | 版本 manifest 覆盖 Server/Protocol/SIP/Ingress/Egress/Agents/SDK | 未提供所有组件的构建/发布镜像和运行配置 |
 | M1-02 clean upstream 镜像 | partial | Beelink/local compose 使用官方固定 digest、无语见媒体 patch | clean mirror 构建产物和 digest 复现报告缺失 |
 | M1-03 单区 RTC、Redis、TURN、观测 | partial | 双 Server+Redis healthcheck、2026-07-17 双节点 ready 和 Node PCM 音频通过、TURN 配置边界、Prometheus/OTel 配置和 SLO | TURN 集群真实镜像、生产 TLS、指标端点和告警运行证据 |
-| M1-04 JS/Flutter/iOS/Android/Node/Python 矩阵 | partial | Web/Flutter/Node A-C baseline passed；iOS/Android/Python target README、机器可读矩阵 | iOS/Android/Python 实际运行和完整 SDK Gate 证据 |
+| M1-04 JS/Flutter/iOS/Android/Node/Python 矩阵 | partial | Web/Flutter/Node A-C baseline passed；Node/Web/Flutter synthetic media/lifecycle harness、Python official Room join/leave smoke harness、iOS/Android target README、机器可读矩阵 | iOS/Android/Python 实际运行和完整 SDK Gate 证据 |
 | M1-05 Token/RoomService/Webhook/Data/RPC 合同 | partial | Node/Web/Flutter baseline 的 token、RoomService、Data/RPC 通过；官方 WebhookReceiver 签名/replay adapter；新增 publisher HMAC/成功/失败/DLQ/requeue 单测 | 完整 webhook 生命周期/错误矩阵和运行证据 |
-| M1-06 音频/视频/屏幕/弱网基线 | partial | Node/Web/Flutter 音频 Track、TrackSubscribed、RTP bytes > 0 通过；Web 已加入合成 camera/screen Track、receiver quality sample 和 SDK-internal synthetic reconnect，但尚未重新运行 | 视频/屏幕运行证据、TURN/弱网注入、真实 reconnect 和服务端质量聚合 |
+| M1-06 音频/视频/屏幕/弱网基线 | partial | Node/Web/Flutter 已加入合成 camera/screen、mute/unpublish、receiver quality sample、SDK-internal synthetic reconnect；Linux netem runner 已加入，但新增路径尚未重新运行 | 视频/屏幕运行证据、TURN/弱网注入、真实 reconnect 和服务端质量聚合 |
 | M1-07 自动重放 patch queue | partial | patch queue replay guard、clean mirror sync 和 CI workflow | 非空 patch 的冲突失败、clean build 和报告未建立 |
 | M1-08 周期上游同步 | partial | `.github/workflows/upstream-sync.yml` 周度任务 | owner、差异通知和升级演练缺失 |
-| M1-09 许可证/SBOM/漏洞/签名流水线 | partial | SBOM generator、supply-chain workflow、NOTICE/license policy | 容器 SBOM、签名验证、漏洞门禁和当前运行证据 |
-| M1-10 nightly sandbox | partial | `infra/sandbox` profile/README 和 nightly metadata workflow | 实际租户隔离、自动销毁和访问入口未实现 |
+| M1-09 许可证/SBOM/漏洞/签名流水线 | partial | SBOM generator/verifier、cosign blob verifier、supply-chain/release workflow、NOTICE/license policy | 容器 SBOM、签名验证、漏洞门禁和当前运行证据 |
+| M1-10 nightly sandbox | partial | `infra/sandbox` profile/README、digest/credential lifecycle runner 和 scheduled workflow | 实际租户隔离、自动销毁、失败告警和访问入口运行证据 |
 
 **M1 结论：partial；A-C baseline passed，完整 Gate 1 未通过。** 已有 Beelink 双节点
 Node 与本机 Web/Flutter Web 音频、Data、RPC 证据；不能替代完整 SDK、TURN、视频、

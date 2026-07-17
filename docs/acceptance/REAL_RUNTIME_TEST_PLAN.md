@@ -154,6 +154,24 @@ until curl --fail --silent http://127.0.0.1:7980/ >/dev/null; do sleep 1; done
 
 记录：故障发生时间、恢复时间、两个节点状态、已有 Room/participant 行为和是否发生数据丢失。当前实现只承诺全节点就绪门禁，不承诺已有 Room 的无缝迁移；这项结果必须单独归档。
 
+### 5.1 Linux 弱网/UDP 禁用实验
+
+在独立 Beelink/Linux runner 上使用 `tools/compatibility/run-netem.sh` 包裹 Node 或浏览器
+验收。脚本只作用于显式网卡，退出时删除 netem qdisc；Mac 不执行该脚本。
+
+```bash
+sudo env \
+  YUJIAN_NETEM_INTERFACE=eth0 \
+  YUJIAN_NETEM_LOSS=3% \
+  YUJIAN_NETEM_DELAY=100ms \
+  YUJIAN_NETEM_JITTER=20ms \
+  tools/compatibility/run-netem.sh -- npm run test:integration:rtc
+```
+
+TCP/TLS fallback 必须使用单独的 LiveKit listener/ICE 配置和报告；不能把 `tc netem` 的
+合成丢包结果写成 TURN 已通过。每个实验记录 interface、loss、delay、jitter、UDP/TCP/TLS
+候选、reconnect start/end、RTP bytes、packets lost 和恢复后是否继续收到 Track。
+
 ## 6. RTX 5090 Agent Gate（D）
 
 RTC 不得申请 GPU。先验证主机和 NVIDIA Container Toolkit：
@@ -205,6 +223,11 @@ npm run db:migrate
 - webhook retry/DLQ、data-rights evidence、KMS secret resolver 均不把明文 secret 写入数据库或日志。
 
 ## 8. 报告和最终判定
+
+P1 汇总报告使用 `docs/acceptance/p1-evidence.example.json` 的结构，由
+`npm run p1:evidence:verify` 校验。只有在 CI/Beelink 运行环境设置 `P1_REQUIRE_PASS=true`
+且所有 target 都有脱敏 report 时，才允许写入 P1 closed；默认校验只检查合同，不把
+`deferred` 自动升级为通过。
 
 每次运行至少保存：
 

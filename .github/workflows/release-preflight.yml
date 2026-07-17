@@ -24,8 +24,8 @@ jobs:
       - run: npm ci
       - name: Verify OpenAPI contract
         run: npm run openapi:verify
-      - name: Generate SBOM
-        run: npm run supply-chain:sbom
+      - name: Generate and verify SBOM
+        run: npm run supply-chain:verify
       - name: Check release evidence manifest
         env:
           YUJIAN_RELEASE_EVIDENCE: ${{ inputs.evidence }}

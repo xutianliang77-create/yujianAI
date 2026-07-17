@@ -95,7 +95,7 @@ class _YujianRtcCompatAppState extends State<YujianRtcCompatApp> {
       );
       final localTrack = await LocalAudioTrack.create();
       _localAudioTrack = localTrack;
-      await pair.primary.localParticipant!.publishAudioTrack(localTrack);
+      final publication = await pair.primary.localParticipant!.publishAudioTrack(localTrack);
       final event = await subscribed;
       if (event.track is! RemoteAudioTrack) {
         throw StateError('Flutter remote Track was not an audio Track');
@@ -111,8 +111,34 @@ class _YujianRtcCompatAppState extends State<YujianRtcCompatApp> {
       if (bytesReceived <= 0) {
         throw StateError('Flutter remote audio Track received no RTP bytes');
       }
+
+      final muted = listener.waitFor<TrackMutedEvent>(
+        duration: const Duration(seconds: 15),
+        filter: (event) =>
+            event.participant.identity == 'flutter-primary' &&
+            event.publication.source == TrackSource.microphone,
+      );
+      await publication.mute(stopOnMute: false);
+      await muted;
+      final unmuted = listener.waitFor<TrackUnmutedEvent>(
+        duration: const Duration(seconds: 15),
+        filter: (event) =>
+            event.participant.identity == 'flutter-primary' &&
+            event.publication.source == TrackSource.microphone,
+      );
+      await publication.unmute(stopOnMute: false);
+      await unmuted;
+      final unpublished = listener.waitFor<TrackUnpublishedEvent>(
+        duration: const Duration(seconds: 15),
+        filter: (event) =>
+            event.participant.identity == 'flutter-primary' &&
+            event.publication.source == TrackSource.microphone,
+      );
+      await pair.primary.localParticipant!.removePublishedTrack(publication.sid);
+      await unpublished;
+
       debugPrint(
-        'YUJIAN_FLUTTER_COMPAT_PASSED data_rpc=passed bytes=$bytesReceived',
+        'YUJIAN_FLUTTER_COMPAT_PASSED data_rpc=passed mute_unpublish=passed bytes=$bytesReceived',
       );
       if (!mounted) return;
       setState(
