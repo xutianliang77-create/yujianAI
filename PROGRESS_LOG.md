@@ -49,6 +49,18 @@
   `127.0.0.1:6379`；未发现 PostgreSQL `5432`、语见 platform-api/MediaOps 端口或本项目
   runtime module。既有服务未修改；RTX 5090/驱动可见。
 
+## 📌 2026-07-17 P1 兼容性覆盖继续（实现延后运行）
+
+- Web harness 新增 SDK-internal `full-reconnect` 事件闭环检查（`Reconnecting` → `Reconnected`），
+  并对 audio/camera/screen receiver stats 采集 `bytesReceived`、`packetsReceived`、`packetsLost`
+  和 `jitter`。这是合成故障注入与质量采样实现，不替代 Beelink 的 TURN、弱网和真实断链证据。
+- Flutter Web harness 新增可靠 Data、topic/sender 校验和 RPC echo；既有 audio Track 检查保持不变。
+- `docs/compatibility/MATRIX.md` 与机器可读矩阵将新增路径标为 `implemented-deferred`，既有
+  `20260717T080332Z`/`20260717T075738Z` 证据不被扩大解释；完整 Gate 1 仍未通过。
+- 本轮只做源码/合同静态检查，未运行 npm workspace test、Flutter/Chrome、Beelink 或手机验收。
+- 下一步：在无界AI测试窗口结束且确认隔离端口后，先在 Beelink 重新运行服务器验收，再运行本机
+  Web/Flutter client acceptance；之后补 iOS/Android/Python、TURN/弱网和质量聚合报告。
+
 ## 📌 2026-07-17 双端真实验证暂停记录
 
 用户要求暂停真实验证，以避免与无界AI在 Beelink 上的测试冲突。当前状态：

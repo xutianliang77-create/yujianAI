@@ -46,7 +46,7 @@ mirror/许可证证据。
 | M1-03 单区 RTC、Redis、TURN、观测 | partial | 双 Server+Redis healthcheck、2026-07-17 双节点 ready 和 Node PCM 音频通过、TURN 配置边界、Prometheus/OTel 配置和 SLO | TURN 集群真实镜像、生产 TLS、指标端点和告警运行证据 |
 | M1-04 JS/Flutter/iOS/Android/Node/Python 矩阵 | partial | Web/Flutter/Node A-C baseline passed；iOS/Android/Python target README、机器可读矩阵 | iOS/Android/Python 实际运行和完整 SDK Gate 证据 |
 | M1-05 Token/RoomService/Webhook/Data/RPC 合同 | partial | Node/Web/Flutter baseline 的 token、RoomService、Data/RPC 通过；官方 WebhookReceiver 签名/replay adapter；新增 publisher HMAC/成功/失败/DLQ/requeue 单测 | 完整 webhook 生命周期/错误矩阵和运行证据 |
-| M1-06 音频/视频/屏幕/弱网基线 | partial | Node/Web/Flutter 音频 Track、TrackSubscribed、RTP bytes > 0 通过；Web 已加入合成 camera/screen Track 实现但尚未重新运行 | 视频/屏幕运行证据、TURN/弱网注入、reconnect 和质量指标采集 |
+| M1-06 音频/视频/屏幕/弱网基线 | partial | Node/Web/Flutter 音频 Track、TrackSubscribed、RTP bytes > 0 通过；Web 已加入合成 camera/screen Track、receiver quality sample 和 SDK-internal synthetic reconnect，但尚未重新运行 | 视频/屏幕运行证据、TURN/弱网注入、真实 reconnect 和服务端质量聚合 |
 | M1-07 自动重放 patch queue | partial | patch queue replay guard、clean mirror sync 和 CI workflow | 非空 patch 的冲突失败、clean build 和报告未建立 |
 | M1-08 周期上游同步 | partial | `.github/workflows/upstream-sync.yml` 周度任务 | owner、差异通知和升级演练缺失 |
 | M1-09 许可证/SBOM/漏洞/签名流水线 | partial | SBOM generator、supply-chain workflow、NOTICE/license policy | 容器 SBOM、签名验证、漏洞门禁和当前运行证据 |
@@ -167,7 +167,7 @@ join/leave adapter；registry/provider、网络策略、真实 job lifecycle 和
 | Gate | 状态 | 当前证据 | 主要缺口 |
 | --- | --- | --- | --- |
 | Gate 0 设计/上游 | partial | 章程、版本 manifest、ADR、合规清单、OpenAPI/矩阵和 DoD | 法律签字、生成门禁和评审记录 |
-| Gate 1 LiveKit 兼容 | partial（A-C baseline passed） | Beelink 双节点 Node 与本机 Web/Flutter Web 的 token、join、音频、Data/RPC、RTP bytes 证据；报告 run id `20260717T075738Z` / `20260717T080332Z` | Webhook、视频、屏幕共享、TURN/弱网、reconnect、iOS/Android/Python、SBOM/签名 |
+| Gate 1 LiveKit 兼容 | partial（A-C baseline passed） | Beelink 双节点 Node 与本机 Web/Flutter Web 的 token、join、音频、Data/RPC、RTP bytes 证据；报告 run id `20260717T075738Z` / `20260717T080332Z`；新增 Web/Flutter 覆盖仍为 implemented-deferred | Webhook、视频、屏幕共享、TURN/弱网、真实 reconnect、iOS/Android/Python、SBOM/签名 |
 | Gate 2 控制面 | partial | scoped token、CRUD、API key/KMS boundary、quota、`PostgresPlatformPersistence`、`PostgresPlatformStorePersistence`、Redis lease/token reservation、outbox/webhook、usage、Room adapter、`YUJIAN_PLATFORM_RUNTIME_MODULE` 注入入口、migration runner、静态 console 和 OpenAPI 门禁 | 外部 runtime module（含 `storePersistence`）、真实 PG/KMS/Redis、SSO、注册/邀请和 Beelink 运行证据 |
 | Gate 3 媒体/容量 | partial | Helm/PG/Redis/TURN boundary、telemetry、capacity/probe/runbook | 真实 TURN/网络矩阵、24/72h、容量和质量指标 |
 | Gate 4 Agent | partial | worker、deployment、provider、tool policy、deadline/circuit skeleton | 全部 Agent 生命周期、真实 provider/GPU 和故障场景 |

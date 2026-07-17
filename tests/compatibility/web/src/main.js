@@ -60,6 +60,33 @@ async function waitForRemoteVideoStats(remoteTrack) {
   return undefined;
 }
 
+function summarizeReceiverQuality(stats) {
+  return {
+    bytesReceived: stats?.bytesReceived ?? null,
+    packetsReceived: stats?.packetsReceived ?? null,
+    packetsLost: stats?.packetsLost ?? null,
+    jitter: stats?.jitter ?? null,
+  };
+}
+
+async function runSyntheticReconnect(room) {
+  const reconnecting = waitForEvent(
+    room,
+    RoomEvent.Reconnecting,
+    "synthetic reconnect did not emit reconnecting",
+  );
+  const reconnected = waitForEvent(
+    room,
+    RoomEvent.Reconnected,
+    "synthetic reconnect did not emit reconnected",
+  );
+  await Promise.all([
+    room.simulateScenario("full-reconnect"),
+    reconnecting,
+    reconnected,
+  ]);
+}
+
 function createSyntheticVideoTrack(label, color) {
   const canvas = document.createElement("canvas");
   canvas.width = 320;
@@ -213,9 +240,15 @@ async function runCompatibilityTest() {
     const screenStats = await waitForRemoteVideoStats(screenTrack);
     if (!cameraStats || !screenStats) throw new Error("remote video Track did not receive RTP bytes");
 
+    // SDK-internal fault injection only; real TURN/weak-network recovery remains deferred.
+    await runSyntheticReconnect(secondaryRoom);
+    const audioQuality = summarizeReceiverQuality(audioStats);
+    const cameraQuality = summarizeReceiverQuality(cameraStats);
+    const screenQuality = summarizeReceiverQuality(screenStats);
+
     setStatus(
       "passed",
-      `通过：双节点连接、Data、RPC、音视频/屏幕 Track（audio=${audioStats.bytesReceived}, camera=${cameraStats.bytesReceived}, screen=${screenStats.bytesReceived} bytes）`,
+      `通过：双节点连接、Data、RPC、音视频/屏幕 Track、synthetic reconnect（audio=${audioQuality.bytesReceived} bytes/loss=${audioQuality.packetsLost ?? "n/a"}, camera=${cameraQuality.bytesReceived} bytes/loss=${cameraQuality.packetsLost ?? "n/a"}, screen=${screenQuality.bytesReceived} bytes/loss=${screenQuality.packetsLost ?? "n/a"}）`,
     );
   } finally {
     oscillator?.stop();

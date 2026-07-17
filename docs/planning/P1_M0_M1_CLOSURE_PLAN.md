@@ -16,9 +16,9 @@
 | P1-M0-03 | clean upstream mirror、patch replay、digest 复现 | implemented-deferred | `rtc-owner` + `release-owner` | clean build、manifest、非空 patch 冲突失败报告 |
 | P1-M0-04 | LICENSE/NOTICE、SBOM、漏洞与签名策略 | partial | `legal-owner` + `release-owner` + `security-owner` | 当前镜像 SBOM、签名验证和漏洞门禁 |
 | P1-M1-01 | Web/Flutter/Node 已通过基线；补 iOS/Android/Python | A-C passed；三目标 deferred | `rtc-owner` | 每个 SDK 的 token/join/audio/Data/RPC/reconnect 报告 |
-| P1-M1-02 | 视频、屏幕共享、mute/unpublish、订阅失败 | Web synthetic camera/screen implementation added; runtime deferred；Flutter/Node pending | `rtc-owner` | Web/Flutter/Node TrackSubscribed、bytes/stats 报告 |
-| P1-M1-03 | TURN、UDP 禁用后的 TCP/TLS、弱网、reconnect | not verified | `rtc-owner` + `sre-owner` | 网络矩阵、ICE candidate、恢复时间和失败注入报告 |
-| P1-M1-04 | RTT、jitter、packet loss、bitrate、freeze 和 P50/P95/P99 | contract exists | `rtc-owner` + `data-owner` | 客户端采样、服务端聚合、Prometheus/OTel 对照 |
+| P1-M1-02 | 视频、屏幕共享、mute/unpublish、订阅失败 | Web synthetic camera/screen + RTP checks added; runtime deferred；Flutter/Node pending | `rtc-owner` | Web/Flutter/Node TrackSubscribed、bytes/stats 报告 |
+| P1-M1-03 | TURN、UDP 禁用后的 TCP/TLS、弱网、reconnect | SDK synthetic reconnect implementation added; real network/reconnect not verified | `rtc-owner` + `sre-owner` | 网络矩阵、ICE candidate、恢复时间和失败注入报告 |
+| P1-M1-04 | RTT、jitter、packet loss、bitrate、freeze 和 P50/P95/P99 | receiver quality sample added in Web harness; runtime/aggregation deferred | `rtc-owner` + `data-owner` | 客户端采样、服务端聚合、Prometheus/OTel 对照 |
 | P1-M1-05 | Webhook 签名、生命周期、重试、乱序、replay/DLQ | adapter/SQL boundary + publisher unit tests added；runtime deferred | `platform-owner` + `security-owner` | provider webhook 端到端报告和审计记录 |
 | P1-M1-06 | nightly sandbox：租户隔离、短期凭据、自动销毁 | compose/workflow skeleton | `sre-owner` + `security-owner` | nightly run、资源清理、失败告警和访问审计 |
 

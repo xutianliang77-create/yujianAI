@@ -18,12 +18,21 @@
       "sdk": "livekit-client@2.20.1",
       "status": "passed-baseline",
       "verifiedFlows": ["token", "join", "audio_publish", "audio_subscribe", "data_rpc"],
+      "implementedDeferredFlows": [
+        "camera_publish",
+        "camera_subscribe",
+        "screen_share_publish",
+        "screen_share_subscribe",
+        "receiver_quality_sample",
+        "synthetic_reconnect"
+      ],
       "evidenceRef": "client"
     },
     "flutter": {
       "sdk": "livekit_client@2.8.1",
       "status": "passed-baseline",
       "verifiedFlows": ["token", "join", "audio_publish", "audio_subscribe"],
+      "implementedDeferredFlows": ["data_rpc"],
       "evidenceRef": "client"
     },
     "node": {
