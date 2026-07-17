@@ -2,6 +2,25 @@
 
 更新时间：2026-07-17
 
+## 📌 2026-07-17 双端真实验证暂停记录
+
+用户要求暂停真实验证，以避免与无界AI在 Beelink 上的测试冲突。当前状态：
+
+- 已将验收边界拆为服务器端与客户端：Beelink 运行 Docker/LiveKit/Node 集成，Mac/手机运行客户端兼容性。
+- 提交 `a1cd163`、`8f5f260`、`c876d34`、`8f6e5fc` 已推送到 GitHub `main`；最新代码为 `8f6e5fc`。
+- Beelink 服务器预检通过：Linux x86_64、Node 24.18.0、Docker/Tailscale、单张 RTX 5090。
+- Beelink workspace lint/test/check 通过；双节点服务曾以隔离主机端口 `17880/17980` 启动。
+- 修复 `YujianRegionRouter` 同容量节点始终选择 primary 的问题后，Node 双节点真实集成测试通过：Room、Participant、Data、RPC、PCM 音频 Track/RMS。
+- 本机 `npm run client:preflight` 通过（Node 25.8.2、Flutter 3.44.1、Chrome 可用）；客户端完整验收尚未执行。
+- 最后一轮完整 Beelink 验收在上游网络校验阶段被用户要求中断，没有生成最终 `status=passed`；报告目录为 `outputs/beelink/20260717T050759Z`。
+- 已停止并清理本项目测试容器；未触碰 Beelink 上已有的 `livekit-qkxy-*` 容器。无后台测试进程。
+
+### 暂停后的恢复顺序
+
+1. 先确认无界AI在 Beelink 的测试已结束，并确认可使用隔离主机端口。
+2. 在 Beelink 重新执行 `YUJIAN_KEEP_RTC_UP=true npm run beelink:acceptance`，必要时使用 `17880/17980` 端口组。
+3. 服务器验收通过并保留 RTC 后，再在本机执行 `npm run client:acceptance`；手机原生 Android/iOS target 仍需单独补齐。
+
 ## 2026-07-17 本轮继续开发补记（媒体幂等、资源用量与生产门禁）
 
 用户确认：Beelink 是服务器端并配置 1 块 RTX 5090；本机和手机作为客户端。Beelink 执行
