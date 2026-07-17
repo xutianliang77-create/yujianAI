@@ -2,12 +2,21 @@
 
 更新时间：2026-07-17
 
+## 📌 2026-07-17 恢复并完成双端真实验证
+
+- 暂停后确认 Beelink 无本项目残留进程，使用隔离端口 `17880/17980`，未触碰既有 `livekit-qkxy-*` 或 `ai-phone-staging-*` 服务。
+- Beelink `npm run beelink:acceptance` 通过，报告：`outputs/beelink/20260717T075738Z`；服务器预检、上游同步、workspace lint/test、双 LiveKit 节点、Room/Participant、Data、RPC、Node PCM 音频 Track/RMS 均通过。
+- 本机 `npm run client:acceptance` 通过，报告：`outputs/client/20260717T080332Z`；Flutter pub/analyze/test/Web 构建、Chrome WebRTC、Web/Flutter Web 双节点连接、Data、RPC 和音频 Track 通过，Web RTP `2133 bytes`。
+- 修复客户端验收脚本的 macOS Chrome 路径、`CdpClient` TDZ 初始化顺序和 Tailscale 直连时的系统代理干扰；待本次提交推送后作为客户端验收修复记录。
+- 验收结束后已清理本项目 `local-yujian-rtc-*`、`local-redis-1` 和测试网络；Beelink 上既有服务保持运行，无后台测试进程。
+- 手机原生 Android/iOS target 尚未纳入当前仓库；本次客户端证据是本机 Chrome 的 Web/Flutter Web，不宣称原生手机通过。
+
 ## 📌 2026-07-17 双端真实验证暂停记录
 
 用户要求暂停真实验证，以避免与无界AI在 Beelink 上的测试冲突。当前状态：
 
 - 已将验收边界拆为服务器端与客户端：Beelink 运行 Docker/LiveKit/Node 集成，Mac/手机运行客户端兼容性。
-- 提交 `a1cd163`、`8f5f260`、`c876d34`、`8f6e5fc` 已推送到 GitHub `main`；最新代码为 `8f6e5fc`。
+- 提交 `a1cd163`、`8f5f260`、`c876d34`、`8f6e5fc`、`1671698` 已推送到 GitHub `main`；该暂停记录创建时最新代码为 `1671698`。
 - Beelink 服务器预检通过：Linux x86_64、Node 24.18.0、Docker/Tailscale、单张 RTX 5090。
 - Beelink workspace lint/test/check 通过；双节点服务曾以隔离主机端口 `17880/17980` 启动。
 - 修复 `YujianRegionRouter` 同容量节点始终选择 primary 的问题后，Node 双节点真实集成测试通过：Room、Participant、Data、RPC、PCM 音频 Track/RMS。

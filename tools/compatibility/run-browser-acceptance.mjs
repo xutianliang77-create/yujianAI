@@ -14,6 +14,7 @@ const chrome = spawn(
     "--headless=new",
     "--no-sandbox",
     "--disable-dev-shm-usage",
+    "--no-proxy-server",
     "--autoplay-policy=no-user-gesture-required",
     "--use-fake-device-for-media-stream",
     "--use-fake-ui-for-media-stream",
@@ -23,19 +24,6 @@ const chrome = spawn(
   ],
   { stdio: ["ignore", "ignore", "inherit"] },
 );
-
-try {
-  await waitForChrome(debugPort);
-  await runWebAcceptance(debugPort);
-  await runFlutterAcceptance(debugPort);
-  process.stdout.write("Browser acceptance passed (Web and Flutter Web)\n");
-} finally {
-  if (chrome.exitCode === null) {
-    chrome.kill("SIGTERM");
-    await new Promise((resolve) => chrome.once("exit", resolve));
-  }
-  await rm(userDataDirectory, { recursive: true, force: true });
-}
 
 function requiredEnvironment(name) {
   const value = process.env[name];
@@ -50,6 +38,7 @@ function findChrome() {
     "google-chrome-stable",
     "chromium",
     "chromium-browser",
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
   ].filter(Boolean);
   for (const candidate of candidates) {
     const result = spawnSync(candidate, ["--version"], { encoding: "utf8" });
@@ -216,4 +205,17 @@ class CdpClient {
   close() {
     this.socket.close();
   }
+}
+
+try {
+  await waitForChrome(debugPort);
+  await runWebAcceptance(debugPort);
+  await runFlutterAcceptance(debugPort);
+  process.stdout.write("Browser acceptance passed (Web and Flutter Web)\n");
+} finally {
+  if (chrome.exitCode === null) {
+    chrome.kill("SIGTERM");
+    await new Promise((resolve) => chrome.once("exit", resolve));
+  }
+  await rm(userDataDirectory, { recursive: true, force: true });
 }
