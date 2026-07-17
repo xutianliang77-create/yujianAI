@@ -63,8 +63,9 @@ Beelink 作为服务器、当前 Mac 作为 RTC 客户端时，在 Mac 仓库根
 
 脚本会在 Beelink 启动 production platform-api，验证 OIDC onboarding/邀请/持久 RBAC/
 跨 tenant IDOR、Webhook HMAC/按目标重试/DLQ/requeue/重启恢复、data-rights 导出与删除，
-再执行隔离 `pg_dump` restore、Redis 从 PostgreSQL 真值重建和既有容器 restart count
-不变检查。短时 RTC token 只通过 mode 0600 临时文件传递，测试结束后删除。
+持久 evidence receipt 和过期 `processing` 中断恢复，再执行隔离 `pg_dump` restore、
+Redis 从 PostgreSQL 真值重建和既有容器 restart count 不变检查。短时 RTC token
+只通过 mode 0600 临时文件传递，测试结束后删除。
 
 报告位于 `data/p2/reports/p2-closure-acceptance.json`，备份位于 `data/p2/backups/`。
 2026-07-17 运行 `p2-closure-20260717104540-c0c4ba0e` 在本机 RTC 客户端回传前因
@@ -80,7 +81,7 @@ docker compose --project-name yujian-p2 \
 ```
 
 `tools/p2/runtime-smoke.mjs` 需要短时测试用的 `YUJIAN_KMS_ADMIN_TOKEN`（从
-`openbao-ha-init.json` 读取，不写入环境文件），验证 9/9 migration、PostgreSQL store 查询、
+`openbao-ha-init.json` 读取，不写入环境文件），验证 10/10 migration、PostgreSQL store 查询、
 Redis 原子限流和受限 KMS token 的 32-byte secret round-trip，随后删除测试 secret：
 
 ```bash

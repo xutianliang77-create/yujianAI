@@ -871,7 +871,7 @@ npm run openapi:verify
 ## 📌 SESSION HANDOFF STATUS — P2 data runtime (superseded)
 
 > This earlier smoke-only handoff is retained for history. The authoritative current status is the
-> `P2-04/05/06 implementation-ready, acceptance interrupted` handoff above.
+> `P2-06 crash-recovery hardening` handoff at the end of this file.
 
 ### Current Work
 
@@ -905,4 +905,56 @@ cd /Users/xutianliang/Downloads/语见AI
 git status --short --branch
 npm run build -w @yujian/platform-api
 ssh beelink@100.110.127.117 'cd /home/beelink/yujianAI && ./infra/p2/beelink/deploy.sh status'
+```
+
+## 📌 SESSION HANDOFF STATUS — P2-06 crash-recovery hardening
+
+### Current Work
+
+2026-07-18 在不连接 Beelink 的前提下，完成 destructive data-rights 中断恢复加固。
+新增 `010_data_rights_recovery.sql`：为请求增加 `processing_started_at`，并建立不含原始
+subject 的 `data_rights_evidence_receipts` 持久账本。删除 executor 在事务内按 request ID
+获取 advisory lock，将删除与 committed receipt 同时提交；进程在提交后退出时，
+worker 可物化同一 receipt，不重复删除。
+
+worker 存活时会 heartbeat 续租；进程退出后，默认 5 分钟过期的 `processing`
+请求会回收为 `received`。验收脚本新增 post-commit crash 故障注入，并要求
+PostgreSQL 备份恢复后 3 个 data-rights 请求、2 条 committed receipt 及 10 条
+migration 均完整。
+
+### Verification
+
+- `npm run check`：全 workspace lint 通过，36 个单元/合同测试通过、0 失败。
+- data-rights 3/3：正常删除+receipt 重放、evidence 不可写时删除前回滚、
+  heartbeat/stale lease 回收。
+- `npm run openapi:verify`：58/58 operationId 通过。
+- private deployment upgrade preflight：`migrationCount=10`、`latestMigration=10`。
+- P2 shell 语法、Node 验收 helper 语法和 `git diff --check` 通过。
+
+### Production Acceptance Status
+
+P2-06 仍为 **implementation-ready / not production-accepted**。migration 010、post-commit crash
+恢复、隔离 `pg_dump` restore 和 Redis rebuild 都没有在 Beelink 上运行。P2-04/05/06
+与完整 P2 Gate 继续为 **not-passed**，不用本地测试替代真实部署证据。
+
+### Background Tasks
+
+无。本轮未发起 SSH、未重启 Beelink、未操作其容器或数据。
+
+### Next Session Priorities
+
+1. 仅在用户确认 Beelink 恢复后，先审计宿主机/GPU/磁盘和中断运行残留。
+2. 应用 migration 010，确认 10/10；不动 `ai-phone-staging-*` 和 `livekit-qkxy-*`。
+3. 从 Mac 运行 `./tools/p2/run-closure-with-client.sh`，核验 receipt crash recovery、
+   3 个 data-rights 请求恢复、backup checksum/RPO/RTO、Redis rebuild 与 protected restart count。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short --branch
+npm run check
+npm run openapi:verify
+# 只在用户确认 Beelink 恢复后：
+./tools/p2/run-closure-with-client.sh
 ```

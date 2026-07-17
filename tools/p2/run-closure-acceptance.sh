@@ -69,6 +69,7 @@ RUN_ID=$(jq -r '.runId' "$REPORT")
 TENANT_ID=$(jq -r '.cleanup.scope.tenantId' "$REPORT")
 EXPORT_ID=$(jq -r '.cleanup.exportRequestId' "$REPORT")
 DELETE_ID=$(jq -r '.cleanup.deleteRequestId' "$REPORT")
+RECOVERY_ID=$(jq -r '.cleanup.recoveryRequestId' "$REPORT")
 BACKUP="$DATA_ROOT/p2/backups/${RUN_ID}.dump"
 SOURCE_SNAPSHOT=$(compose exec -T postgres psql -U "$YUJIAN_POSTGRES_USER" -d "$YUJIAN_POSTGRES_DB" -Atqc "SELECT updated_at::text FROM platform_store_snapshots WHERE snapshot_id='default'")
 START_MS=$(date +%s%3N)
@@ -83,8 +84,9 @@ RESTORE_MS=$(( $(date +%s%3N) - START_MS ))
 MIGRATIONS=$(compose exec -T postgres psql -U "$YUJIAN_POSTGRES_USER" -d "$RESTORE_DB" -Atqc "SELECT count(*) FROM yujian_schema_migrations")
 RESTORED_SNAPSHOT=$(compose exec -T postgres psql -U "$YUJIAN_POSTGRES_USER" -d "$RESTORE_DB" -Atqc "SELECT updated_at::text FROM platform_store_snapshots WHERE snapshot_id='default'")
 RESTORED_TENANT=$(compose exec -T postgres psql -U "$YUJIAN_POSTGRES_USER" -d "$RESTORE_DB" -v tenant_id="$TENANT_ID" -Atqc "SELECT count(*) FROM platform_store_snapshots WHERE snapshot_id='default' AND snapshot->'tenants' @> jsonb_build_array(jsonb_build_object('tenantId', :'tenant_id'))")
-RESTORED_RIGHTS=$(compose exec -T postgres psql -U "$YUJIAN_POSTGRES_USER" -d "$RESTORE_DB" -v export_id="$EXPORT_ID" -v delete_id="$DELETE_ID" -Atqc "SELECT count(*) FROM data_subject_requests WHERE request_id IN (:'export_id', :'delete_id') AND status='completed'")
-[[ "$MIGRATIONS" == 9 && "$RESTORED_TENANT" == 1 && "$RESTORED_RIGHTS" == 2 && "$SOURCE_SNAPSHOT" == "$RESTORED_SNAPSHOT" ]] || { echo "isolated PostgreSQL restore verification failed" >&2; exit 1; }
+RESTORED_RIGHTS=$(compose exec -T postgres psql -U "$YUJIAN_POSTGRES_USER" -d "$RESTORE_DB" -v export_id="$EXPORT_ID" -v delete_id="$DELETE_ID" -v recovery_id="$RECOVERY_ID" -Atqc "SELECT count(*) FROM data_subject_requests WHERE request_id IN (:'export_id', :'delete_id', :'recovery_id') AND status='completed'")
+RESTORED_RECEIPTS=$(compose exec -T postgres psql -U "$YUJIAN_POSTGRES_USER" -d "$RESTORE_DB" -v delete_id="$DELETE_ID" -v recovery_id="$RECOVERY_ID" -Atqc "SELECT count(*) FROM data_rights_evidence_receipts WHERE request_id IN (:'delete_id', :'recovery_id')")
+[[ "$MIGRATIONS" == 10 && "$RESTORED_TENANT" == 1 && "$RESTORED_RIGHTS" == 3 && "$RESTORED_RECEIPTS" == 2 && "$SOURCE_SNAPSHOT" == "$RESTORED_SNAPSHOT" ]] || { echo "isolated PostgreSQL restore verification failed" >&2; exit 1; }
 
 MEMBER_COUNT=$(compose exec -T postgres psql -U "$YUJIAN_POSTGRES_USER" -d "$YUJIAN_POSTGRES_DB" -v tenant_id="$TENANT_ID" -Atqc "SELECT count(*) FROM tenant_members WHERE tenant_id = :'tenant_id' AND status='active'")
 REDIS_KEY="p2:rbac-rebuild:${RUN_ID}"
@@ -99,7 +101,7 @@ PROTECTED_AFTER=$(docker inspect -f '{{.Name}}={{.RestartCount}}' ai-phone-stagi
 
 TMP_REPORT="${REPORT}.tmp"
 jq --arg backup "$BACKUP" --arg sha "$BACKUP_SHA" --argjson rtoMs "$RESTORE_MS" --argjson memberCount "$MEMBER_COUNT" \
-  '.results.p2_06.backupRestore = {format:"pg_dump-custom",isolatedRestore:true,migrations:9,snapshotTimestampMatched:true,rpo:"captured-snapshot-zero-loss",rtoMs:$rtoMs,sha256:$sha,backupPath:$backup} | .results.p2_06.redisRebuild = {source:"postgres-tenant-members",activeMembers:$memberCount,status:"passed"} | .protectedContainers = {restartCountsUnchanged:true}' \
+  '.results.p2_06.backupRestore = {format:"pg_dump-custom",isolatedRestore:true,migrations:10,snapshotTimestampMatched:true,rpo:"captured-snapshot-zero-loss",rtoMs:$rtoMs,sha256:$sha,backupPath:$backup} | .results.p2_06.redisRebuild = {source:"postgres-tenant-members",activeMembers:$memberCount,status:"passed"} | .protectedContainers = {restartCountsUnchanged:true}' \
   "$REPORT" >"$TMP_REPORT"
 mv "$TMP_REPORT" "$REPORT"
 chmod 600 "$REPORT"

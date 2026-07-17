@@ -2,10 +2,11 @@
 import { createHmac, generateKeyPairSync, randomBytes, randomUUID, sign } from "node:crypto";
 import { createServer as createHttpServer } from "node:http";
 import { createServer as createHttpsServer } from "node:https";
-import { chmod, open, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, open, readFile, rm, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import pg from "pg";
 import { RoomServiceClient } from "livekit-server-sdk";
+import { runDataRightsClosure } from "./closure-data-rights.mjs";
 
 const { Pool } = pg;
 const required = (name) => {
@@ -301,34 +302,9 @@ try {
   if (JSON.stringify(secretRows.rows).includes(webhookSecret.toString("base64"))) throw new Error("webhook secret was persisted in PostgreSQL");
   results.p2_05 = { hmac: "verified", retry: "per-destination", dlq: "terminal-after-five-attempts", requeue: "recovered", restart: "acknowledged-target-not-duplicated", deliveryLedgerRows: deliveryRows, secretPersistence: "reference-only" };
 
-  const subject = `data-subject-${runId}`;
-  await pool.query(
-    "INSERT INTO data_subject_records (record_id, tenant_id, subject_id, system_name, record_locator) VALUES ($1,$2,$3,'profile','profile-1'),($4,$2,$3,'audit','audit-1')",
-    [`record-${randomUUID()}`, tenant.tenantId, subject, `record-${randomUUID()}`],
-  );
-  const submit = async (kind) => api(`/platform/v1/tenants/${tenant.tenantId}/data-rights`, ownerToken, { method: "POST", headers: { "idempotency-key": `${runId}:${kind}` }, body: JSON.stringify({ subjectId: subject, kind }) });
-  const exportRequest = await submit("export");
-  if (exportRequest.status !== 202) throw new Error("data-rights export submission failed");
-  const exportDone = await waitFor(async () => {
-    const value = await api(`/platform/v1/data-rights/${exportRequest.payload.data.requestId}`, ownerToken);
-    return value.payload?.data?.status === "completed" ? value.payload.data : undefined;
-  }, "data-rights export executor did not complete");
-  const deleteRequest = await submit("delete");
-  if (deleteRequest.status !== 202) throw new Error("data-rights deletion submission failed");
-  const deleteDone = await waitFor(async () => {
-    const value = await api(`/platform/v1/data-rights/${deleteRequest.payload.data.requestId}`, ownerToken);
-    return value.payload?.data?.status === "completed" ? value.payload.data : undefined;
-  }, "data-rights deletion executor did not complete");
-  const remaining = Number((await pool.query("SELECT count(*) AS count FROM data_subject_records WHERE tenant_id = $1 AND subject_id = $2", [tenant.tenantId, subject])).rows[0]?.count);
-  if (remaining !== 0) throw new Error("data-rights deletion left registered subject records");
-  for (const evidence of [exportDone.evidenceUri, deleteDone.evidenceUri]) {
-    const path = new URL(evidence);
-    const mode = (await stat(path)).mode & 0o777;
-    const body = await readFile(path, "utf8");
-    if (mode !== 0o600 || body.includes(subject)) throw new Error("data-rights evidence permissions or subject redaction failed");
-  }
-  results.p2_06 = { dataRights: { export: "completed", deletion: "completed", remainingRecords: remaining, evidence: "mode-0600-subject-digested" } };
-  cleanup = { runId, scope, otherTenantId: other.payload.data.tenant.tenantId, memberId, webhookSecretRef, exportRequestId: exportDone.requestId, deleteRequestId: deleteDone.requestId };
+  const rights = await runDataRightsClosure({ api, pool, tenantId: tenant.tenantId, ownerToken, runId, waitFor });
+  results.p2_06 = rights.result;
+  cleanup = { runId, scope, otherTenantId: other.payload.data.tenant.tenantId, memberId, webhookSecretRef, ...rights.cleanup };
   const auditCount = Number((await pool.query("SELECT count(*) AS count FROM audit_events WHERE tenant_id = $1", [tenant.tenantId])).rows[0]?.count);
   if (auditCount < 8) throw new Error("durable acceptance audit trail is incomplete");
   await writeFile(reportPath, `${JSON.stringify({ runId, completedAt: new Date().toISOString(), results, cleanup, auditCount })}\n`, { mode: 0o600 });

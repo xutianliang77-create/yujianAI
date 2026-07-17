@@ -38,7 +38,7 @@ function fromRow(row: RequestRow): DataSubjectRequestV1 {
   };
 }
 
-/** PostgreSQL implementation for data-rights lifecycle; no subject payload is stored. */
+/** PostgreSQL lifecycle store; exported subject content remains outside the request table. */
 export class PostgresDataRightsService {
   constructor(private readonly pool: DataRightsSqlPool) {}
 
@@ -81,10 +81,33 @@ export class PostgresDataRightsService {
     return this.transition(requestId, "processing", ["received"]);
   }
 
+  async recoverStale(processingLeaseMs: number): Promise<number> {
+    if (!Number.isInteger(processingLeaseMs) || processingLeaseMs < 30_000 || processingLeaseMs > 3_600_000) {
+      throw new RangeError("data-rights processing lease is invalid");
+    }
+    const result = await this.pool.query<{ request_id: string }>(
+      `UPDATE data_subject_requests SET status = 'received', processing_started_at = NULL
+       WHERE status = 'processing'
+         AND processing_started_at <= NOW() - ($1::bigint * interval '1 millisecond')
+       RETURNING request_id`,
+      [processingLeaseMs],
+    );
+    return result.rows.length;
+  }
+
+  async heartbeat(requestId: string): Promise<boolean> {
+    const result = await this.pool.query<{ request_id: string }>(
+      `UPDATE data_subject_requests SET processing_started_at = NOW()
+       WHERE request_id = $1 AND status = 'processing' RETURNING request_id`,
+      [requiredText(requestId, "requestId")],
+    );
+    return result.rows.length === 1;
+  }
+
   async complete(requestId: string, evidenceUri: string): Promise<DataSubjectRequestV1> {
     requiredText(evidenceUri, "evidenceUri");
     const result = await this.pool.query<RequestRow>(
-      "UPDATE data_subject_requests SET status = 'completed', evidence_uri = $2, completed_at = NOW() WHERE request_id = $1 AND status = 'processing' RETURNING *",
+      "UPDATE data_subject_requests SET status = 'completed', evidence_uri = $2, completed_at = NOW(), processing_started_at = NULL WHERE request_id = $1 AND status = 'processing' RETURNING *",
       [requiredText(requestId, "requestId"), evidenceUri],
     );
     return this.updatedOrExplain(result.rows, requestId, "completed");
@@ -93,7 +116,7 @@ export class PostgresDataRightsService {
   async reject(requestId: string, evidenceUri?: string): Promise<DataSubjectRequestV1> {
     if (evidenceUri !== undefined) requiredText(evidenceUri, "evidenceUri");
     const result = await this.pool.query<RequestRow>(
-      "UPDATE data_subject_requests SET status = 'rejected', evidence_uri = $2, completed_at = NOW() WHERE request_id = $1 AND status IN ('received','processing') RETURNING *",
+      "UPDATE data_subject_requests SET status = 'rejected', evidence_uri = $2, completed_at = NOW(), processing_started_at = NULL WHERE request_id = $1 AND status IN ('received','processing') RETURNING *",
       [requiredText(requestId, "requestId"), evidenceUri ?? null],
     );
     return this.updatedOrExplain(result.rows, requestId, "rejected");
@@ -117,7 +140,7 @@ export class PostgresDataRightsService {
 
   private async transition(requestId: string, status: "processing", allowed: readonly string[]): Promise<DataSubjectRequestV1> {
     const result = await this.pool.query<RequestRow>(
-      "UPDATE data_subject_requests SET status = $2 WHERE request_id = $1 AND status = ANY($3::text[]) RETURNING *",
+      "UPDATE data_subject_requests SET status = $2, processing_started_at = NOW() WHERE request_id = $1 AND status = ANY($3::text[]) RETURNING *",
       [requiredText(requestId, "requestId"), status, allowed],
     );
     return this.updatedOrExplain(result.rows, requestId, status);
