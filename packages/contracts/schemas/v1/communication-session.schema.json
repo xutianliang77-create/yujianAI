@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.yujian.ai/contracts/v1/communication-session.schema.json",
+  "title": "Communication Session v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "communicationSessionId",
+    "mode",
+    "state",
+    "createdBySubjectId",
+    "languagePolicy",
+    "createdAt",
+    "updatedAt",
+    "revision"
+  ],
+  "properties": {
+    "contractVersion": {
+      "const": 1
+    },
+    "communicationSessionId": {
+      "$ref": "common.schema.json#/$defs/communicationSessionId"
+    },
+    "mode": {
+      "enum": [
+        "face_to_face",
+        "listen",
+        "call_link",
+        "pstn_translation",
+        "agent_assist",
+        "agent_call",
+        "meeting"
+      ]
+    },
+    "state": {
+      "enum": [
+        "created",
+        "admitting",
+        "active",
+        "ending",
+        "ended",
+        "failed"
+      ]
+    },
+    "createdBySubjectId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9:_-]+$"
+    },
+    "languagePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceLanguageTag",
+        "targetLanguageTags"
+      ],
+      "properties": {
+        "sourceLanguageTag": {
+          "$ref": "common.schema.json#/$defs/languageTag"
+        },
+        "targetLanguageTags": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common.schema.json#/$defs/languageTag"
+          }
+        }
+      }
+    },
+    "createdAt": {
+      "$ref": "common.schema.json#/$defs/dateTime"
+    },
+    "updatedAt": {
+      "$ref": "common.schema.json#/$defs/dateTime"
+    },
+    "endedAt": {
+      "$ref": "common.schema.json#/$defs/dateTime"
+    },
+    "revision": {
+      "$ref": "common.schema.json#/$defs/revision"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "enum": [
+              "ended",
+              "failed"
+            ]
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "endedAt": true
+        },
+        "required": [
+          "endedAt"
+        ]
+      },
+      "else": {
+        "properties": {
+          "endedAt": true
+        },
+        "not": {
+          "required": [
+            "endedAt"
+          ]
+        }
+      }
+    }
+  ]
+}

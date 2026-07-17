@@ -1,0 +1,22 @@
+name: Supply chain metadata
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: mkdir -p outputs/sbom
+      - run: node tools/supply-chain/generate-sbom.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yujian-sbom
+          path: outputs/sbom/yujian-package-lock.spdx.json

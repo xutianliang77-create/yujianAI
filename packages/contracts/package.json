@@ -1,0 +1,32 @@
+{
+  "name": "@yujian/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "语见AI跨服务、跨客户端的版本化数据合同",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "schemas"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./schemas/v1/*": "./schemas/v1/*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": ">=22 <25"
+  }
+}

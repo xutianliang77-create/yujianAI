@@ -1,0 +1,15 @@
+services:
+  sandbox-redis:
+    image: ${YUJIAN_REDIS_IMAGE:?set a pinned redis image digest}
+    profiles: ["sandbox"]
+  sandbox-rtc:
+    image: ${YUJIAN_RTC_IMAGE:?set a pinned LiveKit image digest}
+    profiles: ["sandbox"]
+    depends_on: [sandbox-redis]
+    environment:
+      LIVEKIT_CONFIG: |
+        port: 7880
+        redis:
+          address: sandbox-redis:6379
+        keys:
+          ${LIVEKIT_API_KEY:?set short-lived key}: ${LIVEKIT_API_SECRET:?set short-lived secret}

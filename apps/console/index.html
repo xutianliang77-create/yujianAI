@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>语见AI控制台</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header>
+        <p class="eyebrow">YUJIAN REALTIME</p>
+        <h1>语见AI控制台</h1>
+        <p class="subtitle">实时音视频、Agent 与平台控制面快速入口</p>
+      </header>
+
+      <section class="card">
+        <h2>连接设置</h2>
+        <div class="grid two">
+          <label>平台 API 地址<input id="api-url" type="url" autocomplete="url"></label>
+          <label>平台凭据<input id="credential" type="password" autocomplete="off" placeholder="仅保存在当前页面内存"></label>
+        </div>
+        <div class="actions">
+          <button id="health" type="button">检查健康</button>
+          <button id="ready" type="button">检查就绪</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>签发 Room Token</h2>
+        <div class="grid three">
+          <label>Tenant ID<input id="tenant-id" value="tenant-demo" autocomplete="off"></label>
+          <label>Project ID<input id="project-id" value="project-demo" autocomplete="off"></label>
+          <label>Environment ID<input id="environment-id" value="environment-dev" autocomplete="off"></label>
+          <label>Room<input id="room-name" value="quickstart" autocomplete="off"></label>
+          <label>Participant identity<input id="identity" value="console-user" autocomplete="off"></label>
+          <label>TTL（秒）<input id="ttl" type="number" min="60" max="300" value="300"></label>
+        </div>
+        <button id="issue-token" type="button" class="primary">签发短期 Token</button>
+        <p class="hint">Token 仅返回脱敏摘要；控制台不会保存 API 凭据或 LiveKit secret。</p>
+      </section>
+
+      <section class="card">
+        <h2>Webhook destinations</h2>
+        <div class="grid three">
+          <label>Destination ID<input id="webhook-id" value="console-webhook" autocomplete="off"></label>
+          <label>HTTPS URL<input id="webhook-url" type="url" placeholder="https://example.cn/yujian/webhook" autocomplete="off"></label>
+          <label>Secret reference<input id="webhook-secret-ref" type="text" placeholder="kms://tenant/..." autocomplete="off"></label>
+          <label>Event types（逗号分隔）<input id="webhook-events" value="yujian.audit.recorded.v1" autocomplete="off"></label>
+          <label>Environment ID<input id="webhook-environment-id" value="environment-dev" autocomplete="off"></label>
+        </div>
+        <div class="actions">
+          <button id="list-webhooks" type="button">列出 destinations</button>
+          <button id="save-webhook" type="button" class="primary">保存 destination</button>
+          <button id="disable-webhook" type="button">禁用 destination</button>
+        </div>
+        <p class="hint">控制台只提交 KMS secret reference，不接触 webhook secret 明文。</p>
+      </section>
+
+      <section class="card output-card">
+        <div class="output-heading"><h2>响应</h2><span id="status" data-state="idle">等待操作</span></div>
+        <pre id="output" aria-live="polite">尚未发起请求</pre>
+      </section>
+    </main>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

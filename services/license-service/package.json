@@ -1,0 +1,10 @@
+{
+  "name": "@yujian/license-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "语见AI 离线 license 签发验证边界",
+  "files": ["dist"],
+  "scripts": { "build": "tsc -p tsconfig.json", "lint": "tsc -p tsconfig.json --noEmit" },
+  "devDependencies": { "@types/node": "^24.0.0", "typescript": "^5.9.2" }
+}

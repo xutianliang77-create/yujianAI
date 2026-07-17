@@ -1,0 +1,119 @@
+image:
+  platformApi: ghcr.io/xutianliang77-create/yujian-platform-api:0.1.0
+  rtc: livekit/livekit-server:v1.13.3
+  mediaOps: ghcr.io/xutianliang77-create/yujian-media-ops:0.1.0
+  agentControl: ghcr.io/xutianliang77-create/yujian-agent-control:0.1.0
+  agentWorker: ghcr.io/xutianliang77-create/yujian-agent-worker:0.1.0
+  postgres: postgres:16.4
+  redis: redis:7.2.7-alpine
+  turn: ""
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+replicaCount:
+  platformApi: 2
+  rtc: 2
+  mediaOps: 1
+  agentControl: 1
+  agentWorker: 1
+service:
+  platformApiPort: 8090
+  rtcHttpPort: 7880
+  rtcWsPort: 7880
+  rtcTcpPort: 7881
+  rtcUdpPort: 7882
+  mediaOpsPort: 8095
+  agentControlPort: 8096
+storage:
+  postgresSize: 20Gi
+  redisSize: 8Gi
+features:
+  rtcEnabled: true
+  mediaOpsEnabled: false
+  agentControlEnabled: false
+  agentWorkerEnabled: false
+  sipEnabled: false
+  egressEnabled: false
+  ingressEnabled: true
+  turnEnabled: false
+rtc:
+  # Public or cluster-reachable websocket URL used in token responses.
+  primaryWsUrl: ""
+  secondaryWsUrl: ""
+  configSecretKey: LIVEKIT_CONFIG
+  nodeIp: ""
+  redisAddress: ""
+platformRuntime:
+  # Optional deployment-owned ESM module that returns PostgreSQL/Redis/KMS,
+  # billing and data-rights adapters to platform-api. The module is shipped in
+  # the platform-api image; it must not be copied from the historical projects.
+  modulePath: ""
+  postgresUrlSecretKey: ""
+  redisUrlSecretKey: ""
+agent:
+  environmentId: ""
+  handlerModulePath: ""
+  nodeSelector: {}
+  gpuResource: nvidia.com/gpu
+  gpuCount: 1
+agentControl:
+  baseUrl: ""
+  persistenceModulePath: ""
+  artifactVerifierModulePath: ""
+  tls:
+    enabled: false
+    existingSecret: yujian-agent-control-tls
+    certKey: tls.crt
+    keyKey: tls.key
+media:
+  maxActiveIngress: 100
+  maxActiveEgress: 100
+mediaOps:
+  # Must be an HTTPS endpoint unless the client is explicitly kept on loopback.
+  baseUrl: ""
+  persistenceModulePath: ""
+  providerEnabled: false
+  rtcPrimaryUrl: ""
+  rtcSecondaryUrl: ""
+  defaultSipTrunkId: ""
+  tls:
+    enabled: false
+    existingSecret: yujian-media-ops-tls
+    certKey: tls.crt
+    keyKey: tls.key
+security:
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  readOnlyRootFilesystem: true
+resources:
+  platformApi:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: 1, memory: 1Gi }
+  rtc:
+    requests: { cpu: 500m, memory: 512Mi }
+    limits: { cpu: 2, memory: 2Gi }
+  mediaOps:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { cpu: 500m, memory: 512Mi }
+  agentControl:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { cpu: 500m, memory: 512Mi }
+  agentWorker:
+    requests: { cpu: 1, memory: 1Gi }
+    limits: { cpu: 4, memory: 8Gi }
+license:
+  existingSecret: yujian-license
+secrets:
+  existingSecret: yujian-platform-secrets
+  platformCredentials: YUJIAN_PLATFORM_CREDENTIALS_JSON
+  rtcApiKey: LIVEKIT_API_KEY
+  rtcApiSecret: LIVEKIT_API_SECRET
+  rtcConfig: LIVEKIT_CONFIG
+  adminCredential: YUJIAN_PLATFORM_ADMIN_CREDENTIAL
+  mediaOpsCredential: YUJIAN_MEDIA_INTERNAL_CREDENTIAL
+  agentControlCredential: YUJIAN_AGENT_INTERNAL_CREDENTIAL
+  agentControlAdminCredential: YUJIAN_AGENT_ADMIN_CREDENTIAL
+  postgresUser: POSTGRES_USER
+  postgresPassword: POSTGRES_PASSWORD
+  postgresDatabase: POSTGRES_DB
+  redisPassword: REDIS_PASSWORD

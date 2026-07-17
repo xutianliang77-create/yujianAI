@@ -1,0 +1,83 @@
+services:
+  redis:
+    image: redis:7.2.7-alpine@sha256:1f12e9f91880a36067baf6d554046005c35f3a9c0dc01b29243af557728621a7
+    platform: linux/arm64
+    command:
+      - redis-server
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      interval: 2s
+      timeout: 1s
+      retries: 10
+    restart: unless-stopped
+
+  yujian-rtc-a:
+    image: livekit/livekit-server:v1.13.3@sha256:61a0901d894d8304984958ca26587c0e7c7594570336b2812c167dd388c63d12
+    platform: linux/arm64
+    environment:
+      YUJIAN_RTC_NODE_ID: yujian-rtc-a
+      LIVEKIT_CONFIG: |
+        port: 7880
+        rtc:
+          tcp_port: 7881
+          udp_port: 7882
+          node_ip: 127.0.0.1
+        redis:
+          address: redis:6379
+    command:
+      - --dev
+      - --bind
+      - 0.0.0.0
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:7880/"]
+      interval: 5s
+      timeout: 2s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped
+
+  yujian-rtc-b:
+    image: livekit/livekit-server:v1.13.3@sha256:61a0901d894d8304984958ca26587c0e7c7594570336b2812c167dd388c63d12
+    platform: linux/arm64
+    environment:
+      YUJIAN_RTC_NODE_ID: yujian-rtc-b
+      LIVEKIT_CONFIG: |
+        port: 7980
+        rtc:
+          tcp_port: 7981
+          udp_port: 7982
+          node_ip: 127.0.0.1
+        redis:
+          address: redis:6379
+    command:
+      - --dev
+      - --bind
+      - 0.0.0.0
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "7980:7980"
+      - "7981:7981"
+      - "7982:7982/udp"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:7980/"]
+      interval: 5s
+      timeout: 2s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "requiredFlows": ["token", "join", "audio_publish", "audio_subscribe", "data_rpc", "reconnect"],
+  "targets": {
+    "web": { "sdk": "livekit-client@2.20.1", "status": "deferred-beelink" },
+    "flutter": { "sdk": "livekit_client@2.8.1", "status": "deferred-beelink" },
+    "node": { "sdk": "@livekit/rtc-node@0.13.31", "status": "deferred-beelink" },
+    "ios": { "sdk": "official-pinned", "status": "planned" },
+    "android": { "sdk": "official-pinned", "status": "planned" },
+    "python": { "sdk": "livekit-agents@1.6.5", "status": "deferred-beelink" }
+  }
+}

@@ -1,0 +1,23 @@
+name: Weekly upstream manifest and patch queue audit
+
+on:
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Verify manifest and clean mirror policy
+        run: |
+          npm run verify:upstream
+          YUJIAN_UPSTREAM_MIRROR_ROOT="$RUNNER_TEMP/yujian-upstream" npm run upstream:mirror:sync

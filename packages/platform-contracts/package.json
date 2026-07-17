@@ -1,0 +1,32 @@
+{
+  "name": "@yujian/platform-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "语见AI中国实时互动平台控制面合同",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "schemas"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./schemas/v1/*": "./schemas/v1/*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "ajv": "^8.17.1",
+    "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": ">=22 <25"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "name": "yujian-ai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "语见AI - 中国本土化、LiveKit 兼容的实时音视频与 AI Agent 平台",
+  "workspaces": [
+    "services/*",
+    "packages/livekit-compat",
+    "packages/platform-contracts"
+  ],
+  "scripts": {
+    "check": "npm run verify:upstream && npm run lint --if-present --workspaces && npm run test --if-present --workspaces",
+    "build": "npm run build --if-present --workspaces",
+    "lint": "npm run lint --if-present --workspaces",
+    "test": "npm run test --if-present --workspaces",
+    "verify:upstream": "node tools/upstream/verify-livekit-manifest.mjs",
+    "verify:upstream:network": "node tools/upstream/verify-livekit-manifest.mjs --network",
+    "upstream:mirror:sync": "node tools/upstream/sync-clean-mirrors.mjs",
+    "rtc:up": "docker compose -f infra/livekit/local/compose.yaml up -d",
+    "rtc:down": "docker compose -f infra/livekit/local/compose.yaml down",
+    "rtc:logs": "docker compose -f infra/livekit/local/compose.yaml logs -f yujian-rtc-a yujian-rtc-b",
+    "test:integration:rtc": "npm run build && node --test tests/integration/platform-rtc-smoke.test.mjs",
+    "build:compat:web": "esbuild tests/compatibility/web/src/main.js --bundle --format=esm --platform=browser --target=chrome120 --outfile=tests/compatibility/web/dist/main.js",
+    "build:compat:flutter": "node tools/compatibility/build-flutter-harness.mjs",
+    "compat:web:serve": "npm run build:compat:web && node tools/compatibility/serve-web-harness.mjs",
+    "beelink:preflight": "bash tools/beelink/preflight.sh",
+    "beelink:acceptance": "bash tools/beelink/run-acceptance.sh",
+    "ops:probe": "node tools/ops/synthetic-probe.mjs",
+    "ops:support-bundle": "node tools/ops/create-support-bundle.mjs",
+    "release:preflight": "node tools/release/preflight.mjs",
+    "private:upgrade-preflight": "node tools/private-deployment/upgrade-preflight.mjs",
+    "db:migrate": "node tools/database/migrate.mjs",
+    "openapi:verify": "ruby tools/api/verify-openapi.rb docs/api/openapi.yaml",
+    "supply-chain:sbom": "node tools/supply-chain/generate-sbom.mjs",
+    "yujian:cli": "node tools/cli/yujian.mjs"
+  },
+  "devDependencies": {
+    "@livekit/rtc-node": "0.13.31",
+    "esbuild": "0.28.1",
+    "livekit-client": "2.20.1"
+  },
+  "engines": {
+    "node": ">=22 <25"
+  }
+}

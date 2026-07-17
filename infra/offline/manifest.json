@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "product": "yujian-realtime",
+  "architecture": ["linux/amd64", "linux/arm64"],
+  "requiredArtifacts": [
+    "platform-api-image@sha256:<digest>",
+    "livekit-server-image@sha256:<digest>",
+    "redis-image@sha256:<digest>",
+    "postgres-image@sha256:<digest>",
+    "turn-image@sha256:<digest>",
+    "sbom.spdx.json",
+    "signature.bundle"
+  ],
+  "externalServices": ["postgresql", "redis", "kms-or-license-public-key", "object-storage", "oidc"],
+  "forbiddenDefaults": ["public yujian callback", "embedded secret", "anonymous telemetry"]
+}

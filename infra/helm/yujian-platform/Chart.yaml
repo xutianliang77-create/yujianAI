@@ -1,0 +1,7 @@
+apiVersion: v2
+name: yujian-platform
+description: 语见AI中国 LiveKit 兼容平台（控制面 + 官方 LiveKit Server）
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+dependencies: []

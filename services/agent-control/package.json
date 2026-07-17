@@ -1,0 +1,22 @@
+{
+  "name": "@yujian/agent-control",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "语见AI Agent artifact、dispatch、deployment 状态机和持久化边界",
+  "files": ["dist"],
+  "scripts": {
+    "prebuild": "npm run build -w @yujian/platform-contracts",
+    "build": "tsc -p tsconfig.json",
+    "prelint": "npm run build -w @yujian/platform-contracts",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@yujian/platform-contracts": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.2"
+  }
+}

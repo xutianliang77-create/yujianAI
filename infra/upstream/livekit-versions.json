@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-07-17",
+  "policy": {
+    "organization": "livekit",
+    "license": "Apache-2.0",
+    "strategy": "official-release-first"
+  },
+  "components": [
+    {
+      "id": "server",
+      "repository": "https://github.com/livekit/livekit.git",
+      "tag": "v1.13.3",
+      "commit": "8f6a9cb8b735549f0c5770df8ea70ac51f860ecb",
+      "usage": "RTC server and SFU"
+    },
+    {
+      "id": "protocol",
+      "repository": "https://github.com/livekit/protocol.git",
+      "tag": "v1.50.0",
+      "commit": "74296228107d852bafdc3e0ca9cc72643150be43",
+      "usage": "Protocol and generated API contracts"
+    },
+    {
+      "id": "sip",
+      "repository": "https://github.com/livekit/sip.git",
+      "tag": "v1.7.0",
+      "commit": "d5d1e09bbe826baaae9c335d8f42523192c7ce29",
+      "usage": "SIP media service"
+    },
+    {
+      "id": "ingress",
+      "repository": "https://github.com/livekit/ingress.git",
+      "tag": "v1.5.0",
+      "commit": "363f6090d572db8eef5b60c273c0970826fb7ca6",
+      "usage": "Media ingress service"
+    },
+    {
+      "id": "egress",
+      "repository": "https://github.com/livekit/egress.git",
+      "tag": "v1.13.0",
+      "commit": "7d3572a0bf1959cbbc452f5ba390b6a90b7dc249",
+      "usage": "Recording and media egress service"
+    },
+    {
+      "id": "agents-python",
+      "repository": "https://github.com/livekit/agents.git",
+      "tag": "livekit-agents@1.6.5",
+      "commit": "dbc38dfbc113a2e06d36feb1278e543af3585ea9",
+      "usage": "Python agent runtime"
+    },
+    {
+      "id": "agents-node",
+      "repository": "https://github.com/livekit/agents-js.git",
+      "tag": "@livekit/agents@1.5.2",
+      "commit": "24ad2fbbe9cc2edd0ee41222043baedf4e167275",
+      "usage": "Node.js agent runtime"
+    },
+    {
+      "id": "server-sdk-node",
+      "repository": "https://github.com/livekit/node-sdks.git",
+      "tag": "livekit-server-sdk@2.17.0",
+      "commit": "5c0721add1d3671e1692278a174e90063b99e118",
+      "usage": "Node.js token and Server API SDK",
+      "package": {
+        "registry": "npm",
+        "name": "livekit-server-sdk",
+        "version": "2.17.0"
+      }
+    },
+    {
+      "id": "rtc-sdk-node",
+      "repository": "https://github.com/livekit/node-sdks.git",
+      "tag": "@livekit/rtc-node@0.13.31",
+      "commit": "5c0721add1d3671e1692278a174e90063b99e118",
+      "usage": "Headless Node.js RTC compatibility tests",
+      "package": {
+        "registry": "npm",
+        "name": "@livekit/rtc-node",
+        "version": "0.13.31"
+      }
+    },
+    {
+      "id": "client-sdk-js",
+      "repository": "https://github.com/livekit/client-sdk-js.git",
+      "tag": "v2.20.1",
+      "commit": "3da1eb3a1367f29aa1a4a4734f3287aa2ef29416",
+      "usage": "Web client compatibility baseline",
+      "package": {
+        "registry": "npm",
+        "name": "livekit-client",
+        "version": "2.20.1"
+      }
+    },
+    {
+      "id": "client-sdk-flutter",
+      "repository": "https://github.com/livekit/client-sdk-flutter.git",
+      "tag": "v2.8.1",
+      "commit": "d11065f2551d66a833522488431502efc15048d7",
+      "usage": "Flutter client compatibility baseline"
+    }
+  ],
+  "images": [
+    {
+      "id": "livekit-server-linux-amd64",
+      "reference": "livekit/livekit-server:v1.13.3",
+      "platform": "linux/amd64",
+      "digest": "sha256:8ef3ee244ded8477d5b40d9dff4b084e1809a9fa0e4d9ed8d29943b3c6322998"
+    },
+    {
+      "id": "livekit-server-linux-arm64",
+      "reference": "livekit/livekit-server:v1.13.3",
+      "platform": "linux/arm64",
+      "digest": "sha256:61a0901d894d8304984958ca26587c0e7c7594570336b2812c167dd388c63d12"
+    }
+  ],
+  "supportingImages": [
+    {
+      "id": "redis-linux-amd64",
+      "reference": "redis:7.2.7-alpine",
+      "platform": "linux/amd64",
+      "digest": "sha256:1de7ca6a3f63a083036fa1d95dddbd6bdfcdf5865bb692c1e412d4bdf9cb1e37",
+      "license": "BSD-3-Clause",
+      "usage": "Local LiveKit routing and compatibility tests"
+    },
+    {
+      "id": "redis-linux-arm64",
+      "reference": "redis:7.2.7-alpine",
+      "platform": "linux/arm64",
+      "digest": "sha256:1f12e9f91880a36067baf6d554046005c35f3a9c0dc01b29243af557728621a7",
+      "license": "BSD-3-Clause",
+      "usage": "Local LiveKit routing and compatibility tests"
+    }
+  ]
+}

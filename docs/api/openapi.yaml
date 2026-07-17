@@ -1,0 +1,1187 @@
+openapi: 3.1.0
+info:
+  title: 语见AI Platform API
+  version: 0.1.0
+  description: 控制面 v1；媒体协议、Room、Participant、Track、Data 和 RPC 保持 LiveKit 官方兼容。
+servers:
+  - url: http://{host}:{port}
+    variables:
+      host: { default: 127.0.0.1 }
+      port: { default: "8090" }
+tags:
+  - name: health
+  - name: control-plane
+  - name: rtc
+  - name: media
+paths:
+  /healthz:
+    get:
+      tags: [health]
+      operationId: getHealth
+      responses:
+        "200":
+          description: process is alive
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+  /readyz:
+    get:
+      tags: [health]
+      operationId: getReadiness
+      responses:
+        "200": { description: all configured RTC nodes are ready }
+        "503": { description: one or more RTC nodes are unavailable }
+  /metrics:
+    get:
+      tags: [health]
+      operationId: getMetrics
+      responses:
+        "200":
+          description: Prometheus text exposition
+          content:
+            text/plain:
+              schema: { type: string }
+
+  /platform/v1/admin/outbox/{eventId}:requeue:
+    post:
+      tags: [control-plane]
+      operationId: requeueOutboxDeadLetter
+      security: [{ adminBearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/OutboxEventId" }]
+      responses:
+        "200":
+          description: dead-letter event requeued
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [apiVersion, requestId, data]
+                properties:
+                  apiVersion: { type: string }
+                  requestId: { type: string }
+                  data:
+                    type: object
+                    required: [eventId, status]
+                    properties:
+                      eventId: { type: string }
+                      status: { const: requeued }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "503": { $ref: "#/components/responses/DependencyUnavailable" }
+
+  /platform/v1/environments/{environmentId}/webhooks:
+    get:
+      tags: [control-plane]
+      operationId: listWebhookDestinations
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/EnvironmentId" }]
+      responses:
+        "200": { $ref: "#/components/responses/WebhookDestinationList" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "503": { $ref: "#/components/responses/DependencyUnavailable" }
+  /platform/v1/environments/{environmentId}/webhooks/{destinationId}:
+    get:
+      tags: [control-plane]
+      operationId: getWebhookDestination
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/EnvironmentId" }
+        - { $ref: "#/components/parameters/WebhookDestinationId" }
+      responses:
+        "200": { $ref: "#/components/responses/WebhookDestination" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+        "503": { $ref: "#/components/responses/DependencyUnavailable" }
+    put:
+      tags: [control-plane]
+      operationId: upsertWebhookDestination
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/EnvironmentId" }
+        - { $ref: "#/components/parameters/WebhookDestinationId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpsertWebhookDestinationRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/WebhookDestination" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "503": { $ref: "#/components/responses/DependencyUnavailable" }
+    delete:
+      tags: [control-plane]
+      operationId: disableWebhookDestination
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/EnvironmentId" }
+        - { $ref: "#/components/parameters/WebhookDestinationId" }
+      responses:
+        "204": { description: destination disabled }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "503": { $ref: "#/components/responses/DependencyUnavailable" }
+
+  /platform/v1/tenants:
+    post:
+      tags: [control-plane]
+      operationId: createTenant
+      security: [{ adminBearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateTenantRequest" }
+      responses:
+        "201": { $ref: "#/components/responses/TenantCreated" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+  /platform/v1/tenants/{tenantId}:
+    get:
+      tags: [control-plane]
+      operationId: getTenant
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantId" }]
+      responses:
+        "200": { $ref: "#/components/responses/Tenant" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+  /platform/v1/tenants/{tenantId}/projects:
+    post:
+      tags: [control-plane]
+      operationId: createProject
+      security: [{ adminBearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/TenantId" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateProjectRequest" }
+      responses:
+        "201": { $ref: "#/components/responses/ProjectCreated" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+  /platform/v1/projects/{projectId}/environments:
+    post:
+      tags: [control-plane]
+      operationId: createEnvironment
+      security: [{ adminBearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/ProjectId" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateEnvironmentRequest" }
+      responses:
+        "201": { $ref: "#/components/responses/EnvironmentCreated" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+  /platform/v1/projects/{projectId}:
+    get:
+      tags: [control-plane]
+      operationId: getProject
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/ProjectId" }]
+      responses:
+        "200": { $ref: "#/components/responses/Project" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+  /platform/v1/environments/{environmentId}:
+    get:
+      tags: [control-plane]
+      operationId: getEnvironment
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/EnvironmentId" }]
+      responses:
+        "200": { $ref: "#/components/responses/Environment" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+    patch:
+      tags: [control-plane]
+      operationId: updateEnvironment
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/EnvironmentId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateEnvironmentRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/Environment" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+  /platform/v1/environments/{environmentId}/api-keys:
+    get:
+      tags: [control-plane]
+      operationId: listApiKeys
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/EnvironmentId" }]
+      responses:
+        "200": { $ref: "#/components/responses/ApiKeyList" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+    post:
+      tags: [control-plane]
+      operationId: createApiKey
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/EnvironmentId" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateApiKeyRequest" }
+      responses:
+        "201": { $ref: "#/components/responses/ApiKeyCreated" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+  /platform/v1/api-keys/{apiKeyId}:
+    get:
+      tags: [control-plane]
+      operationId: getApiKey
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/ApiKeyId" }]
+      responses:
+        "200": { $ref: "#/components/responses/ApiKeyMetadata" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+  /platform/v1/api-keys/{apiKeyId}:rotate:
+    post:
+      tags: [control-plane]
+      operationId: rotateApiKey
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/ApiKeyId" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      responses:
+        "200": { $ref: "#/components/responses/ApiKeyCreated" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+  /platform/v1/api-keys/{apiKeyId}:revoke:
+    post:
+      tags: [control-plane]
+      operationId: revokeApiKey
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/ApiKeyId" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      responses:
+        "200": { $ref: "#/components/responses/ApiKeyMetadata" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+  /platform/v1/tenants/{tenantId}/members:
+    get:
+      tags: [control-plane]
+      operationId: listMembers
+      security: [{ adminBearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantId" }]
+      responses:
+        "200": { $ref: "#/components/responses/MemberList" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+    post:
+      tags: [control-plane]
+      operationId: createMember
+      security: [{ adminBearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/TenantId" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateMemberRequest" }
+      responses:
+        "201": { $ref: "#/components/responses/MemberCreated" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+  /platform/v1/tenant-members/{memberId}:
+    patch:
+      tags: [control-plane]
+      operationId: updateMember
+      security: [{ adminBearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/MemberId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateMemberRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/Member" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+
+  /platform/v1/environments/{environmentId}/quotas:
+    get:
+      tags: [control-plane]
+      operationId: getQuotaSnapshot
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/EnvironmentId" }]
+      responses:
+        "200": { $ref: "#/components/responses/QuotaSnapshot" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+  /platform/v1/environments/{environmentId}/usage:
+    get:
+      tags: [control-plane]
+      operationId: listUsage
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/EnvironmentId" }]
+      responses:
+        "200": { $ref: "#/components/responses/UsageList" }
+  /platform/v1/environments/{environmentId}/audit:
+    get:
+      tags: [control-plane]
+      operationId: listAudit
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/EnvironmentId" }]
+      responses:
+        "200": { $ref: "#/components/responses/AuditList" }
+  /platform/v1/environments/{environmentId}/endpoints:
+    get:
+      tags: [rtc]
+      operationId: listRtcEndpoints
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/EnvironmentId" }]
+      responses:
+        "200": { $ref: "#/components/responses/EndpointList" }
+
+  /platform/v1/rtc/token:
+    post:
+      tags: [rtc]
+      operationId: issueRoomToken
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/IssueRoomTokenRequest" }
+      responses:
+        "201": { $ref: "#/components/responses/IssuedToken" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "429": { $ref: "#/components/responses/QuotaError" }
+  /platform/v1/environments/{environmentId}/rooms:
+    get:
+      tags: [rtc]
+      operationId: listRooms
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/EnvironmentId" }
+        - { $ref: "#/components/parameters/NodeIdQuery" }
+      responses:
+        "200": { $ref: "#/components/responses/RoomList" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+  /platform/v1/environments/{environmentId}/rooms/{roomName}/participants:
+    get:
+      tags: [rtc]
+      operationId: listParticipants
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/EnvironmentId" }
+        - { $ref: "#/components/parameters/RoomName" }
+        - { $ref: "#/components/parameters/NodeIdQuery" }
+      responses:
+        "200": { $ref: "#/components/responses/ParticipantList" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+  /platform/v1/environments/{environmentId}/rooms/{roomName}/participants/{identity}:
+    get:
+      tags: [rtc]
+      operationId: getParticipant
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/EnvironmentId" }
+        - { $ref: "#/components/parameters/RoomName" }
+        - { $ref: "#/components/parameters/ParticipantIdentity" }
+        - { $ref: "#/components/parameters/NodeIdQuery" }
+      responses:
+        "200": { $ref: "#/components/responses/Participant" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+    delete:
+      tags: [rtc]
+      operationId: removeParticipant
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/EnvironmentId" }
+        - { $ref: "#/components/parameters/RoomName" }
+        - { $ref: "#/components/parameters/ParticipantIdentity" }
+        - { $ref: "#/components/parameters/NodeIdQuery" }
+      responses:
+        "204": { description: participant removed }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+    patch:
+      tags: [rtc]
+      operationId: updateParticipant
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/EnvironmentId" }
+        - { $ref: "#/components/parameters/RoomName" }
+        - { $ref: "#/components/parameters/ParticipantIdentity" }
+        - { $ref: "#/components/parameters/NodeIdQuery" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ParticipantPatch" }
+      responses:
+        "200": { $ref: "#/components/responses/Participant" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+  /platform/v1/environments/{environmentId}/telemetry/rtc:
+    get:
+      tags: [rtc]
+      operationId: getRtcTelemetry
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/EnvironmentId" }]
+      responses:
+        "200": { $ref: "#/components/responses/RtcTelemetry" }
+    post:
+      tags: [rtc]
+      operationId: recordRtcTelemetry
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/EnvironmentId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RtcQualitySample" }
+      responses:
+        "202": { $ref: "#/components/responses/RtcQualitySample" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+
+  /platform/v1/environments/{environmentId}/media/ingress:
+    get:
+      tags: [media]
+      operationId: listIngress
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/EnvironmentId" }]
+      responses:
+        "200": { $ref: "#/components/responses/IngressList" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+    post:
+      tags: [media]
+      operationId: createIngress
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/EnvironmentId" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateIngressRequest" }
+      responses:
+        "201": { $ref: "#/components/responses/Ingress" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+        "429": { $ref: "#/components/responses/QuotaError" }
+  /platform/v1/environments/{environmentId}/media/ingress/{ingressId}:
+    get:
+      tags: [media]
+      operationId: getIngress
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/EnvironmentId" }
+        - { $ref: "#/components/parameters/IngressId" }
+      responses:
+        "200": { $ref: "#/components/responses/Ingress" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+  /platform/v1/environments/{environmentId}/media/egress:
+    get:
+      tags: [media]
+      operationId: listEgress
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/EnvironmentId" }]
+      responses:
+        "200": { $ref: "#/components/responses/EgressList" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+    post:
+      tags: [media]
+      operationId: createEgress
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/EnvironmentId" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateEgressRequest" }
+      responses:
+        "201": { $ref: "#/components/responses/Egress" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+        "429": { $ref: "#/components/responses/QuotaError" }
+  /platform/v1/environments/{environmentId}/media/egress/{egressId}:
+    get:
+      tags: [media]
+      operationId: getEgress
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/EnvironmentId" }
+        - { $ref: "#/components/parameters/EgressId" }
+      responses:
+        "200": { $ref: "#/components/responses/Egress" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+  /platform/v1/environments/{environmentId}/media/sip/calls:
+    get:
+      tags: [media]
+      operationId: listSipCalls
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/EnvironmentId" }]
+      responses:
+        "200": { $ref: "#/components/responses/SipCallList" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+    post:
+      tags: [media]
+      operationId: requestSipCall
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/EnvironmentId" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateSipCallRequest" }
+      responses:
+        "201": { $ref: "#/components/responses/SipCall" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+        "429": { $ref: "#/components/responses/QuotaError" }
+  /platform/v1/environments/{environmentId}/media/sip/calls/{callId}:
+    get:
+      tags: [media]
+      operationId: getSipCall
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/EnvironmentId" }
+        - { $ref: "#/components/parameters/CallId" }
+      responses:
+        "200": { $ref: "#/components/responses/SipCall" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+  /platform/v1/environments/{environmentId}/media/sip/calls/{callId}:transfer:
+    post:
+      tags: [media]
+      operationId: transferSipCall
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/EnvironmentId" }
+        - { $ref: "#/components/parameters/CallId" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TransferSipCallRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/SipCall" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+  /platform/v1/environments/{environmentId}/media/sip/calls/{callId}:hangup:
+    post:
+      tags: [media]
+      operationId: hangupSipCall
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/EnvironmentId" }
+        - { $ref: "#/components/parameters/CallId" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false }
+      responses:
+        "200": { $ref: "#/components/responses/SipCall" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+
+  /platform/v1/tenants/{tenantId}/billing-statements:
+    get:
+      tags: [control-plane]
+      operationId: listBillingStatements
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantId" }]
+      responses:
+        "200": { $ref: "#/components/responses/BillingStatementList" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "503": { $ref: "#/components/responses/UpstreamUnavailableError" }
+  /platform/v1/invoices/{invoiceId}:
+    get:
+      tags: [control-plane]
+      operationId: getInvoice
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/InvoiceId" }]
+      responses:
+        "200": { $ref: "#/components/responses/Invoice" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+  /platform/v1/invoices/{invoiceId}/adjustments:
+    get:
+      tags: [control-plane]
+      operationId: listInvoiceAdjustments
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/InvoiceId" }]
+      responses:
+        "200": { $ref: "#/components/responses/AdjustmentList" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+  /platform/v1/tenants/{tenantId}/data-rights:
+    get:
+      tags: [control-plane]
+      operationId: listDataRightsRequests
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantId" }]
+      responses:
+        "200": { $ref: "#/components/responses/DataRightsList" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "503": { $ref: "#/components/responses/UpstreamUnavailableError" }
+    post:
+      tags: [control-plane]
+      operationId: submitDataRightsRequest
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/TenantId" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DataRightsSubmitRequest" }
+      responses:
+        "202": { $ref: "#/components/responses/DataRightsRequest" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "503": { $ref: "#/components/responses/UpstreamUnavailableError" }
+  /platform/v1/data-rights/{requestId}:
+    get:
+      tags: [control-plane]
+      operationId: getDataRightsRequest
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/DataRightsRequestId" }]
+      responses:
+        "200": { $ref: "#/components/responses/DataRightsRequest" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+  /platform/v1/data-rights/{requestId}:start:
+    post:
+      tags: [control-plane]
+      operationId: startDataRightsRequest
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/DataRightsRequestId" }]
+      responses:
+        "200": { $ref: "#/components/responses/DataRightsRequest" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+  /platform/v1/data-rights/{requestId}:complete:
+    post:
+      tags: [control-plane]
+      operationId: completeDataRightsRequest
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/DataRightsRequestId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DataRightsEvidenceRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/DataRightsRequest" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+  /platform/v1/data-rights/{requestId}:reject:
+    post:
+      tags: [control-plane]
+      operationId: rejectDataRightsRequest
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/DataRightsRequestId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DataRightsEvidenceRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/DataRightsRequest" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: yujian-environment-key }
+    adminBearerAuth: { type: http, scheme: bearer, bearerFormat: yujian-admin-key }
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, minLength: 1, maxLength: 128 }
+    TenantId: { name: tenantId, in: path, required: true, schema: { $ref: "#/components/schemas/ResourceId" } }
+    ProjectId: { name: projectId, in: path, required: true, schema: { $ref: "#/components/schemas/ResourceId" } }
+    EnvironmentId: { name: environmentId, in: path, required: true, schema: { $ref: "#/components/schemas/ResourceId" } }
+    ApiKeyId: { name: apiKeyId, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 128 } }
+    IngressId: { name: ingressId, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 128 } }
+    EgressId: { name: egressId, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 128 } }
+    CallId: { name: callId, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 128 } }
+    MemberId: { name: memberId, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 128 } }
+    InvoiceId: { name: invoiceId, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 128 } }
+    DataRightsRequestId: { name: requestId, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 128 } }
+    OutboxEventId: { name: eventId, in: path, required: true, schema: { type: string, pattern: '^[A-Za-z0-9._:-]{1,256}$' } }
+    WebhookDestinationId: { name: destinationId, in: path, required: true, schema: { type: string, pattern: '^[A-Za-z0-9._:-]{1,128}$' } }
+    RoomName: { name: roomName, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 128 } }
+    ParticipantIdentity: { name: identity, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 128 } }
+    NodeIdQuery: { name: nodeId, in: query, required: false, schema: { type: string, minLength: 2, maxLength: 32 } }
+  responses:
+    Tenant:
+      description: tenant
+      content: { application/json: { schema: { $ref: "#/components/schemas/TenantEnvelope" } } }
+    Project:
+      description: project
+      content: { application/json: { schema: { $ref: "#/components/schemas/ProjectEnvelope" } } }
+    Environment:
+      description: environment
+      content: { application/json: { schema: { $ref: "#/components/schemas/EnvironmentEnvelope" } } }
+    TenantCreated:
+      description: tenant created
+      content: { application/json: { schema: { $ref: "#/components/schemas/TenantEnvelope" } } }
+    ProjectCreated:
+      description: project created
+      content: { application/json: { schema: { $ref: "#/components/schemas/ProjectEnvelope" } } }
+    EnvironmentCreated:
+      description: environment created
+      content: { application/json: { schema: { $ref: "#/components/schemas/EnvironmentEnvelope" } } }
+    ApiKeyCreated:
+      description: API key metadata and one-time secret
+      content: { application/json: { schema: { $ref: "#/components/schemas/IssuedApiKeyEnvelope" } } }
+    ApiKeyMetadata:
+      description: API key metadata
+      content: { application/json: { schema: { $ref: "#/components/schemas/ApiKeyMetadataEnvelope" } } }
+    ApiKeyList:
+      description: environment-scoped API key metadata
+      content: { application/json: { schema: { $ref: "#/components/schemas/ApiKeyListEnvelope" } } }
+    Member:
+      description: member
+      content: { application/json: { schema: { $ref: "#/components/schemas/MemberEnvelope" } } }
+    MemberCreated:
+      description: member created
+      content: { application/json: { schema: { $ref: "#/components/schemas/MemberEnvelope" } } }
+    MemberList:
+      description: member list
+      content: { application/json: { schema: { $ref: "#/components/schemas/MemberListEnvelope" } } }
+    QuotaSnapshot:
+      description: quota snapshot
+      content: { application/json: { schema: { $ref: "#/components/schemas/QuotaEnvelope" } } }
+    UsageList:
+      description: immutable usage records
+      content: { application/json: { schema: { $ref: "#/components/schemas/UsageListEnvelope" } } }
+    AuditList:
+      description: scoped audit records
+      content: { application/json: { schema: { $ref: "#/components/schemas/AuditListEnvelope" } } }
+    EndpointList:
+      description: RTC endpoint discovery without secrets
+      content: { application/json: { schema: { $ref: "#/components/schemas/EndpointListEnvelope" } } }
+    IssuedToken:
+      description: short-lived Room token
+      content: { application/json: { schema: { $ref: "#/components/schemas/TokenEnvelope" } } }
+    RoomList:
+      description: Room list
+      content: { application/json: { schema: { $ref: "#/components/schemas/RoomListEnvelope" } } }
+    ParticipantList:
+      description: participant list
+      content: { application/json: { schema: { $ref: "#/components/schemas/ParticipantListEnvelope" } } }
+    Participant:
+      description: participant information
+      content: { application/json: { schema: { $ref: "#/components/schemas/ParticipantEnvelope" } } }
+    RtcTelemetry:
+      description: RTC quality summary
+      content: { application/json: { schema: { $ref: "#/components/schemas/TelemetryEnvelope" } } }
+    RtcQualitySample:
+      description: accepted RTC quality sample
+      content: { application/json: { schema: { $ref: "#/components/schemas/TelemetrySampleEnvelope" } } }
+    Ingress:
+      description: ingress job
+      content: { application/json: { schema: { $ref: "#/components/schemas/IngressEnvelope" } } }
+    IngressList:
+      description: ingress jobs
+      content: { application/json: { schema: { $ref: "#/components/schemas/IngressListEnvelope" } } }
+    Egress:
+      description: egress job
+      content: { application/json: { schema: { $ref: "#/components/schemas/EgressEnvelope" } } }
+    EgressList:
+      description: egress jobs
+      content: { application/json: { schema: { $ref: "#/components/schemas/EgressListEnvelope" } } }
+    SipCall:
+      description: SIP call request
+      content: { application/json: { schema: { $ref: "#/components/schemas/SipCallEnvelope" } } }
+    SipCallList:
+      description: SIP calls
+      content: { application/json: { schema: { $ref: "#/components/schemas/SipCallListEnvelope" } } }
+    ValidationError: { description: invalid request contract, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } } }
+    AuthenticationError: { description: authentication failed, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } } }
+    AuthorizationError: { description: authorization failed, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } } }
+    ConflictError: { description: resource conflict, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } } }
+    NotFoundError: { description: resource not found, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } } }
+    QuotaError: { description: quota exceeded, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } } }
+    UpstreamUnavailableError: { description: backing service unavailable, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } } }
+    DependencyUnavailable: { description: required deployment dependency is unavailable, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } } }
+    BillingStatementList:
+      description: tenant billing statements
+      content: { application/json: { schema: { $ref: "#/components/schemas/BillingStatementListEnvelope" } } }
+    Invoice:
+      description: invoice
+      content: { application/json: { schema: { $ref: "#/components/schemas/InvoiceEnvelope" } } }
+    AdjustmentList:
+      description: invoice adjustments
+      content: { application/json: { schema: { $ref: "#/components/schemas/AdjustmentListEnvelope" } } }
+    DataRightsList:
+      description: data subject requests
+      content: { application/json: { schema: { $ref: "#/components/schemas/DataRightsListEnvelope" } } }
+    DataRightsRequest:
+      description: data subject request
+      content: { application/json: { schema: { $ref: "#/components/schemas/DataRightsRequestEnvelope" } } }
+    WebhookDestination:
+      description: webhook destination without secret material
+      content: { application/json: { schema: { $ref: "#/components/schemas/WebhookDestinationEnvelope" } } }
+    WebhookDestinationList:
+      description: environment webhook destinations without secret material
+      content: { application/json: { schema: { $ref: "#/components/schemas/WebhookDestinationListEnvelope" } } }
+  schemas:
+    ResourceId: { type: string, pattern: "^[a-z][a-z0-9-]{2,63}$" }
+    Health:
+      type: object
+      required: [status, service, version]
+      properties:
+        status: { type: string, const: ok }
+        service: { type: string }
+        version: { type: string }
+    Scope:
+      type: object
+      required: [tenantId, projectId, environmentId]
+      properties:
+        tenantId: { $ref: "#/components/schemas/ResourceId" }
+        projectId: { $ref: "#/components/schemas/ResourceId" }
+        environmentId: { $ref: "#/components/schemas/ResourceId" }
+    CreateTenantRequest:
+      type: object
+      required: [displayName]
+      additionalProperties: false
+      properties:
+        displayName: { type: string, minLength: 1, maxLength: 128 }
+        dataResidencyPolicy: { type: string, maxLength: 64 }
+        planId: { type: string, maxLength: 64 }
+    CreateProjectRequest:
+      type: object
+      required: [tenantId, name, slug]
+      additionalProperties: false
+      properties:
+        tenantId: { $ref: "#/components/schemas/ResourceId" }
+        name: { type: string, minLength: 1, maxLength: 128 }
+        slug: { type: string, pattern: "^[a-z][a-z0-9-]{2,63}$" }
+        defaultRegionPolicyId: { type: string, maxLength: 64 }
+    CreateEnvironmentRequest:
+      type: object
+      required: [tenantId, projectId, name, type, endpoint]
+      additionalProperties: false
+      properties:
+        tenantId: { $ref: "#/components/schemas/ResourceId" }
+        projectId: { $ref: "#/components/schemas/ResourceId" }
+        name: { type: string, minLength: 1, maxLength: 128 }
+        type: { type: string, enum: [dev, test, staging, prod] }
+        endpoint: { type: string, minLength: 1, maxLength: 128 }
+        regionPolicyId: { type: string, maxLength: 64 }
+        quotaPolicyId: { type: string, maxLength: 64 }
+        retentionPolicyId: { type: string, maxLength: 64 }
+    UpdateEnvironmentRequest:
+      type: object
+      required: [version]
+      minProperties: 2
+      additionalProperties: false
+      properties:
+        version: { type: integer, minimum: 1 }
+        name: { type: string, minLength: 1, maxLength: 128 }
+        endpoint: { type: string, minLength: 1, maxLength: 128 }
+        status: { type: string, enum: [active, suspended, retiring, retired] }
+        regionPolicyId: { type: string, maxLength: 64 }
+        quotaPolicyId: { type: string, maxLength: 64 }
+        retentionPolicyId: { type: string, maxLength: 64 }
+    CreateApiKeyRequest:
+      type: object
+      required: [scopes]
+      additionalProperties: false
+      properties:
+        scopes: { type: array, minItems: 1, maxItems: 32, items: { type: string, maxLength: 128 } }
+        expiresAt: { type: string, format: date-time }
+    CreateMemberRequest:
+      type: object
+      required: [subject, roles]
+      additionalProperties: false
+      properties:
+        subject: { type: string, minLength: 1, maxLength: 128 }
+        roles: { type: array, minItems: 1, maxItems: 32, items: { type: string } }
+    UpdateMemberRequest:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        roles: { type: array, minItems: 1, maxItems: 32, items: { type: string } }
+        status: { type: string, enum: [active, suspended, removed] }
+    IssueRoomTokenRequest:
+      type: object
+      required: [tenantId, projectId, environmentId, roomName, participantIdentity, permissions, ttlSeconds]
+      additionalProperties: false
+      properties:
+        tenantId: { $ref: "#/components/schemas/ResourceId" }
+        projectId: { $ref: "#/components/schemas/ResourceId" }
+        environmentId: { $ref: "#/components/schemas/ResourceId" }
+        roomName: { type: string, minLength: 1, maxLength: 128 }
+        participantIdentity: { type: string, minLength: 1, maxLength: 128 }
+        participantName: { type: string, maxLength: 128 }
+        metadata: { type: string, maxLength: 4096 }
+        attributes: { type: object, maxProperties: 32, additionalProperties: { type: string, maxLength: 256 } }
+        permissions:
+          type: object
+          required: [canPublish, canSubscribe, canPublishData]
+          additionalProperties: false
+          properties:
+            canPublish: { type: boolean }
+            canSubscribe: { type: boolean }
+            canPublishData: { type: boolean }
+        ttlSeconds: { type: integer, minimum: 60, maximum: 300 }
+    ParticipantPatch:
+      type: object
+      additionalProperties: false
+      properties:
+        metadata: { type: string, maxLength: 4096 }
+        name: { type: string, maxLength: 128 }
+        attributes: { type: object, maxProperties: 32, additionalProperties: { type: string, maxLength: 256 } }
+    CreateIngressRequest:
+      type: object
+      required: [roomName, inputType]
+      additionalProperties: false
+      properties:
+        roomName: { type: string, minLength: 1, maxLength: 128 }
+        inputType: { type: string, enum: [rtmp, whip, url] }
+        url: { type: string, format: uri, minLength: 1, maxLength: 2048 }
+    CreateEgressRequest:
+      type: object
+      required: [roomName, outputType]
+      additionalProperties: false
+      properties:
+        roomName: { type: string, minLength: 1, maxLength: 128 }
+        outputType: { type: string, enum: [mp4, hls, rtmp] }
+        outputTarget: { type: string, minLength: 1, maxLength: 2048 }
+    CreateSipCallRequest:
+      type: object
+      required: [roomName, direction, remoteNumber]
+      additionalProperties: false
+      properties:
+        roomName: { type: string, minLength: 1, maxLength: 128 }
+        sipTrunkId: { type: string, minLength: 1, maxLength: 128 }
+        participantIdentity: { type: string, minLength: 1, maxLength: 128 }
+        dtmf: { type: string, pattern: "^[0-9*#w]{1,64}$" }
+        direction: { type: string, enum: [inbound, outbound] }
+        remoteNumber: { type: string, minLength: 1, maxLength: 128 }
+    TransferSipCallRequest:
+      type: object
+      required: [transferTo]
+      additionalProperties: false
+      properties:
+        transferTo: { type: string, minLength: 1, maxLength: 256 }
+    DataRightsSubmitRequest:
+      type: object
+      required: [subjectId, kind]
+      additionalProperties: false
+      properties:
+        subjectId: { type: string, minLength: 1, maxLength: 256 }
+        kind: { type: string, enum: [export, delete, rectify] }
+    DataRightsEvidenceRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        evidenceUri: { type: string, minLength: 1, maxLength: 256 }
+    RtcQualitySample:
+      type: object
+      required: [nodeId, roomName, participantIdentity, capturedAt]
+      additionalProperties: false
+      properties:
+        nodeId: { type: string, minLength: 1, maxLength: 64 }
+        roomName: { type: string, minLength: 1, maxLength: 128 }
+        participantIdentity: { type: string, minLength: 1, maxLength: 128 }
+        capturedAt: { type: string, format: date-time }
+        rttMs: { type: number, minimum: 0 }
+        jitterMs: { type: number, minimum: 0 }
+        packetsLost: { type: number, minimum: 0 }
+        packetsSent: { type: number, minimum: 0 }
+        bitrateKbps: { type: number, minimum: 0 }
+        audioLevel: { type: number, minimum: 0 }
+    Tenant: { type: object, additionalProperties: true, required: [tenantId, status] }
+    Project: { type: object, additionalProperties: true, required: [projectId, tenantId, status] }
+    Environment: { type: object, additionalProperties: true, required: [environmentId, tenantId, projectId, status] }
+    Member: { type: object, additionalProperties: true, required: [memberId, tenantId, subject, roles, status] }
+    ApiKeyMetadata: { type: object, additionalProperties: true, required: [apiKeyId, tenantId, projectId, environmentId, status] }
+    IssuedApiKey: { type: object, required: [metadata, secret], properties: { metadata: { $ref: "#/components/schemas/ApiKeyMetadata" }, secret: { type: string } } }
+    QuotaSnapshot: { type: object, additionalProperties: true, required: [environmentId, policy, observedAt] }
+    UsageRecord: { type: object, additionalProperties: true, required: [usageRecordId, tenantId, projectId, environmentId, metric, quantity] }
+    AuditEvent: { type: object, additionalProperties: true, required: [auditEventId, action, occurredAt, result] }
+    Endpoint: { type: object, additionalProperties: true, required: [id, url, protocol] }
+    Token: { type: object, required: [token, url, expiresAt, nodeId], properties: { token: { type: string }, url: { type: string }, expiresAt: { type: string, format: date-time }, nodeId: { type: string }, routingReason: { type: string } } }
+    Room: { type: object, additionalProperties: true }
+    Participant: { type: object, additionalProperties: true }
+    TelemetrySummary:
+      type: object
+      additionalProperties: false
+      required: [environmentId, windowStart, windowEnd, sampleCount, packetLossRate]
+      properties:
+        environmentId: { $ref: "#/components/schemas/ResourceId" }
+        windowStart: { type: string, format: date-time }
+        windowEnd: { type: string, format: date-time }
+        sampleCount: { type: integer, minimum: 0 }
+        packetLossRate: { type: number, minimum: 0, maximum: 1 }
+        p50RttMs: { type: number, minimum: 0 }
+        p95RttMs: { type: number, minimum: 0 }
+        p99RttMs: { type: number, minimum: 0 }
+        p50JitterMs: { type: number, minimum: 0 }
+        p95JitterMs: { type: number, minimum: 0 }
+        p99JitterMs: { type: number, minimum: 0 }
+        averageBitrateKbps: { type: number, minimum: 0 }
+    IngressJob:
+      type: object
+      additionalProperties: false
+      required: [ingressId, environmentId, roomName, inputType, status, idempotencyKey, createdAt, updatedAt]
+      properties:
+        ingressId: { type: string }
+        environmentId: { $ref: "#/components/schemas/ResourceId" }
+        roomName: { type: string, maxLength: 128 }
+        inputType: { type: string, enum: [rtmp, whip, url] }
+        status: { type: string, enum: [requested, starting, active, draining, completed, failed, cancelled] }
+        providerIngressId: { type: string, maxLength: 256 }
+        idempotencyKey: { type: string, maxLength: 128 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    EgressJob:
+      type: object
+      additionalProperties: false
+      required: [egressId, environmentId, roomName, outputType, status, idempotencyKey, createdAt, updatedAt]
+      properties:
+        egressId: { type: string }
+        environmentId: { $ref: "#/components/schemas/ResourceId" }
+        roomName: { type: string, maxLength: 128 }
+        outputType: { type: string, enum: [mp4, hls, rtmp] }
+        status: { type: string, enum: [requested, starting, active, draining, completed, failed, cancelled] }
+        providerEgressId: { type: string, maxLength: 256 }
+        objectUri: { type: string, maxLength: 2048 }
+        retentionExpiresAt: { type: string, format: date-time }
+        deletedAt: { type: string, format: date-time }
+        deletionEvidenceUri: { type: string, maxLength: 2048 }
+        idempotencyKey: { type: string, maxLength: 128 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    SipCall:
+      type: object
+      additionalProperties: true
+      required: [callId, environmentId, status]
+      properties:
+        callId: { type: string }
+        environmentId: { $ref: "#/components/schemas/ResourceId" }
+        sipTrunkId: { type: string, maxLength: 128 }
+        participantIdentity: { type: string, maxLength: 128 }
+        status: { type: string, enum: [requested, starting, active, draining, completed, failed, cancelled] }
+    Invoice: { type: object, additionalProperties: true, required: [invoiceId, tenantId, billingPeriod, currency, status, totalFen] }
+    BillingAdjustment: { type: object, additionalProperties: true, required: [adjustmentId, invoiceId, kind, amountFen, dedupeKey] }
+    DataRightsRequest: { type: object, additionalProperties: true, required: [requestId, tenantId, subjectId, kind, status, createdAt] }
+    WebhookDestination:
+      type: object
+      additionalProperties: false
+      required: [destinationId, tenantId, projectId, environmentId, url, secretRef, eventTypes, status, createdAt, updatedAt]
+      properties:
+        destinationId: { type: string, minLength: 1, maxLength: 128 }
+        tenantId: { $ref: "#/components/schemas/ResourceId" }
+        projectId: { $ref: "#/components/schemas/ResourceId" }
+        environmentId: { $ref: "#/components/schemas/ResourceId" }
+        url: { type: string, format: uri, maxLength: 2048 }
+        secretRef: { type: string, minLength: 1, maxLength: 512 }
+        eventTypes: { type: array, minItems: 1, maxItems: 64, items: { type: string, minLength: 1, maxLength: 128 } }
+        status: { type: string, enum: [active, disabled] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    UpsertWebhookDestinationRequest:
+      type: object
+      additionalProperties: false
+      required: [url, secretRef, eventTypes]
+      properties:
+        url: { type: string, format: uri, maxLength: 2048 }
+        secretRef: { type: string, minLength: 1, maxLength: 512 }
+        eventTypes: { type: array, minItems: 1, maxItems: 64, items: { type: string, minLength: 1, maxLength: 128 } }
+        status: { type: string, enum: [active, disabled], default: active }
+    Error:
+      type: object
+      required: [code, message, retryable]
+      properties:
+        code: { type: string }
+        message: { type: string }
+        retryable: { type: boolean }
+        details: { type: array, items: { type: object, additionalProperties: true } }
+    TenantEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/Tenant" } } }
+    ProjectEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/Project" } } }
+    EnvironmentEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/Environment" } } }
+    IssuedApiKeyEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/IssuedApiKey" } } }
+    ApiKeyMetadataEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/ApiKeyMetadata" } } }
+    ApiKeyListEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { type: object, required: [apiKeys], properties: { apiKeys: { type: array, items: { $ref: "#/components/schemas/ApiKeyMetadata" } } } } } }
+    MemberEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/Member" } } }
+    MemberListEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { type: object, required: [members], properties: { members: { type: array, items: { $ref: "#/components/schemas/Member" } } } } } }
+    QuotaEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/QuotaSnapshot" } } }
+    UsageListEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { type: object, required: [records], properties: { records: { type: array, items: { $ref: "#/components/schemas/UsageRecord" } } } } } }
+    AuditListEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { type: array, items: { $ref: "#/components/schemas/AuditEvent" } } } }
+    EndpointListEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { type: array, items: { $ref: "#/components/schemas/Endpoint" } } } }
+    TokenEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/Token" } } }
+    RoomListEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { type: object, required: [rooms], properties: { rooms: { type: array, items: { $ref: "#/components/schemas/Room" } } } } } }
+    ParticipantListEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { type: object, required: [participants], properties: { participants: { type: array, items: { $ref: "#/components/schemas/Participant" } } } } } }
+    ParticipantEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/Participant" } } }
+    TelemetryEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/TelemetrySummary" } } }
+    TelemetrySampleEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/RtcQualitySample" } } }
+    IngressEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/IngressJob" } } }
+    IngressListEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { type: array, items: { $ref: "#/components/schemas/IngressJob" } } } }
+    EgressEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/EgressJob" } } }
+    EgressListEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { type: array, items: { $ref: "#/components/schemas/EgressJob" } } } }
+    SipCallEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/SipCall" } } }
+    SipCallListEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { type: array, items: { $ref: "#/components/schemas/SipCall" } } } }
+    BillingStatementListEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { type: object, required: [invoices], properties: { invoices: { type: array, items: { $ref: "#/components/schemas/Invoice" } } } } } }
+    InvoiceEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/Invoice" } } }
+    AdjustmentListEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { type: object, required: [adjustments], properties: { adjustments: { type: array, items: { $ref: "#/components/schemas/BillingAdjustment" } } } } } }
+    DataRightsListEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { type: object, required: [requests], properties: { requests: { type: array, items: { $ref: "#/components/schemas/DataRightsRequest" } } } } } }
+    DataRightsRequestEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/DataRightsRequest" } } }
+    WebhookDestinationEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/WebhookDestination" } } }
+    WebhookDestinationListEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { type: object, required: [destinations], properties: { destinations: { type: array, items: { $ref: "#/components/schemas/WebhookDestination" } } } } } }
+    ErrorEnvelope: { type: object, required: [apiVersion, requestId, error], properties: { apiVersion: { type: string }, requestId: { type: string }, error: { $ref: "#/components/schemas/Error" } } }

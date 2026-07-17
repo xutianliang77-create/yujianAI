@@ -1,0 +1,142 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "yujian-platform.fullname" . }}-platform-api
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: platform-api
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: http
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: postgres
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: redis
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 6379
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: rtc
+      ports:
+        - protocol: TCP
+          port: http
+        - protocol: TCP
+          port: rtc-tcp
+        - protocol: UDP
+          port: rtc-udp
+{{ if .Values.features.mediaOpsEnabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: media-ops
+      ports:
+        - protocol: TCP
+          port: https
+{{ end }}
+
+{{ if .Values.features.agentControlEnabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "yujian-platform.fullname" . }}-agent-control
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: agent-control
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: agent-worker
+      ports:
+        - protocol: TCP
+          port: https
+{{ end }}
+
+{{ if .Values.features.agentWorkerEnabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "yujian-platform.fullname" . }}-agent-worker
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: agent-worker
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: agent-control
+      ports:
+        - protocol: TCP
+          port: https
+{{ end }}
+
+{{ if .Values.features.rtcEnabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "yujian-platform.fullname" . }}-rtc
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: rtc
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: http
+        - protocol: TCP
+          port: rtc-tcp
+        - protocol: UDP
+          port: rtc-udp
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: redis
+      ports:
+        - protocol: TCP
+          port: redis
+{{ end }}
+
+{{ if .Values.features.mediaOpsEnabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "yujian-platform.fullname" . }}-media-ops
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: media-ops
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: platform-api
+      ports:
+        - protocol: TCP
+          port: https
+{{ end }}

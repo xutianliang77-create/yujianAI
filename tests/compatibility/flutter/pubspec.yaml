@@ -1,0 +1,20 @@
+name: yujian_rtc_flutter_compat
+description: 语见 RTC 对官方 Flutter SDK 的隔离兼容测试工程
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: 1.6.0
+  livekit_client: 2.8.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: false

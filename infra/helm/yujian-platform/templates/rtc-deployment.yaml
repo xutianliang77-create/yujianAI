@@ -1,0 +1,61 @@
+{{ if .Values.features.rtcEnabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "yujian-platform.fullname" . }}-rtc
+spec:
+  replicas: {{ .Values.replicaCount.rtc }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: rtc
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: rtc
+    spec:
+      terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      {{ with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{ toYaml . | nindent 8 }}
+      {{ end }}
+      containers:
+        - name: rtc
+          image: {{ .Values.image.rtc | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+            readOnlyRootFilesystem: {{ .Values.security.readOnlyRootFilesystem }}
+          env:
+            - name: YUJIAN_RTC_NODE_ID
+              valueFrom:
+                fieldRef: { fieldPath: metadata.name }
+            - name: LIVEKIT_CONFIG
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.existingSecret }}
+                  key: {{ .Values.secrets.rtcConfig }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.rtcHttpPort }}
+            - name: rtc-tcp
+              containerPort: {{ .Values.service.rtcTcpPort }}
+            - name: rtc-udp
+              containerPort: {{ .Values.service.rtcUdpPort }}
+              protocol: UDP
+          resources:
+            {{ toYaml .Values.resources.rtc | nindent 12 }}
+          readinessProbe:
+            httpGet: { path: /, port: http }
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: { path: /, port: http }
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+{{ end }}

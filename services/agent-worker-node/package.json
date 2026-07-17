@@ -1,0 +1,21 @@
+{
+  "name": "@yujian/agent-worker-node",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "语见AI Node Agent worker lifecycle baseline",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@livekit/rtc-node": "0.13.31",
+    "@yujian/platform-contracts": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.2"
+  }
+}

@@ -1,0 +1,19 @@
+services:
+  yujian-agent-worker:
+    image: ghcr.io/xutianliang77-create/yujian-agent-worker:0.1.0
+    platform: linux/amd64
+    profiles: ["agent-gpu"]
+    environment:
+      YUJIAN_AGENT_ENVIRONMENT_ID: ${YUJIAN_AGENT_ENVIRONMENT_ID:?set environment id}
+      YUJIAN_AGENT_CONTROL_URL: ${YUJIAN_AGENT_CONTROL_URL:?set control URL}
+      YUJIAN_AGENT_CONTROL_CREDENTIAL: ${YUJIAN_AGENT_CONTROL_CREDENTIAL:?set control credential}
+      YUJIAN_AGENT_CAPABILITIES: ${YUJIAN_AGENT_CAPABILITIES:-realtime_model,rtc_audio}
+      YUJIAN_AGENT_HANDLER_MODULE: ${YUJIAN_AGENT_HANDLER_MODULE:-}
+      NVIDIA_VISIBLE_DEVICES: "0"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

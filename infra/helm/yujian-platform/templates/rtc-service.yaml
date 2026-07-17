@@ -1,0 +1,20 @@
+{{ if .Values.features.rtcEnabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "yujian-platform.fullname" . }}-rtc
+spec:
+  selector:
+    app.kubernetes.io/component: rtc
+  ports:
+    - name: http
+      port: {{ .Values.service.rtcHttpPort }}
+      targetPort: http
+    - name: rtc-tcp
+      port: {{ .Values.service.rtcTcpPort }}
+      targetPort: rtc-tcp
+    - name: rtc-udp
+      port: {{ .Values.service.rtcUdpPort }}
+      targetPort: rtc-udp
+      protocol: UDP
+{{ end }}

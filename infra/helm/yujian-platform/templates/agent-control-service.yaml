@@ -1,0 +1,13 @@
+{{ if .Values.features.agentControlEnabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "yujian-platform.fullname" . }}-agent-control
+spec:
+  selector:
+    app.kubernetes.io/component: agent-control
+  ports:
+    - name: https
+      port: {{ .Values.service.agentControlPort }}
+      targetPort: https
+{{ end }}

@@ -1,0 +1,11 @@
+{
+  "name": "@yujian/billing",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "语见AI usage ledger、价格版本与发票边界",
+  "files": ["dist"],
+  "scripts": { "build": "tsc -p tsconfig.json", "lint": "tsc -p tsconfig.json --noEmit" },
+  "dependencies": { "@yujian/platform-contracts": "0.1.0" },
+  "devDependencies": { "@types/node": "^24.0.0", "typescript": "^5.9.2" }
+}

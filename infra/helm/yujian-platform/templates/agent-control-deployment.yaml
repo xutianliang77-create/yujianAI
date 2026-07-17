@@ -1,0 +1,97 @@
+{{ if .Values.features.agentControlEnabled }}
+{{ if not .Values.agentControl.tls.enabled }}
+{{ fail "agentControl.tls.enabled must be true when agentControlEnabled" }}
+{{ end }}
+{{ if not .Values.secrets.agentControlAdminCredential }}
+{{ fail "secrets.agentControlAdminCredential must be set when agentControlEnabled" }}
+{{ end }}
+{{ if not .Values.agentControl.artifactVerifierModulePath }}
+{{ fail "agentControl.artifactVerifierModulePath must be set when agentControlEnabled" }}
+{{ end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "yujian-platform.fullname" . }}-agent-control
+spec:
+  replicas: {{ .Values.replicaCount.agentControl }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: agent-control
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: agent-control
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: {{ .Values.security.runAsUser }}
+        runAsGroup: {{ .Values.security.runAsGroup }}
+        seccompProfile: { type: RuntimeDefault }
+      {{ with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{ toYaml . | nindent 8 }}
+      {{ end }}
+      containers:
+        - name: agent-control
+          image: {{ .Values.image.agentControl | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+            readOnlyRootFilesystem: {{ .Values.security.readOnlyRootFilesystem }}
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: AGENT_CONTROL_HOST
+              value: 0.0.0.0
+            - name: AGENT_CONTROL_PORT
+              value: {{ .Values.service.agentControlPort | quote }}
+            - name: YUJIAN_AGENT_INTERNAL_CREDENTIAL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.existingSecret }}
+                  key: {{ .Values.secrets.agentControlCredential }}
+            - name: YUJIAN_AGENT_ADMIN_CREDENTIAL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.existingSecret }}
+                  key: {{ .Values.secrets.agentControlAdminCredential }}
+            {{ if .Values.agentControl.persistenceModulePath }}
+            - name: YUJIAN_AGENT_CONTROL_PERSISTENCE_MODULE
+              value: {{ .Values.agentControl.persistenceModulePath | quote }}
+            {{ end }}
+            - name: YUJIAN_AGENT_ARTIFACT_VERIFIER_MODULE
+              value: {{ .Values.agentControl.artifactVerifierModulePath | quote }}
+            - name: AGENT_CONTROL_TLS_CERT_FILE
+              value: /var/run/yujian-tls/tls.crt
+            - name: AGENT_CONTROL_TLS_KEY_FILE
+              value: /var/run/yujian-tls/tls.key
+          ports:
+            - name: https
+              containerPort: {{ .Values.service.agentControlPort }}
+          volumeMounts:
+            - name: tls
+              mountPath: /var/run/yujian-tls
+              readOnly: true
+          resources:
+            {{ toYaml .Values.resources.agentControl | nindent 12 }}
+          readinessProbe:
+            httpGet: { path: /healthz, port: https, scheme: HTTPS }
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: { path: /healthz, port: https, scheme: HTTPS }
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+      volumes:
+        - name: tls
+          secret:
+            secretName: {{ .Values.agentControl.tls.existingSecret }}
+            items:
+              - key: {{ .Values.agentControl.tls.certKey }}
+                path: tls.crt
+              - key: {{ .Values.agentControl.tls.keyKey }}
+                path: tls.key
+{{ end }}

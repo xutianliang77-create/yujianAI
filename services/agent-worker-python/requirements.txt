@@ -1,0 +1,3 @@
+# Locked to the upstream manifest; this package brings the official livekit.rtc
+# runtime used by livekit_room.py.
+livekit-agents==1.6.5

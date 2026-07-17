@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.yujian.ai/contracts/v1/reliable-event-envelope.schema.json",
+  "title": "Reliable Event Envelope v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "eventId",
+    "eventType",
+    "eventVersion",
+    "communicationSessionId",
+    "aggregateType",
+    "aggregateId",
+    "aggregateVersion",
+    "sequence",
+    "occurredAt",
+    "producer",
+    "traceId",
+    "idempotencyKey",
+    "payload"
+  ],
+  "properties": {
+    "eventId": {
+      "$ref": "common.schema.json#/$defs/uuid"
+    },
+    "eventType": {
+      "enum": [
+        "communication.session.created",
+        "communication.session.state_changed",
+        "communication.participant.joined",
+        "communication.participant.left",
+        "communication.media_leg.connected",
+        "communication.media_leg.disconnected",
+        "speech.turn.final",
+        "speech.transcript.final",
+        "speech.transcript.revised",
+        "translation.final",
+        "translation.revised",
+        "playback.completed",
+        "playback.cancelled",
+        "playback.failed",
+        "agent.task.authorized",
+        "agent.task.cancelled",
+        "agent.run.completed",
+        "agent.run.failed",
+        "agent.tool.completed",
+        "agent.handoff.completed",
+        "billing.usage.committed"
+      ]
+    },
+    "eventVersion": {
+      "const": 1
+    },
+    "communicationSessionId": {
+      "$ref": "common.schema.json#/$defs/communicationSessionId"
+    },
+    "aggregateType": {
+      "enum": [
+        "communication_session",
+        "session_participant",
+        "media_leg",
+        "speech_turn",
+        "transcript_segment",
+        "translation",
+        "tts_playback",
+        "agent_task",
+        "agent_run",
+        "tool_execution",
+        "billing_ledger"
+      ]
+    },
+    "aggregateId": {
+      "$ref": "common.schema.json#/$defs/uuid"
+    },
+    "aggregateVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "occurredAt": {
+      "$ref": "common.schema.json#/$defs/dateTime"
+    },
+    "producer": {
+      "enum": [
+        "control-api",
+        "realtime-runtime",
+        "voice-agent-runtime",
+        "model-gateway"
+      ]
+    },
+    "traceId": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "idempotencyKey": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "payload": {
+      "type": "object"
+    }
+  }
+}

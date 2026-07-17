@@ -1,0 +1,25 @@
+{{- if and .Values.features.turnEnabled .Values.image.turn }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "yujian-platform.fullname" . }}-turn
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app.kubernetes.io/component: turn }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/component: turn }
+    spec:
+      containers:
+        - name: turn
+          image: {{ .Values.image.turn | quote }}
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+          envFrom:
+            - secretRef: { name: {{ .Values.license.existingSecret }} }
+          ports:
+            - { name: turn-udp, containerPort: 3478, protocol: UDP }
+            - { name: turn-tls, containerPort: 5349, protocol: TCP }
+{{- end }}

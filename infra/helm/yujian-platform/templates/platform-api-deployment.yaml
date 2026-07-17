@@ -1,0 +1,122 @@
+{{ if not .Values.platformRuntime.modulePath }}
+{{ fail "platformRuntime.modulePath must be set for production platform-api" }}
+{{ end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "yujian-platform.fullname" . }}-platform-api
+spec:
+  replicas: {{ .Values.replicaCount.platformApi }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: platform-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: platform-api
+    spec:
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: {{ .Values.security.runAsUser }}
+        runAsGroup: {{ .Values.security.runAsGroup }}
+        fsGroup: {{ .Values.security.fsGroup }}
+        seccompProfile: { type: RuntimeDefault }
+      {{ with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{ toYaml . | nindent 8 }}
+      {{ end }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: platform-api
+      containers:
+        - name: platform-api
+          image: {{ .Values.image.platformApi | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+            readOnlyRootFilesystem: {{ .Values.security.readOnlyRootFilesystem }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.platformApiPort }}
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: PLATFORM_API_PORT
+              value: {{ .Values.service.platformApiPort | quote }}
+            - name: PLATFORM_API_HOST
+              value: 0.0.0.0
+            - name: YUJIAN_PLATFORM_CREDENTIALS_JSON
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.existingSecret }}
+                  key: {{ .Values.secrets.platformCredentials }}
+            - name: YUJIAN_PLATFORM_ADMIN_CREDENTIAL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.existingSecret }}
+                  key: {{ .Values.secrets.adminCredential }}
+            - name: YUJIAN_RTC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.existingSecret }}
+                  key: {{ .Values.secrets.rtcApiKey }}
+            - name: YUJIAN_RTC_API_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.existingSecret }}
+                  key: {{ .Values.secrets.rtcApiSecret }}
+            - name: YUJIAN_RTC_PRIMARY_URL
+              value: {{ required "rtc.primaryWsUrl must be set" .Values.rtc.primaryWsUrl | quote }}
+            {{ if .Values.rtc.secondaryWsUrl }}
+            - name: YUJIAN_RTC_SECONDARY_URL
+              value: {{ .Values.rtc.secondaryWsUrl | quote }}
+            {{ end }}
+            {{ if .Values.platformRuntime.modulePath }}
+            - name: YUJIAN_PLATFORM_RUNTIME_MODULE
+              value: {{ .Values.platformRuntime.modulePath | quote }}
+            {{ end }}
+            {{ if .Values.platformRuntime.postgresUrlSecretKey }}
+            - name: YUJIAN_POSTGRES_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.existingSecret }}
+                  key: {{ .Values.platformRuntime.postgresUrlSecretKey }}
+            {{ end }}
+            {{ if .Values.platformRuntime.redisUrlSecretKey }}
+            - name: YUJIAN_REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.existingSecret }}
+                  key: {{ .Values.platformRuntime.redisUrlSecretKey }}
+            {{ end }}
+            {{ if .Values.features.mediaOpsEnabled }}
+            - name: YUJIAN_MEDIA_OPS_URL
+              value: {{ required "mediaOps.baseUrl must be set when mediaOpsEnabled" .Values.mediaOps.baseUrl | quote }}
+            - name: YUJIAN_MEDIA_OPS_CREDENTIAL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.existingSecret }}
+                  key: {{ .Values.secrets.mediaOpsCredential }}
+            {{ end }}
+          resources:
+            {{- toYaml .Values.resources.platformApi | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3

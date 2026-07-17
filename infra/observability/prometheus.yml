@@ -1,0 +1,12 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+scrape_configs:
+  - job_name: yujian-platform-api
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["yujian-platform-api:8090"]
+  - job_name: yujian-rtc
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["yujian-rtc-a:7880", "yujian-rtc-b:7980"]

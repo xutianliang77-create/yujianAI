@@ -1,0 +1,27 @@
+{
+  "folders": [
+    {
+      "name": "语见AI",
+      "path": "."
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/.DS_Store": true,
+      "**/node_modules": true,
+      "**/.dart_tool": true,
+      "**/build": true,
+      "**/data": true,
+      "**/models": true
+    },
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/.dart_tool": true,
+      "**/build": true,
+      "**/data": true,
+      "**/models": true,
+      "**/outputs": true
+    },
+    "editor.formatOnSave": true
+  }
+}

@@ -1,0 +1,50 @@
+{{ if .Values.features.agentWorkerEnabled }}
+{{ if not .Values.features.agentControlEnabled }}
+{{ fail "agentControlEnabled must be true when agentWorkerEnabled" }}
+{{ end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "yujian-platform.fullname" . }}-agent-worker
+spec:
+  replicas: {{ .Values.replicaCount.agentWorker }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: agent-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: agent-worker
+    spec:
+      nodeSelector:
+        {{ toYaml .Values.agent.nodeSelector | nindent 8 }}
+      containers:
+        - name: agent-worker
+          image: {{ .Values.image.agentWorker | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+          env:
+            - name: YUJIAN_AGENT_ENVIRONMENT_ID
+              value: {{ required "agent.environmentId must be set when agentWorkerEnabled" .Values.agent.environmentId | quote }}
+            - name: YUJIAN_AGENT_CONTROL_URL
+              value: {{ required "agentControl.baseUrl must be set when agentWorkerEnabled" .Values.agentControl.baseUrl | quote }}
+            - name: YUJIAN_AGENT_CONTROL_CREDENTIAL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.existingSecret }}
+                  key: {{ .Values.secrets.agentControlCredential }}
+            {{ if .Values.agent.handlerModulePath }}
+            - name: YUJIAN_AGENT_HANDLER_MODULE
+              value: {{ .Values.agent.handlerModulePath | quote }}
+            {{ end }}
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: "0"
+          resources:
+            requests:
+              {{ toYaml .Values.resources.agentWorker.requests | nindent 14 }}
+            limits:
+              {{ toYaml .Values.resources.agentWorker.limits | nindent 14 }}
+              {{ .Values.agent.gpuResource }}: {{ .Values.agent.gpuCount | quote }}
+{{ end }}

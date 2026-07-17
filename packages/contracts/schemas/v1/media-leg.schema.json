@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.yujian.ai/contracts/v1/media-leg.schema.json",
+  "title": "Media Leg v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "communicationSessionId",
+    "participantId",
+    "legId",
+    "transport",
+    "direction",
+    "state",
+    "revision"
+  ],
+  "properties": {
+    "contractVersion": {
+      "const": 1
+    },
+    "communicationSessionId": {
+      "$ref": "common.schema.json#/$defs/communicationSessionId"
+    },
+    "participantId": {
+      "$ref": "common.schema.json#/$defs/participantId"
+    },
+    "legId": {
+      "$ref": "common.schema.json#/$defs/legId"
+    },
+    "transport": {
+      "enum": [
+        "local",
+        "webrtc",
+        "sip"
+      ]
+    },
+    "direction": {
+      "enum": [
+        "sendrecv",
+        "sendonly",
+        "recvonly"
+      ]
+    },
+    "state": {
+      "enum": [
+        "created",
+        "connecting",
+        "connected",
+        "disconnected",
+        "failed"
+      ]
+    },
+    "connectedAt": {
+      "$ref": "common.schema.json#/$defs/dateTime"
+    },
+    "disconnectedAt": {
+      "$ref": "common.schema.json#/$defs/dateTime"
+    },
+    "revision": {
+      "$ref": "common.schema.json#/$defs/revision"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "enum": [
+              "connected",
+              "disconnected"
+            ]
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "connectedAt": true
+        },
+        "required": [
+          "connectedAt"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "disconnected"
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "disconnectedAt": true
+        },
+        "required": [
+          "disconnectedAt"
+        ]
+      },
+      "else": {
+        "properties": {
+          "disconnectedAt": true
+        },
+        "not": {
+          "required": [
+            "disconnectedAt"
+          ]
+        }
+      }
+    }
+  ]
+}

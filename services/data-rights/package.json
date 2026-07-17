@@ -1,0 +1,11 @@
+{
+  "name": "@yujian/data-rights",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "语见AI 数据导出、删除与证据状态机及 PostgreSQL adapter",
+  "files": ["dist"],
+  "scripts": { "build": "tsc -p tsconfig.json", "lint": "tsc -p tsconfig.json --noEmit" },
+  "dependencies": { "@yujian/platform-contracts": "0.1.0" },
+  "devDependencies": { "@types/node": "^24.0.0", "typescript": "^5.9.2" }
+}

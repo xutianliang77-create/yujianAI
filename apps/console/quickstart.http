@@ -1,0 +1,14 @@
+### 1. create tenant (admin credential only)
+POST http://127.0.0.1:8090/platform/v1/tenants
+Authorization: Bearer {{$dotenv YUJIAN_PLATFORM_ADMIN_CREDENTIAL}}
+Content-Type: application/json
+Idempotency-Key: onboarding-tenant-001
+
+{"displayName":"演示租户","dataResidencyPolicy":"cn-mainland","planId":"plan-preview"}
+
+### 2. issue a scoped room token
+POST http://127.0.0.1:8090/platform/v1/rtc/token
+Authorization: Bearer {{$dotenv YUJIAN_PLATFORM_CREDENTIAL}}
+Content-Type: application/json
+
+{"tenantId":"tenant-demo","projectId":"project-demo","environmentId":"environment-dev","roomName":"quickstart","participantIdentity":"console-user"}

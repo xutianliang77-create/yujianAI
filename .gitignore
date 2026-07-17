@@ -1,0 +1,46 @@
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Secrets and local environments
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+secrets/
+
+# Node
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Flutter and Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+ios/Pods/
+ios/.symlinks/
+android/.gradle/
+
+# Runtime data
+data/
+models/
+recordings/
+exports/
+logs/
+tmp/
+outputs/
+
+# Infrastructure-generated files
+infra/**/generated/
+infra/**/.terraform/
+*.tfstate
+*.tfstate.*

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>语见 RTC Web 兼容测试</title>
+    <style>
+      body { font: 16px/1.5 system-ui, sans-serif; margin: 3rem auto; max-width: 44rem; padding: 0 1rem; }
+      button { font: inherit; padding: 0.65rem 1rem; }
+      output { display: block; margin-top: 1rem; padding: 1rem; background: #f2f4f7; white-space: pre-wrap; }
+      [data-state="passed"] { color: #067647; }
+      [data-state="failed"] { color: #b42318; }
+    </style>
+  </head>
+  <body>
+    <h1>语见 RTC Web 兼容测试</h1>
+    <p>使用官方 Web SDK 连接两个语见 RTC 节点，并验证 Data、RPC 与音频 Track。</p>
+    <button id="run" type="button">开始测试</button>
+    <output id="status" data-state="idle">等待开始</output>
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>

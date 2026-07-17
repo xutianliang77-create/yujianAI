@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "required": ["image", "replicaCount", "service", "secrets", "features"],
+  "properties": {
+    "image": {
+      "type": "object",
+      "required": ["platformApi", "rtc", "postgres", "redis", "pullPolicy"],
+      "properties": {
+        "platformApi": { "type": "string", "minLength": 1 },
+        "rtc": { "type": "string", "minLength": 1 },
+        "mediaOps": { "type": "string", "minLength": 1 },
+        "agentControl": { "type": "string", "minLength": 1 },
+        "agentWorker": { "type": "string", "minLength": 1 },
+        "postgres": { "type": "string", "minLength": 1 },
+        "redis": { "type": "string", "minLength": 1 },
+        "pullPolicy": { "enum": ["Always", "IfNotPresent", "Never"] },
+        "pullSecrets": { "type": "array", "items": { "type": "object" } }
+      }
+    },
+    "replicaCount": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 1 } },
+    "service": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 1, "maximum": 65535 } },
+    "features": { "type": "object", "additionalProperties": { "type": "boolean" } },
+    "secrets": {
+      "type": "object",
+      "required": ["existingSecret", "platformCredentials", "rtcApiKey", "rtcApiSecret", "rtcConfig"],
+      "properties": {
+        "existingSecret": { "type": "string", "minLength": 1 },
+        "platformCredentials": { "type": "string", "minLength": 1 },
+        "rtcApiKey": { "type": "string", "minLength": 1 },
+        "rtcApiSecret": { "type": "string", "minLength": 1 },
+        "rtcConfig": { "type": "string", "minLength": 1 },
+        "agentControlCredential": { "type": "string", "minLength": 1 },
+        "agentControlAdminCredential": { "type": "string", "minLength": 1 }
+      }
+    },
+    "rtc": { "type": "object", "required": ["primaryWsUrl", "configSecretKey"] },
+    "platformRuntime": {
+      "type": "object",
+      "properties": {
+        "modulePath": { "type": "string", "maxLength": 512 },
+        "postgresUrlSecretKey": { "type": "string", "maxLength": 128 },
+        "redisUrlSecretKey": { "type": "string", "maxLength": 128 }
+      }
+    },
+    "mediaOps": {
+      "type": "object",
+      "properties": {
+        "providerEnabled": { "type": "boolean" },
+        "persistenceModulePath": { "type": "string", "maxLength": 512, "description": "Deployment ESM module exporting createMediaOpsPersistence; when egress is enabled it must also export createMediaOpsRetentionWorker." },
+        "rtcPrimaryUrl": { "type": "string" },
+        "rtcSecondaryUrl": { "type": "string" },
+        "defaultSipTrunkId": { "type": "string", "maxLength": 128 },
+        "baseUrl": { "type": "string" },
+        "tls": { "type": "object" }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "properties": {
+        "environmentId": { "type": "string", "maxLength": 128 },
+        "handlerModulePath": { "type": "string", "maxLength": 512 },
+        "nodeSelector": { "type": "object" },
+        "gpuResource": { "type": "string", "maxLength": 128 },
+        "gpuCount": { "type": "integer", "minimum": 1, "maximum": 1 }
+      }
+    },
+    "agentControl": {
+      "type": "object",
+      "properties": {
+        "persistenceModulePath": { "type": "string", "maxLength": 512 },
+        "artifactVerifierModulePath": { "type": "string", "maxLength": 512 },
+        "baseUrl": { "type": "string" },
+        "tls": { "type": "object" }
+      }
+    },
+    "security": { "type": "object", "required": ["runAsUser", "runAsGroup", "fsGroup", "readOnlyRootFilesystem"] }
+  }
+}

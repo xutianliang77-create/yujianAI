@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "releaseChannel": "rc",
+  "requiredChecks": [
+    "contract",
+    "compatibility",
+    "security",
+    "sbom",
+    "image-signature",
+    "beelink-acceptance",
+    "backup-restore"
+  ],
+  "forbiddenReleaseStates": ["open-critical-vulnerability", "missing-compliance-owner", "unverified-secret-scan"],
+  "rollback": { "maxSchemaSkew": 1, "mustRetainPreviousImage": true }
+}

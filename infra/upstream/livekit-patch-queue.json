@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "baseManifest": "livekit-versions.json",
+  "policy": {
+    "default": "clean-upstream",
+    "allowMediaCorePatches": false
+  },
+  "patches": []
+}

@@ -1,0 +1,112 @@
+{{ if and (not .Values.features.mediaOpsEnabled) (or .Values.features.sipEnabled .Values.features.egressEnabled) }}
+{{ fail "features.sipEnabled/features.egressEnabled require features.mediaOpsEnabled" }}
+{{ end }}
+{{ if .Values.features.mediaOpsEnabled }}
+{{ if not .Values.mediaOps.tls.enabled }}
+{{ fail "mediaOps.tls.enabled must be true when mediaOpsEnabled" }}
+{{ end }}
+{{ if not .Values.mediaOps.persistenceModulePath }}
+{{ fail "mediaOps.persistenceModulePath must be set when mediaOpsEnabled" }}
+{{ end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "yujian-platform.fullname" . }}-media-ops
+spec:
+  replicas: {{ .Values.replicaCount.mediaOps }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: media-ops
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: media-ops
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: {{ .Values.security.runAsUser }}
+        runAsGroup: {{ .Values.security.runAsGroup }}
+        seccompProfile: { type: RuntimeDefault }
+      {{ with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{ toYaml . | nindent 8 }}
+      {{ end }}
+      containers:
+        - name: media-ops
+          image: {{ .Values.image.mediaOps | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+            readOnlyRootFilesystem: {{ .Values.security.readOnlyRootFilesystem }}
+          env:
+            - name: MEDIA_OPS_HOST
+              value: 0.0.0.0
+            - name: MEDIA_OPS_PORT
+              value: {{ .Values.service.mediaOpsPort | quote }}
+            - name: YUJIAN_MEDIA_INTERNAL_CREDENTIAL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.existingSecret }}
+                  key: {{ .Values.secrets.mediaOpsCredential }}
+            - name: YUJIAN_SIP_ENABLED
+              value: {{ .Values.features.sipEnabled | quote }}
+            - name: YUJIAN_SIP_DEFAULT_TRUNK_ID
+              value: {{ .Values.mediaOps.defaultSipTrunkId | quote }}
+            - name: YUJIAN_INGRESS_ENABLED
+              value: {{ .Values.features.ingressEnabled | quote }}
+            - name: YUJIAN_EGRESS_ENABLED
+              value: {{ .Values.features.egressEnabled | quote }}
+            - name: YUJIAN_MEDIA_PROVIDER_ENABLED
+              value: {{ .Values.mediaOps.providerEnabled | quote }}
+            {{ if .Values.mediaOps.persistenceModulePath }}
+            - name: YUJIAN_MEDIA_PERSISTENCE_MODULE
+              value: {{ .Values.mediaOps.persistenceModulePath | quote }}
+            {{ end }}
+            - name: YUJIAN_RTC_PRIMARY_URL
+              value: {{ .Values.mediaOps.rtcPrimaryUrl | quote }}
+            - name: YUJIAN_RTC_SECONDARY_URL
+              value: {{ .Values.mediaOps.rtcSecondaryUrl | quote }}
+            - name: YUJIAN_RTC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.existingSecret }}
+                  key: {{ .Values.secrets.rtcApiKey }}
+            - name: YUJIAN_RTC_API_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.existingSecret }}
+                  key: {{ .Values.secrets.rtcApiSecret }}
+            - name: MEDIA_OPS_TLS_CERT_FILE
+              value: /var/run/yujian-tls/tls.crt
+            - name: MEDIA_OPS_TLS_KEY_FILE
+              value: /var/run/yujian-tls/tls.key
+          ports:
+            - name: https
+              containerPort: {{ .Values.service.mediaOpsPort }}
+          volumeMounts:
+            - name: tls
+              mountPath: /var/run/yujian-tls
+              readOnly: true
+          resources:
+            {{ toYaml .Values.resources.mediaOps | nindent 12 }}
+          readinessProbe:
+            httpGet: { path: /healthz, port: https, scheme: HTTPS }
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: { path: /healthz, port: https, scheme: HTTPS }
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+      volumes:
+        - name: tls
+          secret:
+            secretName: {{ .Values.mediaOps.tls.existingSecret }}
+            items:
+              - key: {{ .Values.mediaOps.tls.certKey }}
+                path: tls.crt
+              - key: {{ .Values.mediaOps.tls.keyKey }}
+                path: tls.key
+{{ end }}

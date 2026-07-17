@@ -1,0 +1,15 @@
+services:
+  - name: yujian-platform-api
+    availabilityTarget: 0.999
+    p95LatencyMs: 300
+    errorBudgetMinutesPerMonth: 43.2
+    alerts:
+      - error_rate > 1% for 5m
+      - p95_latency_ms > 300 for 10m
+  - name: yujian-rtc
+    availabilityTarget: 0.9995
+    p95LatencyMs: 200
+    errorBudgetMinutesPerMonth: 21.6
+    alerts:
+      - node_readiness < 100% for 2m
+      - participant_join_success < 99% for 10m

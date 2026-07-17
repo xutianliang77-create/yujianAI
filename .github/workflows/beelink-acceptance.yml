@@ -1,0 +1,29 @@
+name: Beelink upstream and compatibility acceptance
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: beelink-acceptance
+  cancel-in-progress: false
+
+jobs:
+  acceptance:
+    runs-on: [self-hosted, Linux, X64, yujian, beelink, rtx-5090]
+    timeout-minutes: 90
+    env:
+      YUJIAN_RTC_NODE_IP: 100.110.127.117
+      LIVEKIT_API_KEY: ${{ secrets.YUJIAN_ACCEPTANCE_LIVEKIT_API_KEY }}
+      LIVEKIT_API_SECRET: ${{ secrets.YUJIAN_ACCEPTANCE_LIVEKIT_API_SECRET }}
+      YUJIAN_PLATFORM_TEST_CREDENTIAL: ${{ secrets.YUJIAN_ACCEPTANCE_PLATFORM_CREDENTIAL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Run Beelink acceptance
+        run: npm run beelink:acceptance

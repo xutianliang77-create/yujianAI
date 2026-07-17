@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.yujian.ai/contracts/v1/session-participant.schema.json",
+  "title": "Session Participant v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "communicationSessionId",
+    "participantId",
+    "kind",
+    "role",
+    "state",
+    "revision"
+  ],
+  "properties": {
+    "contractVersion": {
+      "const": 1
+    },
+    "communicationSessionId": {
+      "$ref": "common.schema.json#/$defs/communicationSessionId"
+    },
+    "participantId": {
+      "$ref": "common.schema.json#/$defs/participantId"
+    },
+    "kind": {
+      "enum": [
+        "human",
+        "agent"
+      ]
+    },
+    "role": {
+      "enum": [
+        "owner",
+        "guest",
+        "callee",
+        "assistant",
+        "observer"
+      ]
+    },
+    "state": {
+      "enum": [
+        "invited",
+        "joining",
+        "active",
+        "left",
+        "failed"
+      ]
+    },
+    "joinedAt": {
+      "$ref": "common.schema.json#/$defs/dateTime"
+    },
+    "leftAt": {
+      "$ref": "common.schema.json#/$defs/dateTime"
+    },
+    "revision": {
+      "$ref": "common.schema.json#/$defs/revision"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "enum": [
+              "active",
+              "left"
+            ]
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "joinedAt": true
+        },
+        "required": [
+          "joinedAt"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "left"
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "leftAt": true
+        },
+        "required": [
+          "leftAt"
+        ]
+      },
+      "else": {
+        "properties": {
+          "leftAt": true
+        },
+        "not": {
+          "required": [
+            "leftAt"
+          ]
+        }
+      }
+    }
+  ]
+}
