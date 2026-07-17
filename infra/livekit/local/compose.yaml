@@ -39,9 +39,9 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "7880:7880"
-      - "7881:7881"
-      - "7882:7882/udp"
+      - "${YUJIAN_RTC_PRIMARY_PORT:-7880}:7880"
+      - "${YUJIAN_RTC_PRIMARY_TCP_PORT:-7881}:7881"
+      - "${YUJIAN_RTC_PRIMARY_UDP_PORT:-7882}:7882/udp"
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:7880/"]
       interval: 5s
@@ -71,9 +71,9 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "7980:7980"
-      - "7981:7981"
-      - "7982:7982/udp"
+      - "${YUJIAN_RTC_SECONDARY_PORT:-7980}:7980"
+      - "${YUJIAN_RTC_SECONDARY_TCP_PORT:-7981}:7981"
+      - "${YUJIAN_RTC_SECONDARY_UDP_PORT:-7982}:7982/udp"
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:7980/"]
       interval: 5s

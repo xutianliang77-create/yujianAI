@@ -6,6 +6,11 @@ set -euo pipefail
 : "${LIVEKIT_API_SECRET:?LIVEKIT_API_SECRET must be set}"
 : "${YUJIAN_PLATFORM_TEST_CREDENTIAL:?YUJIAN_PLATFORM_TEST_CREDENTIAL must be set}"
 
+primary_port="${YUJIAN_RTC_PRIMARY_PORT:-7880}"
+secondary_port="${YUJIAN_RTC_SECONDARY_PORT:-7980}"
+export YUJIAN_RTC_PRIMARY_PORT="$primary_port"
+export YUJIAN_RTC_SECONDARY_PORT="$secondary_port"
+
 [[ "$LIVEKIT_API_KEY" =~ ^[A-Za-z0-9_-]{8,64}$ ]] || {
   echo "LIVEKIT_API_KEY must be 8-64 URL-safe characters" >&2
   exit 1
@@ -53,8 +58,8 @@ docker compose "${compose_files[@]}" config --quiet
 docker compose "${compose_files[@]}" up -d --wait
 docker compose "${compose_files[@]}" ps
 
-export YUJIAN_RTC_PRIMARY_URL="ws://${YUJIAN_RTC_NODE_IP}:7880"
-export YUJIAN_RTC_SECONDARY_URL="ws://${YUJIAN_RTC_NODE_IP}:7980"
+export YUJIAN_RTC_PRIMARY_URL="ws://${YUJIAN_RTC_NODE_IP}:${primary_port}"
+export YUJIAN_RTC_SECONDARY_URL="ws://${YUJIAN_RTC_NODE_IP}:${secondary_port}"
 npm run test:integration:rtc
 
 printf 'status=passed\nrun_id=%s\nserver_runtime=passed\nclient_runtime=separate\nrtc_kept_up=%s\ncompleted_at=%s\n' \

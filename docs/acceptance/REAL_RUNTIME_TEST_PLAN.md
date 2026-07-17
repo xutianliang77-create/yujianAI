@@ -53,6 +53,14 @@ npm run beelink:preflight
 YUJIAN_KEEP_RTC_UP=true npm run beelink:acceptance
 ```
 
+如果 Beelink 上已有其他 LiveKit 服务占用默认端口，可为本次合成验收改用空闲主机端口；容器内端口仍保持 7880/7980：
+
+```bash
+export YUJIAN_RTC_PRIMARY_PORT=17880
+export YUJIAN_RTC_SECONDARY_PORT=17980
+YUJIAN_KEEP_RTC_UP=true npm run beelink:acceptance
+```
+
 Beelink 服务器阶段的实际顺序是：
 
 1. Linux/AMD64、Tailscale 地址、Docker、Node 24、唯一 RTX 5090 预检。
@@ -65,8 +73,8 @@ Beelink 服务器阶段的实际顺序是：
 
 ```bash
 cd /Users/xutianliang/Downloads/语见AI
-export YUJIAN_RTC_PRIMARY_URL=ws://100.110.127.117:7880
-export YUJIAN_RTC_SECONDARY_URL=ws://100.110.127.117:7980
+export YUJIAN_RTC_PRIMARY_URL=ws://100.110.127.117:${YUJIAN_RTC_PRIMARY_PORT:-7880}
+export YUJIAN_RTC_SECONDARY_URL=ws://100.110.127.117:${YUJIAN_RTC_SECONDARY_PORT:-7980}
 export LIVEKIT_API_KEY=<与 Beelink 阶段相同的短期 key>
 export LIVEKIT_API_SECRET=<与 Beelink 阶段相同的短期 secret>
 npm run client:preflight
