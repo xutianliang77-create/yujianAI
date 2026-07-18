@@ -38,4 +38,4 @@ if (cleanup) {
   await pool.query("DELETE FROM usage_records WHERE usage_record_id = $1", [report.cleanup.usageId]);
 }
 await pool.end();
-console.log(JSON.stringify({ platformApi: "snapshot-restored", redis: "sentinel-restored-after-rebuild", postgres: "9-migrations-restored", cleanup: cleanup ? "complete" : "deferred" }));
+console.log(JSON.stringify({ platformApi: "snapshot-restored", redis: "sentinel-restored-after-rebuild", postgres: "11-migrations-restored", cleanup: cleanup ? "complete" : "deferred" }));

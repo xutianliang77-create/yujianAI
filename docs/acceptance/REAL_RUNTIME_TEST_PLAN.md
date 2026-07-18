@@ -297,20 +297,67 @@ PostgreSQL 16.4 和 OpenBao 2.4.1 的固定 Linux AMD64 digest。4 份 SPDX 2.3 
 
 本次结果为 `failed-technical`：未豁免 Critical 匹配 76 个，其中 LiveKit 0、Redis 11、
 PostgreSQL 42、OpenBao 23；647 个包中 465 个 license 为 `NOASSERTION`。没有创建例外，
-未重启或修改任何现有容器。修复、候选镜像回归、完整 LICENSE/NOTICE、生产 registry
-签名及个人 Owner 签字完成前，P1-M0-04、Gate 0/1 和生产发布保持阻断。机器可读索引为
+未重启或修改任何现有容器。后续候选已完成技术签名和五项 Owner 决定，但当前镜像漏洞、
+许可证和两项当前驳回仍使 P1-M0-04、Gate 0/1 和生产发布保持阻断。机器可读索引为
 `docs/acceptance/p1-supply-chain-evidence.json`。
+
+### P1-M0-04 Owner 审批台功能验收（2026-07-18）
+
+用户已确认审批台真实功能验收通过。Beelink/OpenBao 与本机绕行入口完成五项任务读取、
+Owner 隔离、approve/reject、supersede、一次性凭据、签名/验签/撤销、不可覆盖哈希链和
+fail-closed 验证。bbb Registry/KMS 与 ccc 法律 reject 是故意执行的负向路径证据；它们使
+功能验收通过，但仍保持专业 receipt 为 reject，不能据此关闭 P1-M0-04 或生产 Gate。
 
 ### P1-M0-04 候选补丁镜像扫描（2026-07-18）
 
 Beelink run `p1-m0-04-candidates-20260718T084500Z` 只拉取和扫描了候选镜像，
 没有启动候选容器、修改 Compose 或切换当前运行服务。同一 Grype DB 快照下，
-Redis 7.2.14-alpine 为 0 Critical，可进入后续隔离回归；PostgreSQL 16.14-bookworm
+Redis 7.2.14-alpine 为 0 Critical；PostgreSQL 16.14-bookworm
 为 27，PostgreSQL 16.14-alpine 为 1，OpenBao 2.5.4 为 13，三个选项均阻断。
 
-候选证据目录全部 mode `0600`，Cosign 和仓库 verifier 均验签通过。在获得新的
-运行授权前，不执行 Redis 回归；不对 PostgreSQL/OpenBao 执行候选部署测试。机器
-可读索引为 `docs/acceptance/p1-supply-chain-candidate-evidence.json`。
+经用户授权，Redis 候选的隔离回归 run
+`p1-m0-04-redis-regression-20260718T101047Z` 已在 loopback-only 随机端口和独立
+`/data/models/yujianAI/p1-m0-04/redis-candidate/` 数据目录执行。初始、容器重启、容器删除
+重建三个阶段均完成 100 次限流竞争（恰好 20 次允许）、30 次 Token quota 竞争（恰好
+3 次成功）、租约单 owner 竞争；AOF marker 在重启和重建后均恢复，最终 DB size 为 0。
+候选容器已删除，当前 `yujian-p2-redis-1` 的容器 ID、固定 digest 和 `restartCount=0`
+前后保持一致。原始报告位于
+`/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-redis-regression-20260718T101047Z/`，
+report SHA-256 为 `b52848641e435b69302275e0d042f5ce4779226855d8c6d46c7ea4067dfd66bd`。
+
+扫描与回归证据文件均限制为 mode `0600`，仓库 verifier 通过。Redis 回归后来获得 bbb
+签名批准，但 Registry/KMS freeze sequence 1 仍为签名驳回且回滚接受未关闭，仍不授权修改固定 digest
+或运行容器；
+原始 PostgreSQL/OpenBao 候选仍禁止部署测试。机器可读索引为
+`docs/acceptance/p1-supply-chain-candidate-evidence.json`。
+
+### P1-M0-04 PostgreSQL/OpenBao 安全重建（2026-07-18）
+
+Beelink 最终 build run `p1-m0-04-remediated-build-20260718T115740Z` 与 scan run
+`p1-m0-04-remediated-scan-20260718T120238Z` 使用 `/data` 隔离构建目录完成。PostgreSQL
+16.14 Alpine + gosu/Go 1.25.12 与 OpenBao 2.5.4 + x/crypto 0.52.0 + x/net 0.55.0 +
+OpenSSL 3.5.7 均为 Critical 0、High 0。镜像内已验证 PostgreSQL、gosu、OpenBao MPL-2.0
+及 OpenBao dependency notice 的 `/licenses/` 文件 hash。
+
+技术扫描通过不等于部署通过。原始 335 条 `licenseDeclared=NOASSERTION` 已由
+`p1-m0-04-license-remediation-20260718T165733Z` 在不覆盖原 SBOM 的前提下逐项分类；两个
+结论层 SPDX 的 `licenseConcluded=NOASSERTION` 为 0，实际 OpenBao 源码归档、NOTICE、
+许可证、构建配方、SHA256SUMS 和工程签名均在同一 `/data` 证据根且验签通过。
+`reedsolomon v1.0.0` 仍有 1 个显式法律待判项，ccc 当前 reject 未被改变。隔离生产回归
+`p1-m0-04-remediated-regression-20260718T162844Z` 已在 Beelink `/data` 通过 PostgreSQL
+11 条迁移、事务 outbox/CAS、`pg_dump` 恢复（722 ms）、删除重建，以及 OpenBao 2.4.1→
+2.5.4 三节点滚动升级、Raft 快照恢复、TLS、Transit、leader failover 和 API key
+create/rotate/revoke/recovery；当前 P2 容器 ID、镜像和 restart count 未变化。Beelink 私有 Registry
+与 `openbao://yujian-oci-release` 已配置，
+Redis/PostgreSQL/OpenBao/Registry 四个 digest 的签名、SPDX attestation 和本机外部逐 blob
+校验均通过；bbb 已批准 Redis，Registry/KMS freeze 已追加 sequence 1 reject；aaa 与 ddd
+已由原始 reject 追加为 sequence 1 approve，ccc 法律已追加 sequence 1 reject。
+当前五个 P2 容器 ID 未变、全部 healthy、restart count 为 0。机器索引为
+`docs/acceptance/p1-remediated-candidate-evidence.json`、
+`docs/acceptance/p1-license-remediation-evidence.json`、
+`docs/acceptance/p1-production-oci-evidence.json`、`docs/acceptance/p1-m0-04-owner-signoffs.json`
+和 `docs/acceptance/p1-redis-release-decision.json`。acceptance v2 只保留理由长度/SHA-256，
+verifier 强制检查四位 Owner、五项 receipt/history、audit 覆盖和 Gate fail-closed。
 
 每次运行至少保存：
 

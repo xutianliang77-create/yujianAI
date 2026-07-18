@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 1,
+  "taskId": "P1-M0-04-PRODUCTION-OCI-EVIDENCE",
+  "generatedAt": "2026-07-18T12:24:01Z",
+  "status": "technical-signing-passed-owner-freeze-pending",
+  "environment": {
+    "server": "beelink",
+    "registryHost": "beelink.tail1e9cec.ts.net:5443",
+    "bindAddress": "100.110.127.117:5443",
+    "dataRoot": "/data/models/yujianAI",
+    "summaryPath": "remote:/data/models/yujianAI/registry/evidence/p1-m0-04-production-oci-summary-20260718T122500Z.json",
+    "summarySha256": "sha256:61f63898512b6444d92cdee4f1ececbc6269ef5575efb1c04c1c72a0cf33e1a3"
+  },
+  "registry": {
+    "sourceCommit": "9a8d98b679740cd514aa7e7d84d23d442a5ef54c",
+    "imageId": "sha256:a6757e5a6280aeff99c9f3694b6a54ca4d489c8d2fbe7a83ebbd5b829d87472f",
+    "scan": { "critical": 0, "high": 0, "medium": 3, "unknown": 1 },
+    "tlsVerified": true,
+    "certificateNotAfter": "2026-10-11T03:18:23Z",
+    "unauthenticatedStatus": 401,
+    "authenticatedStatus": 200,
+    "tailscaleOnly": true,
+    "running": true,
+    "restartCount": 0
+  },
+  "kms": {
+    "uri": "openbao://yujian-oci-release",
+    "address": "https://127.0.0.1:18200",
+    "tlsVerified": true,
+    "keyType": "ecdsa-p256",
+    "exportable": false,
+    "allowPlaintextBackup": false,
+    "publicKeySha256": "sha256:5f362c145a7b75f9fb28d9860952dbd67240e8f20238476450a88e51aef9492e",
+    "signerPolicy": "yujian-oci-signer"
+  },
+  "images": [
+    {
+      "id": "redis-7.2.14",
+      "digestReference": "beelink.tail1e9cec.ts.net:5443/yujian/p1/redis@sha256:18e7e254e2fe1fa185f9434450649b33c1efb9a7dcda9daaf1ce0dfb133bc16b",
+      "sbomSha256": "sha256:a4fc42af6839bd4f59c6dedadd427c40965e4621bfb74c4f75da9f2fdbe05993",
+      "signingRunId": "production-oci-redis-20260718T122200Z",
+      "resultSha256": "sha256:1a1202e709c5049e9bbb1a75d73d7231458e287a3ee6752269ba899419afa6d6",
+      "signatureVerified": true,
+      "attestationVerified": true
+    },
+    {
+      "id": "postgres-16.14-yujian",
+      "digestReference": "beelink.tail1e9cec.ts.net:5443/yujian/p1/postgres@sha256:ca0b040cfb1d7cef610a54d985b14d735ea5735c44be86b1ae946a73eb577646",
+      "sbomSha256": "sha256:23e0ad127b6d850ccfef20c9260c409861721cfb94fdf6a37a2559547f7c0dc4",
+      "signingRunId": "production-oci-postgres-20260718T122300Z",
+      "resultSha256": "sha256:bc0313d33be3978c3c3084b8c4b3afeb9e19c3bec46f090e02676c14a1db1113",
+      "signatureVerified": true,
+      "attestationVerified": true
+    },
+    {
+      "id": "openbao-2.5.4-yujian.2",
+      "digestReference": "beelink.tail1e9cec.ts.net:5443/yujian/p1/openbao@sha256:8f0a920223e6974c5a959153bc0f0aeee5602314fdd8ef010bb74c53500f8a71",
+      "sbomSha256": "sha256:73a4205a6a1849e27103b718e2fd0057006f1c197653cea09f2527642c6a3395",
+      "signingRunId": "production-oci-openbao-20260718T122300Z",
+      "resultSha256": "sha256:f10d9ab4737f0daecc5b602bc09dd194cb1cb39a63f701cb65049afcbc577a5c",
+      "signatureVerified": true,
+      "attestationVerified": true
+    },
+    {
+      "id": "distribution-registry-3.1.1-yujian.1",
+      "digestReference": "beelink.tail1e9cec.ts.net:5443/yujian/p1/distribution-registry@sha256:564d023747cfff89a76cc61c46f99ef7b7a1953099d002504a126a131e1fa749",
+      "sbomSha256": "sha256:c684b5c3aad757dd1f55e8ffb588a36a7efca0dfd47859c6ec596d0287736064",
+      "signingRunId": "production-oci-registry-20260718T122300Z",
+      "resultSha256": "sha256:f9eabfe28b5fca35698d5cd79b9f33bfac6eec7cabe768bbf0714a9891240d84",
+      "signatureVerified": true,
+      "attestationVerified": true
+    }
+  ],
+  "externalFetch": {
+    "client": "MacBook-Air-5.local",
+    "path": "remote:/data/models/yujianAI/registry/evidence/external-registry-fetch-20260718T122303Z.json",
+    "sha256": "sha256:2fb355037ed58cf4a9c8cc6fbe1f0dc556ece7466b74d3d9d2056db33919e7de",
+    "manifestsVerified": 4,
+    "blobsVerified": 44,
+    "passed": true
+  },
+  "protectedRuntime": {
+    "unchanged": true,
+    "allHealthy": true,
+    "restartCount": 0
+  },
+  "preconditions": {
+    "technicalRegistryConfigured": true,
+    "technicalKmsKeyConfigured": true,
+    "allOciSignaturesVerified": true,
+    "allSbomAttestationsVerified": true,
+    "externalFetchVerified": true,
+    "releaseOwnerFreezeSignedByBbb": false,
+    "redisDecisionSignedByBbb": false,
+    "securitySignedByAaa": false,
+    "legalSignedByCcc": false,
+    "complianceSignedByDdd": false
+  },
+  "technicalStatus": "passed",
+  "productionReleaseAuthorized": false,
+  "gate": {
+    "productionOciTechnical": "passed",
+    "releaseOwnerFreeze": "pending-bbb",
+    "formalGate0": "not-passed",
+    "formalGate1": "not-passed",
+    "formalGate7": "not-passed",
+    "productionRelease": "blocked"
+  }
+}

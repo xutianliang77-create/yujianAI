@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 2,
+  "taskId": "P1-M0-04-REDIS-RELEASE-DECISION",
+  "generatedAt": "2026-07-18T15:46:00Z",
+  "candidate": {
+    "currentReference": "redis:7.2.7-alpine@sha256:1de7ca6a3f63a083036fa1d95dddbd6bdfcdf5865bb692c1e412d4bdf9cb1e37",
+    "candidateReference": "redis:7.2.14-alpine@sha256:dfa18828cbc07b3ae6a95ec7343f6c214fdee2d836197b4be8e9904420762cd8",
+    "productionRegistryReference": "beelink.tail1e9cec.ts.net:5443/yujian/p1/redis@sha256:18e7e254e2fe1fa185f9434450649b33c1efb9a7dcda9daaf1ce0dfb133bc16b"
+  },
+  "evidence": {
+    "candidateScanRunId": "p1-m0-04-candidates-20260718T084500Z",
+    "candidateScanIndex": "docs/acceptance/p1-supply-chain-candidate-evidence.json",
+    "regressionRunId": "p1-m0-04-redis-regression-20260718T101047Z",
+    "regressionReport": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-redis-regression-20260718T101047Z/report.json",
+    "regressionReportSha256": "sha256:b52848641e435b69302275e0d042f5ce4779226855d8c6d46c7ea4067dfd66bd",
+    "productionOciRunId": "production-oci-redis-20260718T122200Z",
+    "productionOciResult": "remote:/data/models/yujianAI/evidence/p1-m0-04/production-oci/production-oci-redis-20260718T122200Z/result.json",
+    "productionOciResultSha256": "sha256:1a1202e709c5049e9bbb1a75d73d7231458e287a3ee6752269ba899419afa6d6",
+    "productionOciIndex": "docs/acceptance/p1-production-oci-evidence.json",
+    "registryHost": "beelink.tail1e9cec.ts.net:5443",
+    "kmsKeyUri": "openbao://yujian-oci-release"
+  },
+  "owner": {
+    "role": "release-owner",
+    "personalOwner": "bbb",
+    "status": "signed-decision-recorded",
+    "decision": "approve",
+    "decidedAt": "2026-07-18T13:56:01.906Z",
+    "reasonEvidence": {
+      "storedOnlyInSignedArtifact": true,
+      "length": 82,
+      "sha256": "sha256:a0548e8d30d217e9771810240a2ae5f805386690f87607e7594a6ca0301459d8",
+      "professionalReviewRequired": true
+    },
+    "currentSequence": 0,
+    "signedRecord": {
+      "contract": "openbao-owner-receipt/v1",
+      "decisionId": "p1-m0-04-bbb-redis-20260718",
+      "decisionArtifact": {
+        "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-bbb-redis-20260718/decision.json",
+        "sha256": "sha256:bdabadf8958645ace87f20126f1cf8c42c60a343ba2d45c9fe6bf0a03c44ad0e"
+      },
+      "signatureRecord": {
+        "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-bbb-redis-20260718/signature.json",
+        "sha256": "sha256:6f3b19a8b18cf58ff78413562e5fb2fbcd0cbb3a2cd4e09e042eab8bd3423119"
+      },
+      "receipt": {
+        "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-bbb-redis-20260718/result.json",
+        "sha256": "sha256:2493f86094f10aba6088ebce23e5d4ad49336db1e416d51a2cc2829361ba8005",
+        "keyUri": "openbao://yujian-owner-bbb",
+        "keyVersion": 1,
+        "publicKeySha256": "sha256:94ba7186ffb1147e064a3dc74787fa73e12c277409aaec2dfe55282ccc46bde9",
+        "signatureVerified": true,
+        "credentialRevoked": true
+      },
+      "auditRunId": "owner-approval-final-audit-20260718T154455Z",
+      "auditCoverage": "complete"
+    }
+  },
+  "preconditions": {
+    "candidateScanPassed": true,
+    "candidateRegressionPassed": true,
+    "technicalRegistryConfigured": true,
+    "technicalKmsKeyConfigured": true,
+    "rollbackPlanAccepted": false,
+    "registryTargetFrozen": false,
+    "productionSignatureVerified": true,
+    "ownerDecisionSigned": true
+  },
+  "deploymentAuthorized": false,
+  "gate": {
+    "runtimeSwitch": "not-authorized",
+    "currentImageGate": "blocked",
+    "formalGate0": "not-passed",
+    "formalGate1": "not-passed",
+    "formalGate7": "not-passed",
+    "productionRelease": "blocked"
+  },
+  "adapter": {
+    "contract": "owner-receipt-audit/v2",
+    "sourceTaskId": "P1-M0-04-OWNER-ACCEPTANCE-EVIDENCE-SNAPSHOT"
+  }
+}

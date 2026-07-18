@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "taskId": "P1-M0-04-OWNER-DECISION",
+  "decisionId": "p1-m0-04-bbb-registry-kms-freeze-20260718",
+  "personalOwner": "bbb",
+  "role": "release-owner",
+  "decisionType": "registry-kms-freeze",
+  "status": "awaiting-personal-decision",
+  "decision": null,
+  "decidedAt": null,
+  "reason": null,
+  "conditions": null,
+  "expiresAt": null,
+  "evidence": [
+    {
+      "path": "remote:/data/models/yujianAI/registry/evidence/p1-m0-04-production-oci-summary-20260718T122500Z.json",
+      "sha256": "sha256:61f63898512b6444d92cdee4f1ececbc6269ef5575efb1c04c1c72a0cf33e1a3"
+    },
+    {
+      "path": "remote:/data/models/yujianAI/registry/evidence/external-registry-fetch-20260718T122303Z.json",
+      "sha256": "sha256:2fb355037ed58cf4a9c8cc6fbe1f0dc556ece7466b74d3d9d2056db33919e7de"
+    }
+  ],
+  "facts": {
+    "registryHost": "beelink.tail1e9cec.ts.net:5443",
+    "bindAddress": "100.110.127.117:5443",
+    "kmsKeyUri": "openbao://yujian-oci-release",
+    "kmsPublicKeySha256": "sha256:5f362c145a7b75f9fb28d9860952dbd67240e8f20238476450a88e51aef9492e",
+    "registrySingleNode": true,
+    "certificateNotAfter": "2026-10-11T03:18:23Z",
+    "immutableDigestRequired": true,
+    "productionReleaseAuthorized": false
+  }
+}

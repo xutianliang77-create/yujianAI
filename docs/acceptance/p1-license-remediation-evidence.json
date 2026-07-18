@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 1,
+  "taskId": "P1-M0-04-LICENSE-REMEDIATION",
+  "generatedAt": "2026-07-18T16:57:33Z",
+  "status": "engineering-remediation-complete-legal-owner-blocked",
+  "deploymentAllowed": false,
+  "environment": {
+    "server": "beelink",
+    "platform": "linux/amd64",
+    "runId": "p1-m0-04-license-remediation-20260718T165733Z",
+    "runRoot": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-license-remediation-20260718T165733Z"
+  },
+  "summary": {
+    "declaredNoAssertion": 335,
+    "originalConcludedNoAssertion": 405,
+    "remediatedConcludedNoAssertion": 0,
+    "legalOwnerReviewRequired": 1,
+    "resolutionStatusCounts": {
+      "engineering-concluded": 331,
+      "informational-aggregate": 2,
+      "legal-owner-review-required": 1,
+      "no-independent-content": 1
+    }
+  },
+  "artifacts": {
+    "report": {
+      "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-license-remediation-20260718T165733Z/report.json",
+      "sha256": "sha256:85ed50b65b2d87f3f8818920966c589b28945748d4bc3c57c54cfe1c6bc788c7"
+    },
+    "inventory": {
+      "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-license-remediation-20260718T165733Z/noassertion-inventory.json",
+      "sha256": "sha256:60c45e17f381a36fc6c22b430c5a714d37e22de59bbe72f8c0f452dc3bf353aa",
+      "records": 335
+    },
+    "postgresRemediatedSpdx": {
+      "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-license-remediation-20260718T165733Z/remediated-sbom/postgres.spdx.json",
+      "sha256": "sha256:e1b8a102279798d12adcfd8c1a5d42013885c02724dc3ab887d2e0f0970bb91e"
+    },
+    "openbaoRemediatedSpdx": {
+      "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-license-remediation-20260718T165733Z/remediated-sbom/openbao.spdx.json",
+      "sha256": "sha256:4e308f52d801e8b88662af66953da101b9bcb25e6123660107f1f5b957415659"
+    },
+    "notice": {
+      "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-license-remediation-20260718T165733Z/NOTICE.md",
+      "sha256": "sha256:83b02d29d71992a5bae016683f2939ad0c50717a46ec4297c8eff0340b755a95"
+    },
+    "sourceOffer": {
+      "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-license-remediation-20260718T165733Z/SOURCE_OFFER.md",
+      "sha256": "sha256:67a27da9c262047b39a4228bea93c1cc2ba94aa3a75b91de19ca768b24df1822"
+    },
+    "openbaoSourceArchive": {
+      "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-license-remediation-20260718T165733Z/source-offer/openbao-dist-2.5.4.tar.xz",
+      "sha256": "sha256:5dd8bc003fcb8b1b601f0e75827df3819a9d5021b3094729c4d375508fd844b7"
+    },
+    "manifest": {
+      "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-license-remediation-20260718T165733Z/SHA256SUMS",
+      "sha256": "sha256:b8ed96caebb64f3121d0ab9f33bb33d8e27eb0f0aa7e62d3a287c9f2ac043d79"
+    }
+  },
+  "signature": {
+    "mode": "cosign-sign-blob",
+    "keyClass": "engineering-evidence-non-production",
+    "bundlePath": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-license-remediation-20260718T165733Z/signing-manifest.sigstore.json",
+    "bundleSha256": "sha256:01cf40b0b0b7af9adcdd2a450a167e1802751714794af92f3d3d59ad2a2c2ab9",
+    "publicKeySha256": "sha256:f77dcfc2978a199e4ec6a770eeafe52c01f23e0eac1dcceec533804e6f777e6c",
+    "verified": true
+  },
+  "reedsolomonBoundary": {
+    "module": "github.com/yeqown/reedsolomon",
+    "version": "v1.0.0",
+    "tagCommit": "5441098c575e61f884a016a3398726d2295fa995",
+    "licenseFileInTag": false,
+    "laterMitCommit": "c5f4bc9af094852b52e593a5f964647c43028c51",
+    "laterMitUpstreamBlobSha256": "sha256:58fb0c85bfc183bad46c47dd38ac17e3372d86c1fcb65bce880fa1d964424f69",
+    "licenseConcluded": "LicenseRef-Yujian-ReedSolomon-Pending-Legal",
+    "status": "legal-owner-review-required"
+  },
+  "owners": [
+    { "role": "release-owner", "personalOwner": "bbb", "status": "registry-kms-current-rejected-sequence-1" },
+    { "role": "legal-owner", "personalOwner": "ccc", "status": "current-rejected-sequence-1" },
+    { "role": "compliance-owner", "personalOwner": "ddd", "status": "current-approved-sequence-1" }
+  ],
+  "protectedRuntime": {
+    "unchanged": true,
+    "allHealthy": true,
+    "restartCount": 0
+  },
+  "gate": {
+    "noAssertionEngineeringRemediation": "passed-335-classified-zero-concluded-noassertion",
+    "licenseNoticeReview": "rejected-ccc-sequence-1",
+    "sourceOffer": "actual-source-bundled-awaiting-legal-owner",
+    "registryPromotion": "not-authorized-bbb-sequence-1-reject",
+    "runtimeSwitch": "not-authorized",
+    "productionRelease": "blocked"
+  }
+}

@@ -43,9 +43,20 @@ Critical 和 465 个 license `NOASSERTION` 阻断；索引见
 
 补丁候选独立冻结在 [`p1-image-candidates.json`](p1-image-candidates.json)，其
 `deploymentAllowed=false` 是强制边界。2026-07-18 的候选 run 只拉取/扫描，没有
-切换当前容器；只有 Redis 7.2.14-alpine 为零 Critical 并可进入后续隔离回归，
-PostgreSQL/OpenBao 候选仍阻断。索引见
-[`p1-supply-chain-candidate-evidence.json`](../../docs/acceptance/p1-supply-chain-candidate-evidence.json)。
+切换当前容器；Redis 7.2.14-alpine 为零 Critical，随后已通过 loopback-only 竞争、quota、
+重启和删除重建隔离回归，当前 P2 Redis 仍未切换，发布未获批准。固定源码最小安全重建后，
+PostgreSQL/OpenBao 候选最终达到 Critical 0、High 0。四个候选 digest 已推送到 Beelink
+Tailscale-only Registry，并使用 OpenBao transit key 完成生产候选 OCI 签名、SPDX
+attestation 与外部逐 blob 校验；PostgreSQL/OpenBao 运行回归已通过。335 个原始
+`licenseDeclared=NOASSERTION` 已由独立、签名的结论层逐项分类，结论层中
+`licenseConcluded=NOASSERTION` 为 0；`reedsolomon v1.0.0` 仍有 1 个显式法律待判项。
+bbb Registry/KMS 与 ccc 当前 reject 继续阻断发布。索引见
+[`p1-supply-chain-candidate-evidence.json`](../../docs/acceptance/p1-supply-chain-candidate-evidence.json)
+与
+[`p1-remediated-candidate-evidence.json`](../../docs/acceptance/p1-remediated-candidate-evidence.json)、
+[`p1-license-remediation-evidence.json`](../../docs/acceptance/p1-license-remediation-evidence.json)。
+生产 OCI 索引见
+[`p1-production-oci-evidence.json`](../../docs/acceptance/p1-production-oci-evidence.json)。
 
 采用策略见
 [SOURCE_REUSE_AND_UPSTREAM_STRATEGY.md](../../docs/migration/SOURCE_REUSE_AND_UPSTREAM_STRATEGY.md)。

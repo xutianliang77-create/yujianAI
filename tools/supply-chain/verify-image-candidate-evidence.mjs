@@ -37,6 +37,7 @@ export function validateCandidateEvidence(evidence) {
   if (!Array.isArray(evidence.candidates) || evidence.candidates.length < 3) fail("candidates must contain the authorized services");
   let blocked = 0;
   let eligible = 0;
+  let regressionPassed = 0;
   let criticalMatches = 0;
   const ids = new Set();
   for (const candidate of evidence.candidates) {
@@ -62,19 +63,33 @@ export function validateCandidateEvidence(evidence) {
     if (!Number.isInteger(candidate.licensesNoAssertion) || candidate.licensesNoAssertion < 0
       || candidate.licensesNoAssertion > candidate.sbom.packages) fail(`${candidate.id}.licensesNoAssertion is invalid`);
     const hasCritical = candidate.vulnerabilityScan.counts.critical > 0;
-    const expectedDecision = hasCritical ? "blocked" : "eligible-for-regression";
+    if (hasCritical && candidate.regression !== undefined) fail(`${candidate.id}.regression cannot exist while Critical findings remain`);
+    if (!hasCritical && candidate.regression !== undefined) validateRegression(candidate.regression, candidate.id);
+    const expectedDecision = hasCritical
+      ? "blocked"
+      : candidate.regression === undefined
+        ? "eligible-for-regression"
+        : "regression-passed-awaiting-deployment-approval";
     if (candidate.decision !== expectedDecision) fail(`${candidate.id}.decision is inconsistent`);
     if (typeof candidate.requiredBeforeDeployment !== "string" || candidate.requiredBeforeDeployment.length === 0) {
       fail(`${candidate.id}.requiredBeforeDeployment is missing`);
     }
     criticalMatches += candidate.vulnerabilityScan.counts.critical;
     if (hasCritical) blocked += 1;
-    else eligible += 1;
+    else if (candidate.regression === undefined) eligible += 1;
+    else regressionPassed += 1;
   }
 
-  if (evidence.summary?.blocked !== blocked || evidence.summary?.eligibleForRegression !== eligible) fail("candidate summary is inconsistent");
+  if (evidence.summary?.blocked !== blocked
+    || evidence.summary?.eligibleForRegression !== eligible
+    || evidence.summary?.regressionPassed !== regressionPassed) fail("candidate summary is inconsistent");
   if (evidence.summary?.totalCriticalMatchesAcrossAllAlternatives !== criticalMatches) fail("candidate Critical total is inconsistent");
-  if (evidence.status !== (blocked > 0 ? "blocked" : "eligible-for-regression")) fail("candidate status is inconsistent");
+  const expectedStatus = blocked > 0
+    ? "blocked"
+    : eligible > 0
+      ? "eligible-for-regression"
+      : "regression-passed-awaiting-deployment-approval";
+  if (evidence.status !== expectedStatus) fail("candidate status is inconsistent");
   const signature = evidence.signature;
   for (const field of ["statementPath", "bundlePath", "publicKeyPath", "verificationLog"]) {
     remotePath(signature?.[field], `signature.${field}`);
@@ -111,6 +126,36 @@ export function validateCandidateEvidence(evidence) {
   return evidence;
 }
 
+function validateRegression(regression, candidateId) {
+  if (regression.status !== "passed") fail(`${candidateId}.regression status is invalid`);
+  if (!/^p1-m0-04-redis-regression-[0-9TZ]+$/u.test(regression.runId ?? "")) {
+    fail(`${candidateId}.regression runId is invalid`);
+  }
+  if (!Number.isFinite(Date.parse(regression.generatedAt))) fail(`${candidateId}.regression generatedAt is invalid`);
+  remotePath(regression.reportPath, `${candidateId}.regression.reportPath`);
+  digest(regression.reportSha256, `${candidateId}.regression.reportSha256`);
+  if (!/^[0-9a-f]{40}$/u.test(regression.source?.repositoryCommit ?? "")) {
+    fail(`${candidateId}.regression repositoryCommit is invalid`);
+  }
+  digest(regression.source?.nodeRunnerSha256, `${candidateId}.regression.nodeRunnerSha256`);
+  digest(regression.source?.shellRunnerSha256, `${candidateId}.regression.shellRunnerSha256`);
+  for (const phaseName of ["initial", "postRestart", "postRebuild"]) {
+    const phase = regression.phases?.[phaseName];
+    if (phase?.rateAttempts !== 100 || phase.rateAllowed !== 20
+      || phase.quotaAttempts !== 30 || phase.quotaSuccessful !== 3
+      || phase.lease !== "single-owner") fail(`${candidateId}.regression.${phaseName} is invalid`);
+  }
+  if (regression.persistence?.aofMarkerRecovered !== true
+    || regression.persistence.containerRestart !== true
+    || regression.persistence.containerDeleteRecreate !== true
+    || regression.persistence.finalDbSize !== 0) fail(`${candidateId}.regression persistence is invalid`);
+  if (regression.isolation?.loopbackOnly !== true
+    || regression.isolation.currentRuntimeSwitched !== false
+    || regression.isolation.candidateContainerRemoved !== true
+    || regression.isolation.protectedRestartCountUnchanged !== true) fail(`${candidateId}.regression isolation is invalid`);
+  if (regression.deploymentApproval !== "not-granted") fail(`${candidateId}.regression cannot authorize deployment`);
+}
+
 function digest(value, field) {
   if (!digestPattern.test(value ?? "")) fail(`${field} is not a sha256 digest`);
 }
@@ -127,5 +172,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const path = resolve(process.env.P1_M0_04_CANDIDATE_FILE ?? "docs/acceptance/p1-supply-chain-candidate-evidence.json");
   const evidence = JSON.parse(readFileSync(path, "utf8"));
   validateCandidateEvidence(evidence);
-  process.stdout.write(`P1-M0-04 candidate evidence verified: eligible=${evidence.summary.eligibleForRegression}; blocked=${evidence.summary.blocked}\n`);
+  process.stdout.write(`P1-M0-04 candidate evidence verified: eligible=${evidence.summary.eligibleForRegression}; regression-passed=${evidence.summary.regressionPassed}; blocked=${evidence.summary.blocked}\n`);
 }

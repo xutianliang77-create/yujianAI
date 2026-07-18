@@ -4,7 +4,8 @@
 
 日期：2026-07-18
 
-状态：角色已定义；P1-M0-04 四类个人负责人已指定、签字待补；其他角色待指派
+状态：角色已定义；P1-M0-04 独立签名 key 已配置，五项原始 receipt、aaa 与 ddd sequence 1
+approval、bbb Registry/KMS 与 ccc 法律 sequence 1 reject 已归档（当前三项批准、两项驳回），全部专业资格材料待补；其他角色待指派
 
 本文件只定义工程角色责任，不把角色名误认为已经完成的法务、合规或发布签字。每个
 Gate 关闭前必须把个人负责人、评审记录、commit、manifest 和回滚方案写入对应证据包。
@@ -35,7 +36,7 @@ Gate 关闭前必须把个人负责人、评审记录、commit、manifest 和回
 
 | 任务 | 需要的角色 | 个人负责人 | 证据 | 状态 |
 | --- | --- | --- | --- | --- |
-| P1-M0-04 供应链/许可证 | `security-owner`、`release-owner`、`legal-owner`、`compliance-owner` | aaa / bbb / ccc / ddd；由 eee 于 2026-07-18 指定；联系/备份/签字待补 | `docs/acceptance/p1-supply-chain-evidence.json`、`docs/acceptance/p1-supply-chain-candidate-evidence.json`、`docs/governance/P1_M0_04_OWNER_NOMINATION.md` | 当前镜像 76 个未豁免 Critical；候选仅 Redis 可进回归，PostgreSQL/OpenBao 仍阻断；阻断 Gate 0/1 和生产发布 |
+| P1-M0-04 供应链/许可证 | `security-owner`、`release-owner`、`legal-owner`、`compliance-owner` | aaa / bbb / ccc / ddd；由 eee 于 2026-07-18 指定；独立 key 已配置，联系/备份/专业资格待补 | 当前/候选/安全重建/生产 OCI/license-remediation evidence、PostgreSQL/OpenBao 隔离生产回归、Owner key registry、五份冻结模板、五份原始 receipt、aaa 与 ddd sequence 1 approval、bbb Registry/KMS 与 ccc 法律 sequence 1 reject | 当前运行镜像仍有 76 Critical；335 条原始声明已分类、实际源码随包，但 `reedsolomon v1.0.0` 有 1 个法律待判项；bbb Registry/KMS 与 ccc 法律驳回、aaa 原始决定 audit 缺口继续阻断 Gate 0/1/7 和生产发布 |
 
 四类角色的资格、职责分离和待填字段见
 [`P1_M0_04_OWNER_NOMINATION.md`](P1_M0_04_OWNER_NOMINATION.md)。该记录只证明责任角色

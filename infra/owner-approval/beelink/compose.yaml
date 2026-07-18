@@ -1,0 +1,39 @@
+name: yujian-owner-approval
+
+services:
+  owner-approval:
+    image: ${YUJIAN_OWNER_APPROVAL_IMAGE:?set a pinned Node image digest}
+    container_name: yujian-owner-approval
+    restart: unless-stopped
+    network_mode: host
+    user: "${YUJIAN_OWNER_APPROVAL_UID:-1000}:${YUJIAN_OWNER_APPROVAL_GID:-1000}"
+    working_dir: /app
+    command: ["node", "/app/dist/main.js"]
+    environment:
+      YUJIAN_OWNER_APPROVAL_HOST: 100.110.127.117
+      YUJIAN_OWNER_APPROVAL_PORT: "8093"
+      YUJIAN_OWNER_APPROVAL_ASSET_ROOT: /app/apps
+      YUJIAN_OWNER_APPROVAL_TEMPLATE_ROOT: /app/templates
+      YUJIAN_OWNER_KEY_REGISTRY: /app/p1-owner-key-registry.json
+      YUJIAN_OWNER_APPROVAL_EVIDENCE_ROOT: /evidence
+      YUJIAN_OWNER_OPENBAO_ADDRS: https://127.0.0.1:18200,https://127.0.0.1:18201,https://127.0.0.1:18202
+      YUJIAN_OWNER_APPROVAL_TLS_CERT: /tls/registry.crt
+      YUJIAN_OWNER_APPROVAL_TLS_KEY: /tls/registry.key
+      NODE_EXTRA_CA_CERTS: /openbao-ca/ca.crt
+    volumes:
+      - ${YUJIAN_OWNER_APPROVAL_RELEASE:?set the immutable release directory}:/app:ro
+      - ${YUJIAN_OWNER_APPROVAL_EVIDENCE:?set the evidence directory}:/evidence
+      - ${YUJIAN_OWNER_APPROVAL_TLS_ROOT:?set the Tailscale TLS directory}:/tls:ro
+      - ${YUJIAN_OPENBAO_TLS_ROOT:?set the OpenBao TLS directory}:/openbao-ca:ro
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=0700
+    cap_drop: ["ALL"]
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('https://beelink.tail1e9cec.ts.net:8093/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s

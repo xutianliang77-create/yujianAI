@@ -1430,3 +1430,1480 @@ npm run supply-chain:verify-image-evidence
 npm run supply-chain:verify-candidate-evidence
 P1_M0_04_REQUIRE_PASS=true npm run supply-chain:verify-image-evidence  # 仍必须失败关闭
 ```
+
+## 📌 SESSION HANDOFF STATUS — Redis candidate regression passed, deployment not approved
+
+### Current Work
+
+2026-07-18 经用户授权，在 Beelink 对零 Critical 的
+`redis:7.2.14-alpine@sha256:dfa188...` 候选执行了真实隔离回归。正式 run id 为
+`p1-m0-04-redis-regression-20260718T101047Z`，原始报告位于：
+
+`/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-redis-regression-20260718T101047Z/report.json`
+
+report SHA-256 为
+`b52848641e435b69302275e0d042f5ce4779226855d8c6d46c7ea4067dfd66bd`。测试数据使用独立目录：
+
+`/data/models/yujianAI/p1-m0-04/redis-candidate/p1-m0-04-redis-regression-20260718T101047Z`
+
+测试 runner 固化为 `tools/supply-chain/redis-candidate-regression.mjs` 和
+`tools/supply-chain/run-redis-candidate-regression.sh`；SHA-256 分别为
+`b11aed1ae428e63a12b7c3bcaff33912c326840e73bea997ebc267af66b89e78`、
+`4b73c88cfcfab37ce04b4d7795314436a071790396ce641bcd41f651b095530c`。
+
+### Verification and Findings
+
+- 候选容器仅绑定 loopback 随机端口，限制为 512 MiB、1 CPU、256 PIDs；未接入当前
+  Compose，也未访问 P2 Redis 数据目录。
+- 初始、容器重启、容器删除重建三个阶段均执行两客户端竞争：100 次限流恰好允许 20 次，
+  30 次 Token quota 恰好成功 3 次，释放无泄漏，租约保持单 owner 并可转移。
+- 初始阶段写入 AOF marker，`WAITAOF` 返回本地确认；marker 在重启和删除重建后均恢复，
+  最终清理后 DB size 为 0。
+- 首次功能 run 通过后发现测试数据目录仍由容器 UID 999 所有。根因是候选 volume 初始化
+  后没有恢复宿主机 owner；runner 已在正常和失败清理路径按固定候选镜像恢复宿主 UID/GID、
+  目录 `0700`、文件 `0600`，并以本节正式 run 重跑。首次 run 已标记为被正式 run 取代。
+- 正式证据文件全部 mode `0600`；数据目录 owner 为 `beelink:beelink`，文件 mode `0600`。
+- 候选容器已删除。受保护的 `yujian-p2-redis-1` 容器 ID 前后均为
+  `77956da2cbca...`，仍运行固定 Redis 7.2.7 digest，状态 `running/healthy`，
+  `restartCount=0`。`/data` 仍有约 2.2T 可用。
+- 候选 evidence JSON 已加入三阶段摘要、报告/runner hash、隔离和未授权部署边界；verifier
+  会拒绝 Critical 候选携带回归、错误竞争结果或把 `deploymentApproval` 写成 approved。
+- `npm run test:supply-chain` 11/11 通过；当前镜像和候选 evidence verifier 均通过结构
+  校验；`P1_M0_04_REQUIRE_PASS=true` 仍按预期报 `release gate is not passed`。
+- `npm run check` 通过：workspace 38/38，upstream replay 1/1；`bash -n`、`node --check`、
+  `jq empty` 和 `git diff --check` 均通过。
+
+### Gate Status
+
+Redis 候选状态由 `eligible-for-regression` 更新为
+`regression-passed-awaiting-deployment-approval`，但没有修改固定 manifest、Compose 或当前
+运行容器。P1-M0-04、Gate 0、完整 Gate 1、Gate 7 和生产发布仍为 **blocked/not-passed**：
+当前固定镜像仍有 76 Critical 和 465 个 license `NOASSERTION`；PostgreSQL/OpenBao 候选
+仍有 Critical；生产 OCI registry 签名、四类 Owner 联系/备份/本人专业签字和
+`release-owner` bbb 的 Redis 发布决定尚未完成。
+
+### Background Tasks
+
+- 无候选容器、临时 worktree、扫描或回归进程遗留。
+- 当前 P2 Redis/PostgreSQL/OpenBao 服务未因本轮测试重启或重建。
+
+### Next Session Priorities
+
+1. 由 bbb 基于候选 digest、回滚方案和生产 registry 签名明确批准或驳回 Redis 发布；
+   未批准前不得切换当前 Redis。
+2. 为 PostgreSQL/OpenBao 寻找或重建零 Critical 候选，未过安全门禁前不启动候选部署回归。
+3. 补齐 465 个许可证归属、最终 LICENSE/NOTICE，以及 aaa/ccc/ddd 的专业评审和四类 Owner
+   联系/备份/本人确认。
+4. 只有发布决定和前置门禁完成后，才修改固定 digest、执行 canary/回滚并重跑当前镜像
+   SBOM、漏洞和 registry 签名证据。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short --branch
+npm run test:supply-chain
+npm run supply-chain:verify-image-evidence
+npm run supply-chain:verify-candidate-evidence
+P1_M0_04_REQUIRE_PASS=true npm run supply-chain:verify-image-evidence  # 仍必须失败关闭
+ssh beelink@100.110.127.117 \
+  'R=/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-redis-regression-20260718T101047Z; \
+   sha256sum "$R/report.json"; jq "{status,persistence,isolation,gate}" "$R/report.json"; \
+   docker inspect yujian-p2-redis-1 --format "{{.Id}} {{.Config.Image}} {{.State.Status}} {{.State.Health.Status}} {{.RestartCount}}"'
+```
+
+## 📌 SESSION HANDOFF STATUS — PostgreSQL/OpenBao zero-Critical rebuild complete; Owner/OCI decisions pending
+
+### Current Work
+
+2026-07-18 已为 P1-M0-04 建立 bbb Redis 决定合同、PostgreSQL/OpenBao 可复现安全重建、
+LICENSE/NOTICE 载荷、生产 OCI fail-closed 签名工具和四类 Owner 专业签字合同。没有切换、
+重启或重建当前 P2 服务。
+
+- bbb Redis 记录：`docs/acceptance/p1-redis-release-decision.json`，状态
+  `awaiting-explicit-decision`，`deploymentAuthorized=false`。扫描/回归为真，回滚接受、
+  registry 冻结、生产签名和 bbb 本人签字仍为 false。
+- 最终安全重建 run：`p1-m0-04-remediated-build-20260718T105917Z`。
+  PostgreSQL image ID 为 `sha256:dc6f20504a5a693df299ede952a30852afeb3799a2013ef323625363e32291e4`；
+  OpenBao image ID 为 `sha256:7777335318370ad73ddf719e9245f8b60b28c71b7858184d48cfdeb4747e8fa0`。
+- 最终复扫 run：`p1-m0-04-remediated-scan-20260718T110222Z`；两镜像合计 Critical 0、
+  High 3、license `NOASSERTION` 335。工程 statement SHA-256 为
+  `2dd99bfeb481c14be1195da2b88e5503e4df8bfada86a4b09969f6ddc3ec7cb4`，bundle SHA-256
+  为 `f492a8dcd6e5435c3bd57a82722d755a5b4e96fae6f8528b0b9712db1d91facc`，验签通过。
+- High 未豁免：两处 `GO-2026-4970`（Go 1.25.11，修复 1.25.12）及 OpenBao 的
+  `GO-2026-5026`（x/net 0.54.0，修复 0.55.0），等待 aaa 逐项专业决定。
+- 镜像内许可证 hash 已实测：PostgreSQL
+  `3d6af92ff8a4c2cdf69afb1cf44edea727922f5cd0cf8b5f72b11cdecac8fdfd`、gosu
+  `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`、OpenBao MPL-2.0
+  `d6b1a865f1c8c697d343bd4e0ce61025f91898486a1f00d727f32e8644af77d3`、OpenBao dependencies
+  `f4293107047228ac15cdf62b2054ff04ba55a22887406fbcc6b6aa564e469bd9`。
+- Owner 签字合同：`docs/acceptance/p1-m0-04-owner-signoffs.json`，四位状态均为
+  `awaiting-personal-signature`，不能由 AI/eee 代签。签字 verifier 会拒绝 unsigned approval、
+  不完整前置条件及任何签字后的 reject 被解释为发布批准。
+- 生产 OCI 工具：`tools/supply-chain/sign-production-oci.sh`。只接受批准 registry 的 digest
+  reference、SPDX 2.3 和 OpenBao/KMS managed key URI，并完成 sign/attest/fresh-pull/verify；
+  结果仍固定 `releaseAuthorized=false` 等待 bbb。当前未执行，因为 bbb 未冻结 repository，
+  本机 GitHub token 无 `write:packages`，且未提供生产 KMS/OpenBao key URI。
+
+### Verification
+
+- `npm run test:supply-chain`：23/23 通过。
+- 当前、官方候选、安全重建、Redis 决定和 Owner 签字五组 verifier 均通过；均保持
+  deployment/release fail-closed。
+- `npm run check` 通过：upstream replay 1/1，workspace 38/38。
+- `bash -n`、`node --check`、全部相关 JSON `jq empty`、`git diff --check` 和 secret pattern
+  检查通过。
+- Beelink `/data` 可用约 2.2T；当前 P2 PostgreSQL、Redis、OpenBao A/B/C 均
+  `running/healthy`、`restartCount=0`，容器 ID 与构建/扫描前一致。
+
+### Gate Status
+
+安全重建候选的 Critical 阈值通过，但它们仍是 `local-pre-registry`，不是生产 registry
+digest。当前运行镜像仍为旧固定版本并有 76 个 Critical。由于 3 个 High、335 个
+`NOASSERTION`、PostgreSQL/OpenBao 运行回归、bbb Redis 决定、生产 OCI 签名及
+aaa/bbb/ccc/ddd 本人专业签字未完成，P1-M0-04、Gate 0、完整 Gate 1、Gate 7 和生产发布
+继续 **blocked/not-passed**。
+
+### Background Tasks
+
+- 无构建、扫描、候选容器或临时测试进程遗留。
+- 本轮安全重建镜像仅保存在 Beelink 本地；未推送 registry，未修改 P2 Compose/manifest。
+
+### Next Session Priorities
+
+1. bbb 在 Redis 决定 JSON 中本人明确 `approve` 或 `reject`；批准仍须先补 registry、回滚和
+   生产验签前置条件。
+2. bbb 冻结生产 OCI repository 与 OpenBao/KMS key URI后，推送 digest 并执行
+   `sign-production-oci.sh`；不得用工程证据密钥代替生产身份。
+3. aaa 逐项决定 3 个 High；ccc/ddd 对实际 LICENSE/NOTICE、OpenBao source offer、中国
+   分发形态签字。
+4. 安全决定允许后，对 PostgreSQL 执行 backup/restore、migration 001–011、outbox/CAS；
+   对 OpenBao 执行 2.4→2.5 Raft snapshot/TLS/HA/API-key 回归。
+5. 只有上述前置条件完成后才修改当前固定 manifest、执行 canary/回滚并重跑当前镜像证据。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short --branch
+npm run test:supply-chain
+npm run supply-chain:verify-remediated-evidence
+npm run supply-chain:verify-redis-decision
+npm run supply-chain:verify-owner-signoffs
+npm run check
+ssh beelink@100.110.127.117 \
+  'R=/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-remediated-scan-20260718T110222Z; \
+   jq "{runId,status,summary}" "$R/signing-statement.json"; \
+   docker inspect yujian-p2-postgres-1 yujian-p2-redis-1 yujian-p2-openbao-a-1 \
+     yujian-p2-openbao-b-1 yujian-p2-openbao-c-1 \
+     --format "{{.Name}} {{.Id}} {{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}} {{.RestartCount}}"'
+```
+
+## 📌 SESSION HANDOFF STATUS — P1-M0-04 production OCI technical closure complete; personal decisions pending
+
+### Current Work
+
+2026-07-18 已修复原安全重建中的 3 项 High，并在 Beelink `/data` 完成真实私有 Registry、
+OpenBao KMS OCI 签名、SPDX attestation 和外部客户端读取验证。技术链路通过，但没有代替
+aaa/bbb/ccc/ddd 本人签字，也没有切换当前 P2 运行镜像。
+
+- 最终 PostgreSQL/OpenBao build run：`p1-m0-04-remediated-build-20260718T115740Z`；最终 scan
+  run：`p1-m0-04-remediated-scan-20260718T120238Z`。两镜像合计 Critical 0、High 0，
+  `NOASSERTION` 335；工程 statement SHA-256 为
+  `a7f9d159d2a27dd2727afd523ccd1204f46d4cf8a1d53354539b46348e1417ea`。
+- 官方 Distribution 3.1.1 镜像被当前 Grype DB 检出 Critical 10/High 20，未部署；固定源码
+  commit `9a8d98b...` 使用 Go 1.25.12、x/crypto 0.52、x/net 0.55 最小重建后为
+  Critical 0/High 0。最终 Registry build run 为 `registry-build-20260718T121700Z`，运行
+  image ID `sha256:a6757e5a...`。
+- Registry 为 `beelink.tail1e9cec.ts.net:5443`，只绑定 `100.110.127.117:5443`，Tailscale
+  TLS + bcrypt；未认证 401、认证 200。证书到期时间为 2026-10-11，后续须加入续期/reload。
+- OpenBao key URI 为 `openbao://yujian-oci-release`，ECDSA P-256、不可导出、禁止明文备份；
+  scoped policy 仅允许读取该 key 及签名子路径。Cosign 通过 TLS 验证连接，公钥 SHA-256 为
+  `5f362c145a7b75f9fb28d9860952dbd67240e8f20238476450a88e51aef9492e`。
+- Redis、PostgreSQL、OpenBao、Registry 四个私有 registry digest 已完成 Cosign 签名和
+  SPDX attestation；四份 `result.json` 均为 signature/attestation verified、
+  `releaseOwnerDecision=pending-bbb`、`releaseAuthorized=false`。
+- 本机 `MacBook-Air-5.local` 通过 Registry v2 API、TLS 和认证重新读取 4 个 manifest、
+  44 个 config/layer blob，全部 SHA-256 匹配。外部证据 SHA-256 为
+  `2fb355037ed58cf4a9c8cc6fbe1f0dc556ece7466b74d3d9d2056db33919e7de`。
+- 远端汇总为
+  `/data/models/yujianAI/registry/evidence/p1-m0-04-production-oci-summary-20260718T122500Z.json`，
+  SHA-256 `61f63898512b6444d92cdee4f1ececbc6269ef5575efb1c04c1c72a0cf33e1a3`；仓库索引为
+  `docs/acceptance/p1-production-oci-evidence.json`。
+
+### Gate Status
+
+- P1-M0-04 的 High 技术缺口与生产 OCI 技术签名缺口已关闭。
+- `productionOciTechnical=passed`，但 `releaseOwnerFreeze=pending-bbb`、
+  `productionReleaseAuthorized=false`。
+- bbb 尚未本人批准/驳回 Redis，也未本人冻结已配置的 Registry/KMS URI；aaa 尚未本人确认
+  最终零 Critical/High 证据；ccc/ddd 尚未签署 LICENSE/NOTICE、OpenBao source offer 和
+  中国分发意见。
+- 当前运行镜像仍是旧固定版本，当前-image run 仍有 76 Critical；PostgreSQL/OpenBao 候选
+  生产回归尚未执行。因此 P1-M0-04、Gate 0、完整 Gate 1、Gate 7 和生产发布继续
+  **blocked/not-passed**。
+
+### Background Tasks
+
+- `yujian-production-registry` 在 Beelink 运行，`restart=unless-stopped`，数据/认证/TLS 位于
+  `/data/models/yujianAI/registry`；凭据与 OpenBao signer token 位于
+  `/data/models/yujianAI/secrets/p1-m0-04`，均不在 Git，目录/文件为 0700/0600。
+- P2 PostgreSQL、Redis、OpenBao A/B/C 持续 `running/healthy`、`restartCount=0`，容器 ID
+  与本轮前一致；没有切换当前 Redis/PostgreSQL/OpenBao。
+- 无遗留构建、扫描或签名进程。
+
+### Next Session Priorities
+
+1. bbb 本人在 `p1-redis-release-decision.json` 明确 approve/reject，并对
+   `beelink.tail1e9cec.ts.net:5443` 与 `openbao://yujian-oci-release` 作 freeze 签字；不能由
+   AI、eee 或工程证据代签。
+2. aaa 本人确认最终 Critical 0/High 0、残余 Medium/Unknown 和 signer policy。
+3. ccc/ddd 对实际 LICENSE/NOTICE、335 个 `NOASSERTION` 处置、OpenBao source offer、商标
+   措辞及中国分发形态签字。
+4. 获得安全/发布决定后，执行 PostgreSQL backup/restore、migration 001–011、outbox/CAS，
+   以及 OpenBao 2.4→2.5 Raft/TLS/HA/API-key 回归；之后才允许 canary/回滚与当前-image 重扫。
+5. 在 2026-10-11 前实现 Tailscale TLS 证书自动续期和 Registry reload，并补 Registry HA/
+   备份恢复方案；当前单节点配置不得被误称为最终 HA 生产批准。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short --branch
+npm run test:supply-chain
+npm run supply-chain:verify-remediated-evidence
+npm run supply-chain:verify-production-oci
+npm run supply-chain:verify-redis-decision
+npm run supply-chain:verify-owner-signoffs
+npm run check
+ssh beelink@100.110.127.117 \
+  'jq "{technicalStatus,registry,kms,remainingHumanGates}" \
+     /data/models/yujianAI/registry/evidence/p1-m0-04-production-oci-summary-20260718T122500Z.json; \
+   docker inspect yujian-production-registry yujian-p2-postgres-1 yujian-p2-redis-1 \
+     yujian-p2-openbao-a-1 yujian-p2-openbao-b-1 yujian-p2-openbao-c-1 \
+     --format "{{.Name}} {{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}} {{.RestartCount}}"'
+```
+
+## 📌 SESSION HANDOFF STATUS — P1-M0-04 personal signing controls ready; zero personal approvals
+
+### Current Work
+
+2026-07-18 已在 Beelink OpenBao 为 aaa、bbb、ccc、ddd 分别配置独立的 ECDSA P-256
+不可导出 key 和最小权限 policy，并生成五份待本人决定模板。此次工作只建立签字条件，未替
+任何 Owner 作决定、未预发个人凭据、未把技术验签写成发布批准。
+
+- key URI 分别为 `openbao://yujian-owner-aaa`、`openbao://yujian-owner-bbb`、
+  `openbao://yujian-owner-ccc`、`openbao://yujian-owner-ddd`；全部 `exportable=false`、
+  `allowPlaintextBackup=false`。
+- 最终 key provision run 为 `owner-key-provision-20260718T131500Z`；远端结果：
+  `/data/models/yujianAI/evidence/p1-m0-04/owner-signers/owner-key-provision-20260718T131500Z/result.json`；
+  SHA-256 `5bf28ddac4a1c03070415daf84cdd6e143bc06aebf10c7ecee8dc60099efac55`。
+- 最终 policy validation run 为 `owner-policy-validation-20260718T131500Z`；远端结果：
+  `/data/models/yujianAI/evidence/p1-m0-04/owner-signers/owner-policy-validation-20260718T131500Z/result.json`；
+  SHA-256 `f2433cc6bccb77217b1889540d6c591662209e51a24024eadbc109b301af97ed`。
+- 每位 Owner 的 own-key read/sign 技术自测通过，读取其他 Owner key 和 `sys/mounts` 均被
+  拒绝；所有临时技术自测 token 已撤销，活动自测 token 数为 0。
+- `issue-owner-signing-token.sh` 只允许四个已登记 Owner；在本人在线时才创建一次性 5 分钟
+  response-wrap delivery token，解包后的 scoped token 最长 15 分钟、不可续期。本轮没有
+  运行该签发动作，`personalCredentialIssued=false`。
+- 五份模板均保持 `status=awaiting-personal-decision`、决定字段为 `null`。bbb 有 Redis 发布
+  与 Registry/KMS freeze 两份独立模板；待决定模板使用 `--require-decided` 和签名脚本均会
+  被拒绝。
+- 仓库索引为 `docs/acceptance/p1-owner-key-registry.json`；操作说明和模板在
+  `docs/governance/owner-decisions/`；结构/门禁测试为 34/34 通过。
+
+### Gate Status
+
+- `allPersonalDecisionsPending=true`，`productionReleaseAuthorized=false`。
+- 独立 key、最小 policy 和密码学签名工具不证明 aaa/bbb/ccc/ddd 已本人审阅或批准；当前
+  身份绑定仍是安全交付 + 本人独立 SSH 会话 + OpenBao audit，不等同法定电子签章。
+- bbb Redis approve/reject、bbb Registry/KMS freeze、aaa 安全决定、ccc 法律决定、ddd
+  中国分发决定均未完成。因此 P1-M0-04、Gate 0、完整 Gate 1、Gate 7 和生产发布继续
+  **blocked/not-passed**。
+- 当前 P2 Redis/PostgreSQL/OpenBao 运行镜像未切换。2026-07-18 最新远端复核中，P2 五个
+  容器均 `running/healthy`、`restartCount=0`；Registry 仍运行且未用作批准当前镜像切换。
+
+### Background Tasks
+
+- `yujian-production-registry` 继续在 Beelink 运行，数据、TLS 和认证材料位于 `/data` 下；
+  没有新的构建、扫描、签名或个人令牌进程。
+- 未生成或提交真实 token、个人签名、JWT、Registry 密码或 OpenBao root token。
+
+### Next Session Priorities
+
+1. 每位 Owner 在线并完成证据审阅后，管理员才按人签发 5 分钟 wrapped token；通过独立
+   安全通道交付，不复制到聊天或 Git。
+2. Owner 本人填写自己的模板，并在自己的 Beelink SSH 会话中解包 15 分钟 token、执行
+   `sign-owner-decision.sh`；bbb 必须分别签两份决定。
+3. 维护人核对 secure delivery、SSH 身份、OpenBao audit、artifact hash 和
+   `cosign verify-blob`，再回填 Redis/Owner gate JSON；签名拒绝不得授权生产。
+4. 仅在 aaa/bbb/ccc/ddd 决定和生产回归前置条件全部满足后，才能讨论 canary、运行镜像
+   切换与 Gate 状态变化。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short --branch
+npm run supply-chain:verify-owner-templates
+npm run supply-chain:verify-owner-keys
+npm run supply-chain:verify-owner-signoffs
+npm run test:supply-chain
+npm run check
+ssh beelink@100.110.127.117 \
+  'sha256sum \
+     /data/models/yujianAI/evidence/p1-m0-04/owner-signers/owner-key-provision-20260718T131500Z/result.json \
+     /data/models/yujianAI/evidence/p1-m0-04/owner-signers/owner-policy-validation-20260718T131500Z/result.json; \
+   docker inspect yujian-production-registry yujian-p2-postgres-1 yujian-p2-redis-1 \
+     yujian-p2-openbao-a-1 yujian-p2-openbao-b-1 yujian-p2-openbao-c-1 \
+     --format "{{.Name}} {{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}} {{.RestartCount}}"'
+```
+
+## 📌 SESSION HANDOFF STATUS — 语见 Owner 审批台已部署；五项本人决定仍待签
+
+### Current Work
+
+2026-07-18 已完成并部署独立 `@yujian/owner-approval` 服务与 `apps/owner-approval` 页面。
+Owner 现在可通过 `https://beelink.tail1e9cec.ts.net:8093/` 审阅五项任务并提交决定；该地址
+只监听 Beelink Tailscale IP，使用 TLS，不再要求日常直接编辑 JSON。
+
+- UI 提供 aaa/bbb/ccc/ddd 筛选、事实与证据展示、批准、驳回、有条件批准、限期例外、
+  条件/到期时间和本人确认。页面不使用 localStorage/sessionStorage，提交完成或失败后清空
+  wrapped token。
+- 后端从冻结模板生成 revision，拒绝未知字段、旧 revision、跨任务决定、少于 20 字符理由、
+  重复/并发覆盖和每来源每分钟超过 5 次提交。
+- wrapped token 解包后必须只有一个 `yujian-owner-<owner>-signer` policy，metadata 必须匹配
+  Owner，TTL 不超过 15 分钟且不可续期；签名、OpenBao verify 和 revoke-self 全部成功才
+  原子归档 `decision.json`、`signature.json`、`result.json`，权限为 0700/0600。
+- 服务不持有 OpenBao root/admin token，不签发个人 token，不记录请求正文，不在响应/日志/
+  evidence 中保存 token，也不自动修改发布 Gate。
+- Beelink 部署 release 为
+  `/data/models/yujianAI/owner-approval/releases/owner-approval-20260718T132723Z`；容器
+  `yujian-owner-approval` 使用固定
+  `node:24.18.0-bookworm@sha256:5711a0d445a1af54af9589066c646df387d1831a608226f4cd694fc59e745059`，
+  `running/healthy`、`restartCount=0`。host Node 18 不参与运行。
+- 容器 read-only、drop all capabilities、no-new-privileges，唯一可写挂载是
+  `/data/models/yujianAI/evidence/p1-m0-04/owner-approvals`；当前文件数为 0。
+- Owner policy 新增仅限本人 key 的 `verify`，仍保留 read-own-key/sign-own-key/revoke-self，
+  不增加跨 key 或系统访问。最终 provision run 为
+  `owner-key-provision-20260718T131608Z`，SHA-256
+  `f4ff6c560c533615797867f28911bd25810b046d55950e68b6804f84d840d11d`；最终 validation run
+  为 `owner-policy-validation-20260718T131609Z`，SHA-256
+  `58de37c8ebb1538f7a72dc6ccca09a4f1e2b2ffd51b05cb1aba53e6523076edb`。
+- 真实 OpenBao 技术链路使用 1 分钟 wrap/2 分钟技术 token 对 aaa key 执行无害字符串
+  sign/verify/revoke，结果 `verified=true`、`credentialRevoked=true`、evidence 新增 0、活动
+  自测 token 0、`personalDecisionRecorded=false`、`productionReleaseAuthorized=false`。
+- 本机 Chromium 已验证同一构建的五任务列表、Redis 详情、限期例外动态字段和完整表单，
+  console 0 error/0 warning；截图为 `output/playwright/owner-approval-console.png`。Beelink TLS
+  health/API 已由本机绕过本地开发代理直接验证。
+
+### Verification
+
+- `@yujian/owner-approval`：9/9 通过，包括 204 revoke-self、跨 Owner、附加 policy、旧
+  revision、重复决定、token 不落盘和 Gate 保持 false。
+- 供应链：35/35 通过；Owner key registry 校验通过。
+- OpenAPI YAML、TypeScript lint/build、JavaScript syntax、CSP、favicon 和远端健康检查通过。
+
+### Gate Status
+
+- 五项 API 状态均为 `awaiting-personal-decision`；Owner evidence 目录文件数 0。
+- `productionReleaseAuthorized=false`。技术自测不构成人员身份、专业意见或默许批准。
+- 因 aaa 安全决定、bbb Redis 与 Registry/KMS 两份决定、ccc 法律决定、ddd 中国分发决定均
+  未由本人提交，P1-M0-04、Gate 0、完整 Gate 1、Gate 7 和生产发布继续
+  **blocked/not-passed**。
+
+### Background Tasks
+
+- `yujian-owner-approval` 在 Beelink 持续运行，监听 `100.110.127.117:8093`，Docker
+  `restart=unless-stopped`；Tailscale TLS 证书当前到期日 2026-10-11。
+- `yujian-production-registry` 与 P2 PostgreSQL、Redis、OpenBao A/B/C 保持原运行边界；
+  Owner 审批台没有切换这些运行镜像。
+- 本机临时浏览器测试服务与 Playwright 浏览器均已停止；无个人 token 或审批后台任务。
+
+### Next Session Priorities
+
+1. 对应 Owner 本人在线后，管理员按人运行 `issue-owner-signing-token.sh`，将 5 分钟 wrapped
+   token 通过独立安全通道交付本人。
+2. Owner 打开 `https://beelink.tail1e9cec.ts.net:8093/`，选择自己的任务、审阅证据并提交。
+   bbb 必须分别完成 Redis 与 Registry/KMS 两项。
+3. 维护人核对 receipt、OpenBao audit、secure delivery 和 artifact hash，再回填现有 Gate
+   JSON；驳回、条件未满足或过期例外不得授权生产。
+4. 在 2026-10-11 前复用 Registry 证书续期/reload 机制更新审批台 TLS，并补正式 OIDC/
+   CA 实名或第三方电子签章方案（如商用合规要求）。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short --branch
+npm run owner-approval:test
+npm run supply-chain:verify-owner-keys
+npm run test:supply-chain
+npm run check
+curl --noproxy '*' --fail --silent --show-error \
+  --resolve beelink.tail1e9cec.ts.net:8093:100.110.127.117 \
+  https://beelink.tail1e9cec.ts.net:8093/api/v1/owner-approvals | \
+  jq '{tasks:(.data.tasks|length),statuses:[.data.tasks[].status],release:.data.productionReleaseAuthorized}'
+ssh beelink@100.110.127.117 \
+  'docker inspect yujian-owner-approval --format \
+     "{{.Name}} {{.Config.Image}} {{.State.Status}} {{.State.Health.Status}} {{.RestartCount}}"; \
+   find /data/models/yujianAI/evidence/p1-m0-04/owner-approvals -type f | wc -l'
+```
+
+## 📌 SESSION HANDOFF STATUS — 本机 Clash 绕行审批入口已启动
+
+### Current Work
+
+2026-07-18 已新增并启动 `tools/owner-approval/bypass-clash-proxy.mjs`。Owner 可在本机打开
+`http://127.0.0.1:8094/`，无需让浏览器通过 Clash 访问 Beelink 域名。
+
+- 本地进程只监听 `127.0.0.1:8094`，当前 PID 为 `79424`。
+- 上游固定直连 `100.110.127.117:8093`，同时使用
+  `beelink.tail1e9cec.ts.net` 做 SNI 与 TLS 证书校验，未关闭证书验证。
+- 桥接仅允许审批台静态资源、健康检查、任务查询和五项决定提交路径，请求体上限 16 KiB；
+  不记录请求正文或 wrapped token，未知路径返回 404。
+- 默认浏览器已经打开本地入口。此改动没有提交任何 Owner 决定，也没有改变 Gate。
+
+### Verification
+
+- `node --check tools/owner-approval/bypass-clash-proxy.mjs`：通过。
+- `npm run check`：全仓上游清洁校验、workspace lint 与测试通过；Owner 审批服务 9/9 通过。
+- `/healthz`：`status=ok`；审批 API 返回 5 项任务，全部
+  `awaiting-personal-decision`，`productionReleaseAuthorized=false`。
+- `lsof` 确认仅 `127.0.0.1:8094` 监听；页面返回原 CSP、`X-Frame-Options: DENY`、
+  `X-Content-Type-Options: nosniff` 等安全响应头；非允许路径实测返回 404。
+
+### Background Tasks
+
+- 本机 `npm run owner-approval:bypass-clash` 正在当前 Codex PTY 会话中运行；关闭该进程、Codex
+  会话或重启 Mac 后需要重新执行命令。
+- Beelink `yujian-owner-approval` 继续作为真实审批服务运行；本机进程不保存审批状态。
+
+### Next Session Priorities
+
+1. aaa、bbb、ccc、ddd 本人分别完成五项专业决定；bbb 需完成两项。
+2. 每次提交前由管理员单独签发并安全交付 5 分钟 wrapped token。
+3. 维护人复核 receipt、OpenBao audit、artifact hash 后再回填 Gate；不得以桥接可用代替审批。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short --branch
+lsof -nP -iTCP:8094 -sTCP:LISTEN
+npm run owner-approval:bypass-clash
+curl --fail --silent --show-error http://127.0.0.1:8094/healthz
+curl --fail --silent --show-error http://127.0.0.1:8094/api/v1/owner-approvals | \
+  jq '{tasks:(.data.tasks|length),statuses:[.data.tasks[].status],release:.data.productionReleaseAuthorized}'
+```
+
+## 📌 SESSION HANDOFF STATUS — aaa 凭证曾用于错误 Owner；第二枚凭证已签发
+
+### Current Work
+
+2026-07-18 审批台收到 `aaa / 安全证据确认` 的 4 次提交，均在 OpenBao wrapping unwrap
+阶段返回 401；服务仍为 `running/healthy`、`restartCount=0`，Owner evidence 文件数仍为 0，
+因此没有误签、残留决定或 Gate 变化。页面在失败后按设计清空 wrapped token 输入框。
+
+已通过既有管理员脚本生成新的 `aaa` 单次凭证，run id 为
+`owner-token-aaa-ui-20260718T133927Z`，直接写入本机剪贴板且没有打印 token。OpenBao
+`sys/wrapping/lookup` 确认 `creation_ttl=300`、`creation_path=auth/token/create`；未执行 unwrap，
+凭证仍只能由 aaa 本人在 5 分钟内提交一次。
+
+随后日志确认该凭证先被提交到 `ddd / 中国分发合规`，OpenBao 成功解包后服务因 Owner 不匹配
+返回 403 并撤销个人 token；之后同一凭证再提交到 aaa 返回 401，符合一次性语义。evidence
+文件数仍为 0。已生成第二枚 aaa 凭证
+`owner-token-aaa-ui-retry-20260718T134148Z` 并只写入本机剪贴板；用户须保持 aaa 任务不切换。
+
+诊断时 `bao audit list` 返回空数组，说明当前 OpenBao 集群未启用 audit device。该缺口不改变
+本次签名 API 行为，但在 Gate 回填前必须补齐审计落盘和留存证据，不能声称已有 OpenBao
+audit 记录。
+
+### Background Tasks
+
+- 本地 Clash 绕行审批入口继续监听 `127.0.0.1:8094`。
+- Beelink Owner 审批服务继续监听 `100.110.127.117:8093`。
+
+### Next Session Priorities
+
+1. aaa 将剪贴板凭证粘贴到当前审批表单并在过期前本人提交。
+2. 提交后核对 API 状态、Owner receipt、OpenBao audit 和 evidence 文件，不能只依赖前端提示。
+3. 其他 Owner 仍须逐人、逐次签发自己的最小权限凭证；不得复用 aaa 凭证。
+4. 在 Gate 复核前启用 OpenBao audit device，使用 `/data` 持久化并验证 HA 节点可写、轮转和
+   secret 哈希化边界。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+curl --fail --silent --show-error http://127.0.0.1:8094/api/v1/owner-approvals | \
+  jq '{tasks:(.data.tasks|length),statuses:[.data.tasks[].status],release:.data.productionReleaseAuthorized}'
+ssh beelink@100.110.127.117 \
+  'docker logs --since 15m yujian-owner-approval 2>&1 | tail -80; \
+   find /data/models/yujianAI/evidence/p1-m0-04/owner-approvals -type f | wc -l'
+```
+
+## 📌 SESSION HANDOFF STATUS — aaa 驳回决定已签名归档；Gate 保持关闭
+
+### Current Work
+
+2026-07-18 `aaa / 安全证据确认` 提交返回 HTTP 201，API 状态更新为
+`signed-decision-recorded`。本人选择的决定为 `reject`，不是 approve；决定时间
+`2026-07-18T13:44:49.732Z`，归档时间 `2026-07-18T13:44:50.098Z`。
+
+- 远端以 0600 原子归档 `decision.json`、`signature.json`、`result.json`，artifact SHA-256 为
+  `abf851983dfdf8be691c4bfdade9131f4eb295a92b5a388f92c3c80960873522`。
+- 使用 OpenBao `yujian-owner-aaa` key version 1 对归档 artifact 独立执行 transit verify，结果
+  `cryptographicSignatureValid=true`；receipt 为 `signatureVerified=true`、
+  `credentialRevoked=true`。
+- 活跃的 `purpose=p1-m0-04-owner-signoff, personal_owner=aaa` token 数为 0；本机剪贴板中的
+  已使用 wrapped token 已清空。
+- 其余 bbb 两项、ccc、ddd 均仍为 `awaiting-personal-decision`；`gateUpdated=false`、
+  `productionReleaseAuthorized=false`。aaa 的已归档决定不可由审批台覆盖。
+- OpenBao audit device 仍未启用，因此不能声称已具备 OpenBao audit 证据；Gate 继续关闭。
+
+### Background Tasks
+
+- 本地 Clash 绕行审批入口继续监听 `127.0.0.1:8094`。
+- Beelink Owner 审批服务 `running/healthy`、`restartCount=0`。
+
+### Next Session Priorities
+
+1. 确认 aaa 的 `reject` 是否为正式专业决定；若只是测试或误选，设计并审批不可覆盖的
+   superseding decision 流程，不得修改或删除原始证据。
+2. 启用并验证 OpenBao audit device 后，再办理 bbb、ccc、ddd 的本人决定。
+3. 只有在全部必要决定、条件和审计证据满足后才可更新 Gate；当前不得授权生产发布。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+curl --fail --silent --show-error http://127.0.0.1:8094/api/v1/owner-approvals | \
+  jq '{tasks:[.data.tasks[]|{decisionId,status}],release:.data.productionReleaseAuthorized}'
+ssh beelink@100.110.127.117 \
+  'find /data/models/yujianAI/evidence/p1-m0-04/owner-approvals \
+     -maxdepth 3 -type f -printf "%m %s %p\n" | sort'
+```
+
+## 📌 SESSION HANDOFF STATUS — OpenBao audit 已启用；bbb Redis 凭证待本人提交
+
+### Current Work
+
+2026-07-18 按 OpenBao 2.4.1 声明式 audit 合同，在三个节点 HCL 中加入相同的
+`audit "file" "yujian-owner"`，路径 `/openbao/data/audit.log`、`mode=0600`、
+`log_raw=false`、`hmac_accessor=true`。通过 SIGHUP 在线加载，没有重启容器。
+
+- `bao audit list -detailed` 已返回 `yujian-owner/`；active 节点日志权限为 0600、owner
+  `openbao:openbao`，实测包含 HMAC 且不包含 root token 明文。
+- OpenBao A/B/C 仍为 `running/healthy`、restart 0；Raft 3 peers/3 voters。
+- API 动态 enable 被 2.4.1 正确拒绝，未启用不安全的 `unsafe_allow_api_audit_creation`。
+- 已为 `bbb / Redis 发布决定` 签发独立凭证
+  `owner-token-bbb-redis-ui-20260718T135348Z`，只写入本机剪贴板；尚未提交本人决定。
+
+### Background Tasks
+
+- 本地审批入口继续监听 `127.0.0.1:8094`；Beelink 服务继续健康运行。
+- OpenBao audit 现在写入 `/data/models/yujianAI/p2/openbao-<active>/audit.log` 对应数据卷。
+
+### Next Session Priorities
+
+1. bbb 保持 `Redis 发布决定` 任务，审阅事实后本人选择批准或驳回并粘贴当前一次性凭证。
+2. 验收 Redis receipt、密码学签名、token revoke 和 audit request/response 后，清空剪贴板。
+3. 再单独签发第二枚 bbb token，办理 `Registry / KMS 冻结`；两项不得复用凭证。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+curl --fail --silent --show-error 'http://127.0.0.1:8094/api/v1/owner-approvals?owner=bbb' | \
+  jq '.data.tasks[] | {decisionId,status}'
+ssh beelink@100.110.127.117 \
+  'docker inspect yujian-p2-openbao-a-1 yujian-p2-openbao-b-1 yujian-p2-openbao-c-1 \
+     --format "{{.Name}} {{.State.Status}} {{.State.Health.Status}} {{.RestartCount}}"'
+```
+
+## 📌 SESSION HANDOFF STATUS — bbb 两项已签；Redis 批准、Registry/KMS 驳回
+
+### Current Work
+
+2026-07-18 bbb 已依次完成两项独立本人决定，两次请求均返回 HTTP 201，且各使用不同的
+5 分钟 wrapped token：
+
+- `p1-m0-04-bbb-redis-20260718`：`approve`，artifact SHA-256
+  `bdabadf8958645ace87f20126f1cf8c42c60a343ba2d45c9fe6bf0a03c44ad0e`。
+- `p1-m0-04-bbb-registry-kms-freeze-20260718`：`reject`，artifact SHA-256
+  `29ace2438d43da0869d51f5f679fb6cf02eec0d2db315fa34b47a3bfa60b28bf`。
+
+每项均原子归档 0600 的 `decision.json`、`signature.json`、`result.json`；独立 OpenBao
+transit verify 为 true，receipt 为 `signatureVerified=true`、`credentialRevoked=true`，活跃
+bbb owner-signoff token 数为 0。OpenBao audit 对 unwrap、sign、verify、revoke-self 均有
+request/response，日志不含 wrapped token 或 root token 明文；本机剪贴板已清空。
+
+当前 API 状态为 aaa、bbb Redis、bbb Registry/KMS 三项 `signed-decision-recorded`，ccc/ddd
+两项 `awaiting-personal-decision`。由于 aaa 安全决定为 reject、bbb Registry/KMS freeze 为
+reject，`gateUpdated=false`、`productionReleaseAuthorized=false`，Redis approve 不得单独
+触发部署或当前 P2 Redis 切换。
+
+README、设计索引、Owner 状态、供应链评审、生产 OCI 合同和 P1 计划已同步上述事实；冻结
+模板未被覆盖。`docs/acceptance/p1-redis-release-decision.json` 与
+`p1-m0-04-owner-signoffs.json` 仍需在维护人 evidence adapter 接入 receipt/audit 合同后回填，
+不得伪造旧 Sigstore bundle 字段。
+
+### Verification
+
+- `@yujian/owner-approval`：9/9 通过；`bash -n infra/p2/beelink/deploy.sh` 和
+  `git diff --check` 通过。
+- `npm run check`：全仓上游校验、workspace lint 与测试通过。
+- OpenBao A/B/C 均 `running/healthy`、restart 0，Raft 3 peers/3 voters；声明式 audit 已通过
+  SIGHUP 在线加载并持久化到 `/data`。
+
+### Background Tasks
+
+- 本地 Clash 绕行入口继续监听 `127.0.0.1:8094`。
+- Beelink 审批服务与 OpenBao 三节点持续运行；无未撤销的 bbb 个人签名 token。
+
+### Next Session Priorities
+
+1. 办理 ccc LICENSE/NOTICE/source offer 决定和 ddd 中国分发决定，各自独立签发一次性凭证。
+2. 为 Owner approval receipt + OpenBao audit 新合同增加 acceptance adapter/verifier，再回填两个
+   repo JSON；Gate 必须保持 blocked。
+3. 若 aaa 或 bbb 的 reject 是误选/测试，先设计不可覆盖的 superseding decision 合同；不得
+   删除或改写现有远端证据。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short --branch
+npm run owner-approval:test
+curl --fail --silent --show-error http://127.0.0.1:8094/api/v1/owner-approvals | \
+  jq '{tasks:[.data.tasks[]|{decisionId,status}],release:.data.productionReleaseAuthorized}'
+ssh beelink@100.110.127.117 \
+  'docker exec yujian-p2-openbao-a-1 sh -c \
+     "stat -c \"%a %U:%G %s\" /openbao/data/audit.log"'
+```
+
+## 📌 SESSION HANDOFF STATUS — 五项 Owner 决定全部归档；四项驳回阻断发布
+
+### Current Work
+
+2026-07-18 五项 Owner API 状态均为 `signed-decision-recorded`：
+
+| 决定 | Owner | 结果 | artifact SHA-256 |
+| --- | --- | --- | --- |
+| 安全证据确认 | aaa | reject | `abf851983dfdf8be691c4bfdade9131f4eb295a92b5a388f92c3c80960873522` |
+| Redis 发布决定 | bbb | approve | `bdabadf8958645ace87f20126f1cf8c42c60a343ba2d45c9fe6bf0a03c44ad0e` |
+| Registry/KMS 冻结 | bbb | reject | `29ace2438d43da0869d51f5f679fb6cf02eec0d2db315fa34b47a3bfa60b28bf` |
+| LICENSE/NOTICE/source offer | ccc | reject | `206d304c5c586e859adfcaea0296f139a63b8daa37ca42afc2f5dad66b167ec6` |
+| 中国分发合规 | ddd | reject | `bfe38e72216ed2dd677da5062ca73d11d4b54435a017d4a4cd8828fb2a9e1926` |
+
+每项均只有 0600 的 `decision.json`、`signature.json`、`result.json`；五份 artifact 已使用对应
+OpenBao Owner key 独立重新验签，结果全部 valid。所有 receipt 均为
+`credentialRevoked=true`、`gateUpdated=false`、`productionReleaseAuthorized=false`；当前活跃
+owner-signoff token 数为 0，本机剪贴板已清空。
+
+OpenBao audit snapshot run 为 `owner-approval-final-audit-20260718T140644Z`：95 条记录，
+`audit.log` SHA-256 `4d672cde765715ba512e5a9f267a69f4fdba809f54b76ffcf3a9796323409991`，
+`result.json` SHA-256 `b3cca160b91130ae06ea4978953b1b7a24e23df590bbdd4f66e163a5ace44a83`，
+均为 0600 并位于 `/data/models/yujianAI/p2/openbao-a/audit-snapshots/`。
+
+审计覆盖边界必须保持：audit device 在 aaa 决定后才启用，所以 bbb 两项、ccc、ddd 拥有完整
+unwrap/sign/verify/revoke request+response；aaa 原始链路无法事后重建，只有 receipt、审批服务
+HTTP 201 日志和事后密码学验签。snapshot 明确记录 `signAaa=0`，没有伪造完整覆盖。
+
+README、文档索引、Owner 矩阵、任命表、供应链评审、生产 OCI 合同、P1 计划和完成审计均已
+同步为“一项 approve、四项 reject”。冻结模板保持不变；现有 acceptance JSON 仍使用旧
+Sigstore 手工签字合同，必须先实现 receipt/audit adapter 才能安全回填。
+
+### Gate Status
+
+- `productionReleaseAuthorized=false`，Gate 0、完整 Gate 1、Gate 7 继续 not-passed/blocked。
+- bbb 的 Redis approve 不得覆盖 aaa、bbb freeze、ccc、ddd 四项 reject。
+- 不得部署 Redis 候选、切换 Registry/KMS 或宣称中国分发/许可证/安全批准。
+
+### Verification
+
+- `npm run check`：全仓上游校验、workspace lint 与测试通过；Owner 审批服务 9/9 通过。
+- 语见审批服务和 OpenBao A/B/C 均 `running/healthy`、restart 0；Raft 为 3/3 voters。
+- `git diff --check` 通过；当前 API 为 signed 5、pending 0、release false。
+
+### Background Tasks
+
+- 本地 Clash 绕行入口继续监听 `127.0.0.1:8094`；Beelink 审批服务与 OpenBao HA 持续运行。
+- 无未撤销的个人签名 token，无个人 token 写入 Git、日志快照或聊天。
+
+### Next Session Priorities
+
+1. 实现 Owner approval receipt + OpenBao audit 到两个 acceptance JSON 的版本化 adapter 和
+   verifier 测试，保留 mixed bbb decisions 与 aaa audit gap。
+2. 明确四项 reject 是正式专业决定还是测试/误选；如需改变，设计 superseding decision，
+   原证据不可删除、覆盖或改写。
+3. 补齐四位 Owner 的实名、联系方式、专业资格和备份人；receipt 不能替代这些材料。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short --branch
+npm run check
+curl --fail --silent --show-error http://127.0.0.1:8094/api/v1/owner-approvals | \
+  jq '{tasks:[.data.tasks[]|{decisionId,status}],release:.data.productionReleaseAuthorized}'
+ssh beelink@100.110.127.117 \
+  'docker exec yujian-p2-openbao-a-1 cat \
+     /openbao/data/audit-snapshots/owner-approval-final-audit-20260718T140644Z/result.json | jq .'
+```
+
+## 📌 SESSION HANDOFF STATUS — 不覆盖原证据的 superseding decision 已开发并部署
+
+### Current Work
+
+2026-07-18 已将 Owner 决定更正实现为追加式哈希链，不重新开放或改写原任务：
+
+- 原始 `<decisionId>/decision.json`、`signature.json`、`result.json` 仍是一次性只写记录。
+- 新的 `POST /api/v1/owner-approvals/{decisionId}:supersede` 必须提交当前
+  `expectedReceiptSha256`、替代原因、原证据保留确认和新的 5 分钟 wrapped token。
+- 新 artifact 绑定原冻结模板 revision、前一份 receipt/artifact SHA-256、前一归档时间、
+  递增序号和替代原因；同一 Owner 独立签名、验签和 revoke-self 后，只写入
+  `<decisionId>/supersessions/000001/` 等新目录。
+- 服务使用 decision-level 排他锁和 receipt 哈希乐观并发检查；旧页面、重复或并发
+  提交返回 409，且在调用 OpenBao 签名前失败。
+- `GET /api/v1/owner-approvals` 现在返回当前有效 receipt SHA-256、序号和完整决定链，
+  但不返回完整签名。审批台展示原始/替代历史、替代原因和当前有效决定，
+  并明示“追加替代，不覆盖原记录”。
+- Gate 语义未改：任何原始或替代 receipt 均为 `gateUpdated=false`、
+  `productionReleaseAuthorized=false`。
+
+Beelink 新 release 为
+`/data/models/yujianAI/owner-approval/releases/owner-approval-20260718T143055Z`；容器
+`yujian-owner-approval` 为 `running/healthy`、restart 0。五项现有决定均被新服务识别为
+`currentSequence=0`、`historyCount=1`，结论仍为一项 approve/四项 reject。本轮没有签发或使用
+任何 Owner 凭据，也没有提交真实 supersession。
+
+### Original Evidence Immutability
+
+部署脚本在重启前后对原层级的 15 个证据文件执行 SHA-256 对比，只有全部相同才
+返回成功。部署后再次独立核对，15/15 哈希与部署前基线完全一致，其中五份原决定
+artifact 仍为：
+
+- aaa security `abf851983dfdf8be691c4bfdade9131f4eb295a92b5a388f92c3c80960873522`
+- bbb Redis `bdabadf8958645ace87f20126f1cf8c42c60a343ba2d45c9fe6bf0a03c44ad0e`
+- bbb Registry/KMS `29ace2438d43da0869d51f5f679fb6cf02eec0d2db315fa34b47a3bfa60b28bf`
+- ccc legal `206d304c5c586e859adfcaea0296f139a63b8daa37ca42afc2f5dad66b167ec6`
+- ddd compliance `bfe38e72216ed2dd677da5062ca73d11d4b54435a017d4a4cd8828fb2a9e1926`
+
+对 `:supersede` 发送空 JSON 的无害路由探测返回 HTTP 400
+`必须确认原始证据将保持不变`；远端仍没有任何 `supersessions` 证据文件。
+
+### Verification
+
+- `@yujian/owner-approval`：10/10 通过。新覆盖包括链接哈希、原文件字节不变、
+  0600 新文件、token 不落盘/不进日志、跨 Owner 失败、旧 receipt 失败和两个并发请求
+  只有一个成功。
+- `npm run check`：全仓上游清洁校验、workspace lint/test 全部通过。
+- `git diff --check`、`node --check apps/owner-approval/app.js`、
+  `node --check tools/owner-approval/bypass-clash-proxy.mjs`、
+  `bash -n tools/owner-approval/deploy-beelink.sh` 和 Owner OpenAPI YAML 解析通过。
+- Playwright 通过本机 Clash 绕行入口验证真实部署页面：五项均显示“已签名 · 可追加替代”，
+  aaa 页面显示原始决定、receipt 哈希、替代原因、两个明确确认项和追加按钮；
+  API GET 为 200，console 0 error/0 warning。截图为
+  `output/playwright/owner-approval-supersession.png`。
+
+### Background Tasks
+
+- 本地 Clash 绕行入口继续监听 `127.0.0.1:8094`，只转发静态资源、GET 和
+  `:decide`/`:supersede`。
+- Beelink 审批服务与 OpenBao HA 继续运行；Playwright 浏览器已关闭，本轮无新个人凭据。
+
+### Next Session Priorities
+
+1. 由对应 Owner 明确是否需要改变某一项现有结论；只有本人在审阅新证据后才可签发
+   新的 5 分钟凭据并提交 supersession。
+2. 实现 Owner approval receipt + OpenBao audit 到旧 acceptance JSON 的版本化 adapter/verifier，
+   保留 mixed bbb decisions 和 aaa audit gap。
+3. 补齐四位 Owner 的实名、联系方式、专业资格和备份人；不得用 receipt 或 supersession
+   代替这些材料。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short --branch
+npm run owner-approval:test
+curl --fail --silent --show-error http://127.0.0.1:8094/api/v1/owner-approvals | \
+  jq '{tasks:[.data.tasks[]|{decisionId,currentSequence,historyCount:(.history|length),decision:.receipt.decision}],release:.data.productionReleaseAuthorized}'
+ssh beelink@100.110.127.117 \
+  'find /data/models/yujianAI/evidence/p1-m0-04/owner-approvals \
+     -mindepth 2 -maxdepth 2 -type f -exec sha256sum {} \; | sort'
+```
+
+## 📌 SESSION HANDOFF STATUS — P0 文档同步与 Owner acceptance v2 完成
+
+### Current Work
+
+2026-07-18 已完成 P0 文档同步和 receipt/audit acceptance adapter/verifier：
+
+- `tools/supply-chain/adapt-owner-acceptance.mjs` 从 Beelink 不可变
+  decision/signature/receipt、可选 supersession 目录、Owner key registry 和 OpenBao audit
+  收集证据，验证 artifact/receipt/signature 哈希、Owner/key 映射、凭据撤销和审计覆盖，
+  再生成两个非敏感 v2 acceptance 合同。
+- `docs/acceptance/p1-m0-04-owner-signoffs.json` 现同时表达四位 Owner、五项决定、每项完整
+  history 和 mixed bbb 结果；`docs/acceptance/p1-redis-release-decision.json` 记录 bbb 的真实
+  Redis approve receipt，但保持 `deploymentAuthorized=false`。
+- acceptance JSON 不复制原始理由或签名，只保留理由长度/SHA-256、文件路径/哈希、公钥哈希、
+  验签/撤销状态和 audit coverage；verifier 会拒绝 raw reason/signature/token/secret。
+- README、设计索引、P1 关闭计划、完成审计、供应链评审、Redis 决定包、Owner 签字包、真实
+  测试方案和兼容矩阵已同步到同一口径：M1 A-C baseline passed；完整 Gate 1 未通过；
+  P2-01–06/M2 技术验收通过但正式 Gate 2 未通过；P1-M0-04/Gate 0/7 仍 blocked。
+
+### Live Evidence Replay
+
+本机把 adapter 源码通过 SSH stdin 发送到 Beelink 只读执行，直接读取
+`/data/models/yujianAI/evidence/p1-m0-04/owner-approvals`、当前 key registry 和
+`owner-approval-final-audit-20260718T140644Z`；收集结果再由本机 adapter 生成 v2 合同。
+生成对象与仓库两个 JSON 逐字节结构比较均为 true：
+
+- aaa security：sequence 0，reject；
+- bbb Redis：sequence 0，approve；
+- bbb Registry/KMS：sequence 0，reject；
+- ccc legal：sequence 0，reject；
+- ddd compliance：sequence 0，reject；
+- 五项 history count 均为 1，无真实 supersession；
+- `productionReleaseAuthorized=false`、`deploymentAuthorized=false`。
+
+本轮未写入或覆盖任何 Beelink Owner evidence，未签发/使用 wrapped token，也未把远端理由正文
+复制到仓库。
+
+### Verification
+
+- adapter/两个 acceptance verifier 定向测试：11/11 通过。
+- `npm run supply-chain:verify-owner-signoffs`：5 decisions，release false，通过。
+- `npm run supply-chain:verify-redis-decision`：bbb approve，authorized false，通过。
+- `npm run test:supply-chain`：38/38 通过。
+- `npm run check`：上游 replay、全部 workspace lint/test 通过；Owner approval 10/10、
+  platform-api 20/20、data-rights 3/3、media-ops 4/4、livekit-compat 5/5、contracts 6/6。
+- `node --check`：adapter 与两个 verifier 通过。
+
+### Gate Status
+
+- P1-M0-04、Gate 0、完整 Gate 1、Gate 7、生产发布：仍为 blocked/not-passed。
+- P2-01–06/M2 指定技术验收：passed；正式 Gate 2：not-passed。
+- receipt adapter 只能记录与验证决定，不能自动修改任何正式 Gate。
+
+### Owner Supersede Review
+
+P0 已为四位 Owner 准备独立判断项，但没有替其作出结论：
+
+1. aaa 判断安全 reject 是否因新扫描/回归证据而需要 supersede；生产回归和原始 audit 缺口仍在。
+2. bbb 维持或复核 Redis approve，并单独判断 Registry/KMS freeze reject 是否需要 supersede；
+   当前回滚接受和 target freeze 仍为 false。
+3. ccc 判断 335 个 `NOASSERTION`、LICENSE/NOTICE/source offer 是否足以改变法律 reject。
+4. ddd 在 ccc 意见和中国分发/留存边界明确后判断是否改变合规 reject。
+
+不改变结论时无需提交任何新凭据或记录；需要改变时只能由本人追加 hash-linked supersession。
+
+### Background Tasks
+
+- Beelink Owner 审批台、OpenBao HA 和既有本机 Clash 绕行入口维持既有运行状态。
+- 本轮没有新后台进程、Owner token 或 supersession。
+
+### Next Session Priorities
+
+1. 由 aaa/bbb/ccc/ddd 本人分别给出“保持当前决定”或“需要 supersede”的判断。
+2. 只有对应 Owner 明确需要改变时，才签发新的 5 分钟 wrapped token 并追加下一序号。
+3. 若四项 reject 保持不变，转入其对应整改：生产回归、许可证归属、专业资格和中国分发意见。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short --branch
+npm run supply-chain:verify-owner-signoffs
+npm run supply-chain:verify-redis-decision
+npm run test:supply-chain
+curl --fail --silent --show-error http://127.0.0.1:8094/api/v1/owner-approvals | \
+  jq '{tasks:[.data.tasks[]|{decisionId,currentSequence,historyCount:(.history|length),decision:.receipt.decision}],release:.data.productionReleaseAuthorized}'
+```
+
+## 📌 SESSION HANDOFF STATUS — aaa supersede 本地桥接恢复
+
+### Current Work
+
+2026-07-18 用户提交 aaa supersede 时，本机 `127.0.0.1:8094` 返回
+`本地审批桥接不允许该路径`。根因是监听进程在 `:supersede` 路由加入前已经启动：磁盘代码
+允许 `:decide|:supersede`，直连 Beelink 同一路径返回合同校验 400，但旧内存进程返回 404。
+
+旧桥已停止，当前代码已在统一执行 session `92580` 重新启动。无凭据空 JSON 路由探针现在
+经本地桥返回预期 400，证明请求已转发至 Beelink；没有解包 token、写入决定或创建
+supersession。审批台已刷新并重新停在 aaa 安全替代决定表单。
+
+已重新为 aaa 签发 5 分钟 wrapped token 并直接写入本机剪贴板；仅验证剪贴板内容与远端
+新 delivery artifact 的 SHA-256 一致，token 正文未输出到日志或仓库。
+
+### Background Tasks
+
+- 本地 Clash 绕行桥：统一执行 session `92580`，监听 `127.0.0.1:8094`。
+- Beelink Owner 审批台与 OpenBao HA 维持既有状态。
+
+### Next Session Priorities
+
+1. aaa 本人审阅并判断是否提交 supersession；不需要改变时不要提交。
+2. 若 token 超过 5 分钟，只重新签发 wrapped token，不重启桥、不覆盖原 evidence。
+
+## 📌 SESSION HANDOFF STATUS — aaa sequence 1 approval 已同步 acceptance v2
+
+### Current Work
+
+2026-07-18 aaa 已成功追加第一份 superseding decision：
+
+- 原 sequence 0 `reject` 的 decision/signature/result 保持不变；
+- 新 sequence 1 为 `approve`，current receipt SHA-256 为
+  `a22499a546afdd343995775975f105881fe6736355f10fa5b55a63ef4cba9dff`；
+- history count 从 1 变为 2，supersession 绑定上一份 receipt/artifact SHA-256；
+- 新 receipt 为 `credentialRevoked=true`、`gateUpdated=false`、
+  `productionReleaseAuthorized=false`；
+- 理由正文未复制到仓库，仅在 acceptance v2 保留长度和 SHA-256。
+
+第一次被旧本地桥拦截后遗留的一个未使用 aaa signing token 已按 accessor 主动撤销；实时
+复核 `activeOwnerSignoffTokens=0`。
+
+### Audit And Adapter
+
+新的正式 audit run 为 `owner-approval-final-audit-20260718T151351Z`：145 条记录，snapshot
+SHA-256 `818eae634dd6f8d7260f82912187f9fdf64e6b6aec9a45db0d9502a2c93a6d77`，summary
+SHA-256 `d1eca672e87781aab811814f4a04c1d42231ab9ee472983c04d14e719cfd9341`，均为 0600。
+它记录 `signAaa=2`、`unwrap=10`、`revokeSelf=10`、`revokeAccessor=2` 和 active token 0。
+
+adapter/verifier 已升级为逐决定、逐序号 `decisionCoverage`：aaa sequence 0 保留
+`receipt-and-posthoc-verify-only-audit-enabled-after-decision`，sequence 1 为 `complete`；
+bbb/ccc/ddd 保持 complete。这样不会用新审计反向伪造原始决定覆盖。
+
+中间 run `owner-approval-final-audit-20260718T151219Z` 因把
+`auth/token/revoke-accessor` 误计为 `auth/token/revoke` 而显示 `revokeAccessor=0`；该目录未删除、
+未覆盖，但没有被 acceptance 引用。正式索引只引用更正后的 `...T151351Z`。
+
+### Acceptance And Gate Status
+
+- 当前五项有效决定：aaa 安全 approve、bbb Redis approve、bbb Registry/KMS reject、
+  ccc 法律 reject、ddd 中国分发 reject，即两项批准、三项驳回。
+- `highFindingsReviewedByAaa=true`；`registryTargetsFrozen=false`；ccc/ddd approval 仍为 false。
+- `allProfessionalApprovalsGranted=false`、`deploymentAuthorized=false`、
+  `productionReleaseAuthorized=false`。
+- P1-M0-04、Gate 0、完整 Gate 1、Gate 7 和正式 Gate 2 继续 blocked/not-passed。
+
+README、设计索引、完成审计、P1 计划、供应链评审、Owner 矩阵/任命表/签字包、兼容矩阵和
+真实测试方案已同步到该状态。
+
+### Verification
+
+- Beelink live collect → adapter 重放与两个仓库 JSON 完全一致。
+- adapter/verifier 定向测试：12/12 通过。
+- `npm run test:supply-chain`：39/39 通过。
+- `npm run check`：上游 replay、全部 workspace lint/test 通过；Owner approval 10/10、
+  platform-api 20/20、data-rights 3/3、media-ops 4/4、livekit-compat 5/5、contracts 6/6。
+
+### Background Tasks
+
+- 本地 Clash 绕行桥继续由统一执行 session `92580` 监听 `127.0.0.1:8094`。
+- Beelink Owner 审批台与 OpenBao HA 维持运行；当前无 Owner signing token。
+
+### Next Session Priorities
+
+1. bbb 判断 Registry/KMS freeze reject 是否需要 supersede；Redis approve 已保持。
+2. ccc 复核 LICENSE/NOTICE、335 个 `NOASSERTION`、source offer 和商标措辞。
+3. ddd 在 ccc 意见基础上复核中国分发和留存边界。
+
+## 📌 SESSION HANDOFF STATUS — bbb Registry/KMS freeze 替代决定待本人提交
+
+### Current Work
+
+2026-07-18 本机审批台已切换到 `bbb / Registry / KMS 冻结`，页面明确展示当前 sequence 0
+`reject`、不可变决定链、当前 receipt 哈希和“追加替代，不覆盖原记录”约束。Redis sequence 0
+`approve` 未改动，也未为其创建新凭据。
+
+已签发新的 5 分钟 wrapped token：
+`owner-token-bbb-20260718T152415Z`。凭据只写入本机剪贴板；只验证 token 长度为 26、TTL 为
+300 秒且剪贴板内容与 Beelink delivery artifact 的 SHA-256 一致，未输出 token 正文。
+
+本轮没有代替 bbb 选择决定、填写理由、勾选确认或提交 supersession，因此当前有效决定、
+acceptance v2 和 Gate 状态均未改变。
+
+### Background Tasks
+
+- 本地 Clash 绕行桥继续由统一执行 session `92580` 监听 `127.0.0.1:8094`。
+- Beelink Owner 审批台与 OpenBao HA 维持运行。
+- 当前新 bbb wrapped token 仅待本人一次性使用；若超时必须重新签发。
+
+### Next Session Priorities
+
+1. bbb 本人审阅 Registry/KMS 事实，判断保持 reject 或追加 supersession；保持时无需提交。
+2. 若追加决定成功，立即验证 sequence/history/receipt 链、凭据撤销和 OpenBao audit，再重放
+   acceptance adapter/verifier；不得修改 Redis approve 或 sequence 0 原证据。
+3. bbb 处理完成后，再依次交由 ccc 和 ddd 判断是否需要 supersede。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+curl --fail --silent --show-error 'http://127.0.0.1:8094/api/v1/owner-approvals?owner=bbb' | \
+  jq '{tasks:[.data.tasks[]|{decisionId,currentSequence,historyCount:(.history|length),decision:.receipt.decision}],release:.data.productionReleaseAuthorized}'
+git diff --check
+```
+
+## 📌 SESSION HANDOFF STATUS — bbb Registry/KMS sequence 1 reject 已同步 acceptance v2
+
+### Current Work
+
+2026-07-18 bbb 已成功追加 Registry/KMS freeze 的第一份 superseding decision：
+
+- 原 sequence 0 `reject` 的 decision/signature/result 保持不变；
+- 新 sequence 1 仍为 `reject`，current receipt SHA-256 为
+  `97b140684900e01e15040ce6339b812d719e6748160ca72a24d5a0996d4e8a34`；
+- 新 decision artifact SHA-256 为
+  `e964c2760fe0bf950a76474985f22dc30a063682aac60a7acc7d944bacd6d134`；
+- sequence 1 绑定 sequence 0 receipt/artifact SHA-256，history count 从 1 变为 2；
+- 新 receipt 为 `credentialRevoked=true`、`gateUpdated=false`、
+  `productionReleaseAuthorized=false`；理由正文和签名值未复制到仓库。
+
+bbb Redis 保持 sequence 0 `approve`，没有创建 Redis supersession。实时 OpenBao 复核没有
+活动的 `yujian-owner-signoff` token；已使用的一次性凭据也已从本机剪贴板清除。
+
+### Audit And Acceptance
+
+新的正式 audit run 为 `owner-approval-final-audit-20260718T152817Z`：155 条记录，snapshot
+SHA-256 `3f2df84c4d68211bbe7c1b705f7a9b506c7d1f7a62bcaf26d258bb1ae28dc9cc`，summary
+SHA-256 `899e106f6441e33c198bf39cb7c5cd7b32d2446ec36bba961adc60ab316420da`，两份文件均为
+0600。计数为 `unwrap=12`、`signBbb=6`、`signAaa=2`、`signCcc=2`、`signDdd=2`、
+`revokeSelf=12`、`revokeAccessor=2`，active token 为 0。
+
+`decisionCoverage` 已把 bbb Registry/KMS 更新为 `[complete, complete]`；aaa sequence 0 的
+早期 audit 缺口仍原样保留。Beelink live collect 经 adapter 生成的两个 JSON 与仓库
+`p1-m0-04-owner-signoffs.json`、`p1-redis-release-decision.json` 逐字一致。
+
+当前有效决定仍为 aaa 安全 approve、bbb Redis approve、bbb Registry/KMS reject、ccc 法律
+reject、ddd 中国分发 reject，即两项批准、三项驳回。P1-M0-04、Gate 0、完整 Gate 1、
+Gate 7 和正式 Gate 2 继续 blocked/not-passed；生产发布未授权。
+
+README、设计索引、兼容矩阵、P1 计划/审计、供应链评审、Owner 矩阵/任命/签字包、
+生产 OCI/Redis 决定说明和真实测试方案已同步 sequence 1 状态。
+
+### Verification
+
+- live API：bbb Redis sequence 0 approve；Registry/KMS sequence 1/history 2 reject；release false。
+- adapter 输出与两份 acceptance JSON `cmp` 一致。
+- Owner/Redis verifier 与定向 adapter/verifier 测试 12/12 通过。
+- `npm run test:supply-chain`：39/39 通过。
+- `npm run check`：上游 replay、全部 workspace lint/test 通过。
+- `git diff --check` 与本地审批台 `/healthz` 通过。
+
+### Background Tasks
+
+- 本地 Clash 绕行桥继续由统一执行 session `92580` 监听 `127.0.0.1:8094`。
+- Beelink Owner 审批台与 OpenBao HA 维持运行；当前无 Owner signing token。
+
+### Next Session Priorities
+
+1. ccc 复核 LICENSE/NOTICE、335 个 `NOASSERTION`、source offer 与商标措辞，判断当前 legal
+   reject 是否需要 supersede。
+2. ccc 完成后，由 ddd 基于法律意见、中国分发与留存边界判断 compliance reject。
+3. bbb Registry/KMS 当前 reject 保持有效；只有新证据改变结论时才追加 sequence 2。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short --branch
+npm run supply-chain:verify-owner-signoffs
+npm run supply-chain:verify-redis-decision
+curl --fail --silent --show-error http://127.0.0.1:8094/api/v1/owner-approvals | \
+  jq '{tasks:[.data.tasks[]|{decisionId,currentSequence,historyCount:(.history|length),decision:.receipt.decision}],release:.data.productionReleaseAuthorized}'
+```
+
+## 📌 SESSION HANDOFF STATUS — ccc 法律替代决定待本人提交
+
+### Current Work
+
+2026-07-18 本机审批台已切换到 `ccc / 许可证与源码提供`。页面展示 LICENSE/NOTICE、
+OpenBao source offer、Redis/PostgreSQL 许可证、335 个 `NOASSERTION`、商标复核要求，以及
+当前 sequence 0 `reject` 的不可变 receipt 链。
+
+已签发新的 5 分钟 wrapped token：`owner-token-ccc-20260718T153655Z`。凭据只写入本机
+剪贴板；只验证 token 长度为 26、TTL 为 300 秒且剪贴板内容与 Beelink delivery artifact
+的 SHA-256 一致，未输出 token 正文。
+
+本轮没有代替 ccc 选择决定、填写理由、勾选确认或提交 supersession，因此当前有效决定、
+acceptance v2 和 Gate 状态均未改变。
+
+### Background Tasks
+
+- 本地 Clash 绕行桥继续由统一执行 session `92580` 监听 `127.0.0.1:8094`。
+- Beelink Owner 审批台与 OpenBao HA 维持运行。
+- 当前新 ccc wrapped token 仅待本人一次性使用；若超时必须重新签发。
+
+### Next Session Priorities
+
+1. ccc 本人审阅法律证据，判断保持 reject 或追加 supersession；保持时无需提交。
+2. 若追加决定成功，验证 sequence/history/receipt 链、凭据撤销和 audit，再重放 acceptance
+   adapter/verifier；不得覆盖 sequence 0 原证据。
+3. ccc 处理完成后，再交由 ddd 判断中国分发合规决定。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+curl --fail --silent --show-error 'http://127.0.0.1:8094/api/v1/owner-approvals?owner=ccc' | \
+  jq '{tasks:[.data.tasks[]|{decisionId,currentSequence,historyCount:(.history|length),decision:.receipt.decision}],release:.data.productionReleaseAuthorized}'
+git diff --check
+```
+
+## 📌 SESSION HANDOFF STATUS — ccc 法律 sequence 1 reject 已同步 acceptance v2
+
+### Current Work
+
+2026-07-18 ccc 已成功追加法律决定的第一份 superseding decision：
+
+- 原 sequence 0 `reject` 的 decision/signature/result 保持不变；
+- 新 sequence 1 仍为 `reject`，current receipt SHA-256 为
+  `57891b09f42960a5e526bce92628e43d0f07a681691bed47799114466bf007cd`；
+- 新 decision artifact SHA-256 为
+  `c4e927a721463cf293925e61d390d69ff1ac183d45aeddb210411ba867e203ae`；
+- sequence 1 绑定 sequence 0 receipt/artifact SHA-256，history count 从 1 变为 2；
+- 新 receipt 为 `credentialRevoked=true`、`gateUpdated=false`、
+  `productionReleaseAuthorized=false`；理由正文和签名值未复制到仓库。
+
+实时 OpenBao 复核没有活动的 `yujian-owner-signoff` token，已使用的一次性凭据已从本机
+剪贴板清除。
+
+### Audit And Acceptance
+
+新的正式 audit run 为 `owner-approval-final-audit-20260718T153822Z`：165 条记录，snapshot
+SHA-256 `c0ad45e9bde24c8fb966895049ee56d7ce3ed0661034a3b384f602ae8104ee63`，summary
+SHA-256 `175ae4ce8f8446a872ec6f2b44c021692a2919788201ce6cb2a6a05bcc9f931e`，两份文件均为
+0600。计数为 `unwrap=14`、`signBbb=6`、`signCcc=4`、`signDdd=2`、`signAaa=2`、
+`revokeSelf=14`、`revokeAccessor=2`，active token 为 0。
+
+`decisionCoverage` 已把 ccc 法律更新为 `[complete, complete]`；aaa sequence 0 的早期 audit
+缺口仍原样保留。Beelink live collect 经 adapter 生成的两个 JSON 与仓库
+`p1-m0-04-owner-signoffs.json`、`p1-redis-release-decision.json` 逐字一致。
+
+当前有效决定仍为 aaa 安全 approve、bbb Redis approve、bbb Registry/KMS reject、ccc 法律
+reject、ddd 中国分发 reject，即两项批准、三项驳回。P1-M0-04、Gate 0、完整 Gate 1、
+Gate 7 和正式 Gate 2 继续 blocked/not-passed；生产发布未授权。
+
+README、设计索引、兼容矩阵、P1 计划/审计、供应链评审、Owner 矩阵/任命/签字包、
+Owner 操作说明和真实测试方案已同步 ccc sequence 1 状态。
+
+### Verification
+
+- live API：ccc sequence 1/history 2 reject；credential revoked；release false。
+- adapter 输出与两份 acceptance JSON `cmp` 一致。
+- Owner/Redis verifier 通过。
+- `npm run test:supply-chain`：39/39 通过。
+- `npm run check`：上游 replay、全部 workspace lint/test 通过。
+- `git diff --check`、本地审批台 `/healthz` 和剪贴板清理通过。
+
+### Background Tasks
+
+- 本地 Clash 绕行桥继续由统一执行 session `92580` 监听 `127.0.0.1:8094`。
+- Beelink Owner 审批台与 OpenBao HA 维持运行；当前无 Owner signing token。
+
+### Next Session Priorities
+
+1. ddd 基于 ccc 当前法律 reject、中国分发、证据留存和上线阻断条件，判断当前 compliance
+   reject 是否需要 supersede。
+2. 若 ddd 追加决定，验证 hash 链、撤销、audit 并重放 acceptance；不得覆盖 sequence 0。
+3. 三项当前 reject 均保持发布阻断，后续只能在新整改证据改变结论时追加下一序号。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short --branch
+npm run supply-chain:verify-owner-signoffs
+curl --fail --silent --show-error http://127.0.0.1:8094/api/v1/owner-approvals | \
+  jq '{tasks:[.data.tasks[]|{decisionId,currentSequence,historyCount:(.history|length),decision:.receipt.decision}],release:.data.productionReleaseAuthorized}'
+```
+
+## 📌 SESSION HANDOFF STATUS — ddd 中国分发合规替代决定待本人提交
+
+### Current Work
+
+2026-07-18 本机审批台已切换到 `ddd / 中国分发合规`。页面展示当前分发形态和部署区域未填写，
+证据留存策略、证书续期负责人、单节点 Registry 风险均未接受，`chinaLaunchAuthorized=false`，
+以及当前 sequence 0 `reject` 的不可变 receipt 链。
+
+已签发新的 5 分钟 wrapped token：`owner-token-ddd-20260718T154319Z`。凭据只写入本机
+剪贴板；只验证 token 长度为 26、TTL 为 300 秒且剪贴板内容与 Beelink delivery artifact
+的 SHA-256 一致，未输出 token 正文。
+
+本轮没有代替 ddd 选择决定、填写理由、勾选确认或提交 supersession，因此当前有效决定、
+acceptance v2 和 Gate 状态均未改变。
+
+### Background Tasks
+
+- 本地 Clash 绕行桥继续由统一执行 session `92580` 监听 `127.0.0.1:8094`。
+- Beelink Owner 审批台与 OpenBao HA 维持运行。
+- 当前新 ddd wrapped token 仅待本人一次性使用；若超时必须重新签发。
+
+### Next Session Priorities
+
+1. ddd 本人基于 ccc 当前 legal reject、中国分发、证据留存和上线条件，判断保持 reject 或
+   追加 supersession；保持时无需提交。
+2. 若追加决定成功，验证 sequence/history/receipt 链、凭据撤销和 audit，再重放 acceptance
+   adapter/verifier；不得覆盖 sequence 0 原证据。
+3. ddd 处理完成后汇总四位 Owner 当前有效结论和 P1-M0-04 剩余整改任务。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+curl --fail --silent --show-error 'http://127.0.0.1:8094/api/v1/owner-approvals?owner=ddd' | \
+  jq '{tasks:[.data.tasks[]|{decisionId,currentSequence,historyCount:(.history|length),decision:.receipt.decision}],release:.data.productionReleaseAuthorized}'
+git diff --check
+```
+
+## 📌 SESSION HANDOFF STATUS — ddd sequence 1 approval 已同步；Owner 复核轮完成
+
+### Current Work
+
+2026-07-18 ddd 已成功追加中国分发合规的第一份 superseding decision：
+
+- 原 sequence 0 `reject` 的 decision/signature/result 保持不变；
+- 新 sequence 1 为 `approve`，current receipt SHA-256 为
+  `6a67a1be147224a710a76f87ed8b0b4bba24f43f290124fde34bd26f0be54501`；
+- 新 decision artifact SHA-256 为
+  `77bb472d07683ceac7998913b4459ad80a4413ab60ca835cc541e7dbcc83231d`；
+- sequence 1 绑定 sequence 0 receipt/artifact SHA-256，history count 从 1 变为 2；
+- 新 receipt 为 `credentialRevoked=true`、`gateUpdated=false`、
+  `productionReleaseAuthorized=false`；理由正文和签名值未复制到仓库。
+
+实时 OpenBao 复核没有活动的 `yujian-owner-signoff` token，已使用的一次性凭据已从本机
+剪贴板清除。
+
+### Final Owner State
+
+| 决定 | Owner | 当前序号 | 当前结论 |
+| --- | --- | ---: | --- |
+| 安全证据 | aaa | 1 | approve |
+| Redis 发布 | bbb | 0 | approve |
+| Registry/KMS freeze | bbb | 1 | reject |
+| LICENSE/NOTICE/source offer | ccc | 1 | reject |
+| 中国分发合规 | ddd | 1 | approve |
+
+当前为三项批准、两项驳回。`chinaDistributionApprovedByDdd=true`，但
+`registryTargetsFrozen=false`、`licenseNoticeApprovedByCcc=false`，所以
+`allProfessionalApprovalsGranted=false`、`productionReleaseAuthorized=false`。
+
+### Audit And Acceptance
+
+新的正式 audit run 为 `owner-approval-final-audit-20260718T154455Z`：175 条记录，snapshot
+SHA-256 `834187c1500ceb5d445689c621a65c38eee6f1aff2d530ec783263a991cc4981`，summary
+SHA-256 `3ae50e76a99543e626d46419232d1ac57f9e3044b64660740f1b1d4d26719aea`，两份文件均为
+0600。计数为 `unwrap=16`、`signBbb=6`、`signCcc=4`、`signDdd=4`、`signAaa=2`、
+`revokeSelf=16`、`revokeAccessor=2`，active token 为 0。
+
+`decisionCoverage` 已把 ddd 更新为 `[complete, complete]`；aaa sequence 0 的早期 audit
+缺口仍原样保留。Beelink live collect 经 adapter 生成的两个 JSON 与仓库
+`p1-m0-04-owner-signoffs.json`、`p1-redis-release-decision.json` 逐字一致。
+
+README、设计索引、兼容矩阵、P1 计划/审计、供应链评审、Owner 矩阵/任命/签字包、
+Owner 操作说明和真实测试方案已同步三项批准、两项驳回状态。
+
+### Verification
+
+- live API：五项 receipt 全部 revoked；序号为 1/0/1/1/1；三项 approve、两项 reject；release false。
+- adapter 输出与两份 acceptance JSON `cmp` 一致；Owner/Redis verifier 通过。
+- `npm run test:supply-chain`：39/39 通过。
+- `npm run check`：上游 replay、全部 workspace lint/test 通过。
+- `git diff --check`、本地审批台 `/healthz` 和剪贴板清理通过。
+
+### Remaining P1-M0-04 Blockers
+
+1. bbb Registry/KMS freeze 当前 sequence 1 reject；回滚接受、Registry target/KMS URI 和归档
+   边界需要新整改证据后才可由 bbb 追加 sequence 2。
+2. ccc 法律当前 sequence 1 reject；335 个 `NOASSERTION`、LICENSE/NOTICE、source offer、
+   归属和商标意见未关闭。
+3. 当前运行镜像仍有 76 个 Critical；安全重建候选仍缺 PostgreSQL/OpenBao 生产回归。
+4. aaa 原始 sequence 0 audit 缺口、Owner 联系/备份/专业资格材料、渗透与完整 Gate 1 证据仍缺。
+
+### Background Tasks
+
+- 本地 Clash 绕行桥继续由统一执行 session `92580` 监听 `127.0.0.1:8094`。
+- Beelink Owner 审批台与 OpenBao HA 维持运行；当前无 Owner signing token。
+
+### Next Session Priorities
+
+1. 不再重复签发 Owner token；先处理 bbb/ccc 两项 reject 对应的实质整改证据。
+2. 优先补齐 ccc 法律清单和 bbb Registry/KMS 回滚/冻结包，再由本人判断是否追加下一序号。
+3. Owner 决定不关闭 P1-M0-04、Gate 0、完整 Gate 1、Gate 7 或正式 Gate 2。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short --branch
+npm run supply-chain:verify-owner-signoffs
+npm run supply-chain:verify-redis-decision
+curl --fail --silent --show-error http://127.0.0.1:8094/api/v1/owner-approvals | \
+  jq '{tasks:[.data.tasks[]|{decisionId,currentSequence,historyCount:(.history|length),decision:.receipt.decision}],release:.data.productionReleaseAuthorized}'
+```
+
+## 📌 SESSION HANDOFF STATUS — Owner 审批台功能验收与 PostgreSQL/OpenBao 隔离生产回归通过
+
+### Current Work
+
+2026-07-18 用户确认 Owner 审批台真实功能验收通过。bbb Registry/KMS 与 ccc 法律的
+sequence 1 reject 是故意执行的负向路径；按用户“无需追加”的要求，没有签发新 token 或
+追加新决定。专业 receipt 仍为三项 approve、两项 reject，
+`productionReleaseAuthorized=false`。
+
+P1-M0-04 PostgreSQL/OpenBao 安全重建候选正式隔离生产回归
+`p1-m0-04-remediated-regression-20260718T162844Z` 已在 Beelink `/data` 通过：
+
+- PostgreSQL：001–011 共 11 条 migration；usage/audit/outbox 事务提交并可见；stale CAS
+  writer 被拒绝；custom-format `pg_dump` 隔离恢复 RTO 722 ms，迁移、outbox、audit、usage
+  和 revoked API-key metadata 全部恢复；候选容器删除重建后持久化可用。
+- OpenBao：2.4.1 三节点保存 Raft snapshot 后逐节点升级到 `2.5.4-yujian.2`；升级前、
+  升级后和 snapshot restore 后均为 3 peers/3 voters；TLS、Transit 旧签名、snapshot restore、
+  leader 停止后 survivor secret 读取通过。
+- Node 24 下 platform-api 真实启动；API key create/rotate grace/revoke/restart recovery 和
+  secret 不落 PostgreSQL snapshot 通过；隔离 Redis 100/20 rate-limit、30/3 quota、AOF
+  删除重建通过。
+- report SHA-256：`b3592a9863a002e0480f1af70b85985481e6ae1909b3394b9b05e88cc2345169`；
+  runner SHA-256：`8f20f319a1554abd3a30ec2cbc51989d674834ab725c5e5fef52b1e45cacf242`；
+  platform acceptance SHA-256：`d59da85d79bc18130f4b4cdc2d1cdb279dee715fa2aa763cc8588ffe6f9373bc`。
+  原始文件全部 mode 0600。
+
+runner 在 fail-closed 迭代中修复了基础镜像 UID 写死、`docker exec` stdin 未透传、HA leader
+固定为 A、jq false fallback、Docker 29 internal network 端口行为和合同包构建顺序问题。
+
+### Isolation And Gate Boundary
+
+候选使用独立 bridge/容器名、仅 `127.0.0.1` 端口和独立 `/data` 目录；完成后候选容器和网络
+均已删除。当前 P2 PostgreSQL、Redis、OpenBao A/B/C 的 container ID、image ID、healthy 和
+`restartCount=0` 前后相同，未修改 Compose、固定 digest 或运行服务。
+
+`docs/acceptance/p1-remediated-candidate-evidence.json` 已把 `runtimeRegression` 更新为
+`passed`，同时强制 `deploymentAllowed=false`、`runtimeSwitch=not-authorized`、
+`productionRelease=blocked`。技术回归通过不覆盖 bbb/ccc reject。
+
+### Verification
+
+- Beelink 正式 run exit 0；清理后无候选容器/网络。
+- `npm run supply-chain:verify-remediated-evidence` 通过：Critical 0、High 0、deployment false。
+- `npm run test:supply-chain`：40/40；`npm run check`：全部 workspace lint/test 通过。
+- platform-api 20/20、Owner approval 10/10、contracts 6/6、LiveKit compat 5/5。
+- runner `bash -n`、Node `--check` 和 `git diff --check` 通过。
+
+### Remaining P1-M0-04 Blockers
+
+1. 当前运行镜像仍有 76 个 Critical；Owner/Gate 允许前不得切换安全重建候选。
+2. ccc 当前 reject；335 个 `NOASSERTION`、LICENSE/NOTICE、source offer、归属和商标意见未关闭。
+3. bbb Registry/KMS freeze 当前 reject；回滚接受、冻结和归档边界未批准。
+4. aaa 原始 sequence 0 audit、Owner 联系/备份/专业资格、渗透测试和完整 Gate 1 证据仍缺。
+
+### Background Tasks
+
+- Beelink P2 PostgreSQL、Redis、OpenBao A/B/C 与 Owner 审批台继续运行。
+- 无候选回归容器、网络、runner 或构建进程遗留；失败/正式 run 证据保留在 `/data`。
+
+### Next Session Priorities
+
+1. 不再把 PostgreSQL/OpenBao 生产回归列为 blocker；先关闭 335 个 `NOASSERTION` 与实际
+   LICENSE/NOTICE/source offer 整改包。
+2. bbb/ccc 只在实质结论改变时追加下一 sequence；原证据永不覆盖。
+3. Owner/Gate 获批后才计划 canary、固定 digest 切换、回滚和切换后重扫；当前不部署。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+npm run supply-chain:verify-remediated-evidence
+npm run test:supply-chain
+git diff --check
+ssh beelink@100.110.127.117 \
+  'jq "{runId,status,deploymentAllowed,postgres,openbao,isolation,gate}" /data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-remediated-regression-20260718T162844Z/report.json'
+```
+
+## 📌 SESSION HANDOFF STATUS — LICENSE/NOTICE、source offer 与 NOASSERTION 工程整改包完成
+
+### Current Work
+
+2026-07-19 已完成 P1-M0-04 许可证工程整改，不覆盖原始 SBOM 或任何 Owner receipt。真实
+Beelink run 为 `p1-m0-04-license-remediation-20260718T165733Z`，证据根：
+
+`/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-license-remediation-20260718T165733Z`
+
+原始 PostgreSQL/OpenBao SPDX 共 405 个包，335 条 `licenseDeclared=NOASSERTION`；结论层保留
+全部原始声明，只补 `licenseConcluded` 与 REVIEW annotation，最终两个结论层 SPDX 的
+`licenseConcluded=NOASSERTION` 均为 0。335 条分类为：
+
+- 331 条固定许可证证据；
+- 1 条无独立内容的 Alpine 虚拟依赖包；
+- 2 条指向逐包 SPDX/NOTICE 的 OCI 镜像聚合记录；
+- 1 条 `github.com/yeqown/reedsolomon@v1.0.0` 显式 pending-legal。
+
+`reedsolomon v1.0.0` tag commit `5441098c...` 不含 LICENSE/COPYING/NOTICE；上游直到
+2026-03-08 commit `c5f4bc9...` 才增加 MIT 文件。整改包保存后续 MIT 文本与 upstream blob
+SHA-256 `58fb0c85...24f69`，但没有静默追溯适用，而是写入
+`LicenseRef-Yujian-ReedSolomon-Pending-Legal`，等待 ccc 专业判断。
+
+### Actual Package And Integrity
+
+整改包包含原始/结论层 SPDX、335 条 inventory、NOTICE、PostgreSQL/gosu/x-sys/OpenBao/
+openbao-template 许可证、OpenBao 342 段依赖许可证、stubbolt 证据、构建 runner，以及实际
+37,337,832 字节 `openbao-dist-2.5.4.tar.xz` 源码归档和固定 Dockerfile。
+
+- report SHA-256：`85ed50b65b2d87f3f8818920966c589b28945748d4bc3c57c54cfe1c6bc788c7`
+- inventory SHA-256：`60c45e17f381a36fc6c22b430c5a714d37e22de59bbe72f8c0f452dc3bf353aa`
+- manifest SHA-256：`b8ed96caebb64f3121d0ab9f33bb33d8e27eb0f0aa7e62d3a287c9f2ac043d79`
+- signature bundle SHA-256：`01cf40b0b0b7af9adcdd2a450a167e1802751714794af92f3d3d59ad2a2c2ab9`
+- OpenBao source SHA-256：`5dd8bc003fcb8b1b601f0e75827df3819a9d5021b3094729c4d375508fd844b7`
+
+`SHA256SUMS` 全量复核通过；cosign engineering-evidence blob 验签通过。证据目录设为 mode
+0500、文件 mode 0400。当前 P2 PostgreSQL、Redis、OpenBao A/B/C 的 container ID、image、
+healthy 和 `restartCount=0` 前后完全相同；没有切换、重启或重建运行容器。
+
+### Repository Changes And Verification
+
+- 新增 `tools/supply-chain/remediate-noassertion.mjs`、真实 runner、policy、NOTICE/source
+  offer 模板、证据 verifier 和 fail-closed 测试。
+- 新增 `docs/acceptance/p1-license-remediation-evidence.json`；
+  `p1-remediated-candidate-evidence.json` 已引用该结论层，但仍保留 335 条原始声明和
+  `deploymentAllowed=false`。
+- README、设计索引、供应链评审、关闭计划、完成审计、Owner 包、上游 LICENSE/NOTICE/
+  source offer 与真实运行方案已同步。
+- `npm run test:supply-chain`：49/49；
+  `npm run supply-chain:verify-remediated-evidence`：通过；
+  `npm run supply-chain:verify-license-remediation`：通过；
+  远端 manifest/signature 二次验证：通过；`git diff --check`：通过。
+
+### Gate Status
+
+许可证 `NOASSERTION` 的工程清单整改已完成，但法律/发布 Gate 没有被自动改写：ccc 当前
+sequence 1 reject、bbb Registry/KMS 当前 sequence 1 reject 均保持有效；唯一 pending-legal
+依赖仍需 ccc 判断。当前运行镜像仍有 76 个 Critical，aaa 原始 sequence 0 audit、Owner
+联系/备份/专业资格和完整 Gate 1 证据仍缺。P1-M0-04、Gate 0、完整 Gate 1、Gate 7、正式
+Gate 2 和生产发布继续 **blocked/not-passed**。
+
+### Background Tasks
+
+- Beelink P2 PostgreSQL、Redis、OpenBao A/B/C 与 Owner 审批台继续运行。
+- 无许可证 runner 或候选容器进程遗留；只读整改证据保留在 `/data`。
+
+### Next Session Priorities
+
+1. ccc 基于新整改包判断 `reedsolomon v1.0.0`、source offer、NOTICE 与商标证据是否足以
+   改变当前 legal reject；只有本人改变结论时才追加下一 sequence。
+2. bbb Registry/KMS reject 的回滚接受、冻结和归档整改包仍需单独处理；不得由许可证包覆盖。
+3. 两项 Owner reject 未改变前不得 canary、切换固定 digest 或重扫后宣称生产通过。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+npm run supply-chain:verify-license-remediation
+npm run supply-chain:verify-remediated-evidence
+npm run test:supply-chain
+ssh beelink@100.110.127.117 \
+  'cd /data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-license-remediation-20260718T165733Z && sha256sum -c SHA256SUMS'
+```

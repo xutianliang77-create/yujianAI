@@ -1,0 +1,587 @@
+{
+  "schemaVersion": 2,
+  "taskId": "P1-M0-04-OWNER-SIGNOFFS",
+  "generatedAt": "2026-07-18T15:46:00Z",
+  "status": "signed-decisions-block-release",
+  "evidence": {
+    "currentImageRun": "p1-m0-04-20260718T074700Z",
+    "candidateRun": "p1-m0-04-candidates-20260718T084500Z",
+    "redisRegressionRun": "p1-m0-04-redis-regression-20260718T101047Z",
+    "remediatedBuildRun": "p1-m0-04-remediated-build-20260718T115740Z",
+    "remediatedScanRun": "p1-m0-04-remediated-scan-20260718T120238Z",
+    "remediatedEvidence": "docs/acceptance/p1-remediated-candidate-evidence.json",
+    "productionOciEvidence": "docs/acceptance/p1-production-oci-evidence.json",
+    "productionOciSummary": "remote:/data/models/yujianAI/registry/evidence/p1-m0-04-production-oci-summary-20260718T122500Z.json",
+    "productionOciSummarySha256": "sha256:61f63898512b6444d92cdee4f1ececbc6269ef5575efb1c04c1c72a0cf33e1a3",
+    "ownerKeyRegistry": "docs/acceptance/p1-owner-key-registry.json",
+    "redisDecision": "docs/acceptance/p1-redis-release-decision.json",
+    "thirdPartyNotice": "infra/upstream/THIRD_PARTY_NOTICES.md",
+    "openbaoSourceOffer": "infra/upstream/OPENBAO_SOURCE_OFFER.md",
+    "ownerApprovalRoot": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals",
+    "ownerKeyRegistrySha256": "sha256:15643c1435daa535a466684b5ee13219eb670ab53e41a913e8c4a9f37d676611",
+    "ownerApprovalAuditSummary": "remote:/data/models/yujianAI/p2/openbao-a/audit-snapshots/owner-approval-final-audit-20260718T154455Z/result.json",
+    "ownerApprovalAuditSummarySha256": "sha256:3ae50e76a99543e626d46419232d1ac57f9e3044b64660740f1b1d4d26719aea"
+  },
+  "owners": [
+    {
+      "role": "security-owner",
+      "personalOwner": "aaa",
+      "appointedBy": "eee",
+      "status": "signed-decisions-recorded",
+      "requiredDecision": "Confirm or reject the final zero-Critical and zero-High scan evidence, residual Medium/Unknown disposition, signer policy, and runtime reachability.",
+      "decisionIds": [
+        "p1-m0-04-aaa-security-20260718"
+      ],
+      "effectiveDecisions": [
+        {
+          "decisionId": "p1-m0-04-aaa-security-20260718",
+          "decisionType": "security-evidence",
+          "sequence": 1,
+          "decision": "approve",
+          "receiptSha256": "sha256:a22499a546afdd343995775975f105881fe6736355f10fa5b55a63ef4cba9dff"
+        }
+      ]
+    },
+    {
+      "role": "release-owner",
+      "personalOwner": "bbb",
+      "appointedBy": "eee",
+      "status": "signed-decisions-recorded",
+      "requiredDecision": "Explicitly approve or reject Redis, then personally freeze the configured registry host and OpenBao key URI after reviewing immutable digests, signatures, rollback and regression evidence.",
+      "decisionIds": [
+        "p1-m0-04-bbb-redis-20260718",
+        "p1-m0-04-bbb-registry-kms-freeze-20260718"
+      ],
+      "effectiveDecisions": [
+        {
+          "decisionId": "p1-m0-04-bbb-redis-20260718",
+          "decisionType": "redis-release",
+          "sequence": 0,
+          "decision": "approve",
+          "receiptSha256": "sha256:2493f86094f10aba6088ebce23e5d4ad49336db1e416d51a2cc2829361ba8005"
+        },
+        {
+          "decisionId": "p1-m0-04-bbb-registry-kms-freeze-20260718",
+          "decisionType": "registry-kms-freeze",
+          "sequence": 1,
+          "decision": "reject",
+          "receiptSha256": "sha256:97b140684900e01e15040ce6339b812d719e6748160ca72a24d5a0996d4e8a34"
+        }
+      ]
+    },
+    {
+      "role": "legal-owner",
+      "personalOwner": "ccc",
+      "appointedBy": "eee",
+      "status": "signed-decisions-recorded",
+      "requiredDecision": "Accept, reject, or condition the actual LICENSE/NOTICE payload, OpenBao MPL-2.0 source offer, third-party attribution and trademark wording.",
+      "decisionIds": [
+        "p1-m0-04-ccc-legal-20260718"
+      ],
+      "effectiveDecisions": [
+        {
+          "decisionId": "p1-m0-04-ccc-legal-20260718",
+          "decisionType": "license-notice-source-offer",
+          "sequence": 1,
+          "decision": "reject",
+          "receiptSha256": "sha256:57891b09f42960a5e526bce92628e43d0f07a681691bed47799114466bf007cd"
+        }
+      ]
+    },
+    {
+      "role": "compliance-owner",
+      "personalOwner": "ddd",
+      "appointedBy": "eee",
+      "status": "signed-decisions-recorded",
+      "requiredDecision": "Accept, reject, or condition the intended China distribution form, source/notice delivery, evidence retention and launch blockers.",
+      "decisionIds": [
+        "p1-m0-04-ddd-compliance-20260718"
+      ],
+      "effectiveDecisions": [
+        {
+          "decisionId": "p1-m0-04-ddd-compliance-20260718",
+          "decisionType": "china-distribution",
+          "sequence": 1,
+          "decision": "approve",
+          "receiptSha256": "sha256:6a67a1be147224a710a76f87ed8b0b4bba24f43f290124fde34bd26f0be54501"
+        }
+      ]
+    }
+  ],
+  "preconditions": {
+    "criticalThresholdPassed": true,
+    "highThresholdPassed": true,
+    "technicalRegistryConfigured": true,
+    "technicalKmsKeyConfigured": true,
+    "personalSignerKeysProvisioned": true,
+    "highFindingsReviewedByAaa": true,
+    "redisDecisionSignedByBbb": true,
+    "licenseNoticeSignedByCcc": true,
+    "chinaDistributionSignedByDdd": true,
+    "registryTargetsFrozen": false,
+    "productionOciSignaturesVerified": true,
+    "postgresRegressionPassed": false,
+    "openbaoRegressionPassed": false,
+    "allPersonalDecisionReceiptsVerified": true,
+    "ownerProfessionalQualificationsVerified": false,
+    "redisReleaseApprovedByBbb": true,
+    "licenseNoticeApprovedByCcc": false,
+    "chinaDistributionApprovedByDdd": true
+  },
+  "allProfessionalSignaturesVerified": true,
+  "productionReleaseAuthorized": false,
+  "gate": {
+    "formalGate0": "not-passed",
+    "formalGate1": "not-passed",
+    "formalGate7": "not-passed",
+    "productionRelease": "blocked"
+  },
+  "adapter": {
+    "contract": "owner-receipt-audit/v2",
+    "sourceTaskId": "P1-M0-04-OWNER-ACCEPTANCE-EVIDENCE-SNAPSHOT"
+  },
+  "decisions": [
+    {
+      "decisionId": "p1-m0-04-aaa-security-20260718",
+      "decisionType": "security-evidence",
+      "personalOwner": "aaa",
+      "role": "security-owner",
+      "currentSequence": 1,
+      "history": [
+        {
+          "sequence": 0,
+          "decisionId": "p1-m0-04-aaa-security-20260718",
+          "decisionType": "security-evidence",
+          "personalOwner": "aaa",
+          "role": "security-owner",
+          "decision": "reject",
+          "decidedAt": "2026-07-18T13:44:49.732Z",
+          "recordedAt": "2026-07-18T13:44:50.098Z",
+          "templateRevision": "sha256:425fb5bd18df63b9e5e8dc61e59ce7b9894838a48a9554b9d1d27163c77d0fa1",
+          "reasonEvidence": {
+            "storedOnlyInSignedArtifact": true,
+            "length": 109,
+            "sha256": "sha256:abd582c4febdae5b3047314b915098a41a27f5448badfca207932c847490115c",
+            "professionalReviewRequired": true
+          },
+          "conditions": null,
+          "expiresAt": null,
+          "decisionArtifact": {
+            "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-aaa-security-20260718/decision.json",
+            "sha256": "sha256:abf851983dfdf8be691c4bfdade9131f4eb295a92b5a388f92c3c80960873522"
+          },
+          "signatureRecord": {
+            "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-aaa-security-20260718/signature.json",
+            "sha256": "sha256:e585e3e75e434afd6dafd0098e79573fa8194629464bdd2c681389cd41840507"
+          },
+          "receipt": {
+            "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-aaa-security-20260718/result.json",
+            "sha256": "sha256:5acb1ec5d35d09fcbab8d85c46f5fe6e9f03d2fd67ccd94ed9d178360cbb0eda",
+            "keyUri": "openbao://yujian-owner-aaa",
+            "keyVersion": 1,
+            "publicKeySha256": "sha256:26ab8856cc581784863f88334dab24c43169c498679b049a2f685cdaa0a6f854",
+            "signatureVerified": true,
+            "credentialRevoked": true
+          },
+          "auditCoverage": "receipt-and-posthoc-verify-only-audit-enabled-after-decision"
+        },
+        {
+          "sequence": 1,
+          "decisionId": "p1-m0-04-aaa-security-20260718",
+          "decisionType": "security-evidence",
+          "personalOwner": "aaa",
+          "role": "security-owner",
+          "decision": "approve",
+          "decidedAt": "2026-07-18T15:06:00.193Z",
+          "recordedAt": "2026-07-18T15:06:00.564Z",
+          "templateRevision": "sha256:425fb5bd18df63b9e5e8dc61e59ce7b9894838a48a9554b9d1d27163c77d0fa1",
+          "reasonEvidence": {
+            "storedOnlyInSignedArtifact": true,
+            "length": 52,
+            "sha256": "sha256:549e302a9b967d3cabc6beeb6c5724241a40891965a5d284f104c5a4ca94eb88",
+            "professionalReviewRequired": true
+          },
+          "conditions": null,
+          "expiresAt": null,
+          "decisionArtifact": {
+            "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-aaa-security-20260718/supersessions/000001/decision.json",
+            "sha256": "sha256:eebb42ac732c3a9d7e8ac87ac621e39de50611a73792a288a0913362be4a6bd9"
+          },
+          "signatureRecord": {
+            "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-aaa-security-20260718/supersessions/000001/signature.json",
+            "sha256": "sha256:df761165ffc1e8bc91c586e9d627a93045c22716ea63515ee776c0a37c3d6f59"
+          },
+          "receipt": {
+            "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-aaa-security-20260718/supersessions/000001/result.json",
+            "sha256": "sha256:a22499a546afdd343995775975f105881fe6736355f10fa5b55a63ef4cba9dff",
+            "keyUri": "openbao://yujian-owner-aaa",
+            "keyVersion": 1,
+            "publicKeySha256": "sha256:26ab8856cc581784863f88334dab24c43169c498679b049a2f685cdaa0a6f854",
+            "signatureVerified": true,
+            "credentialRevoked": true
+          },
+          "supersedesReceiptSha256": "sha256:5acb1ec5d35d09fcbab8d85c46f5fe6e9f03d2fd67ccd94ed9d178360cbb0eda",
+          "supersedesArtifactSha256": "sha256:abf851983dfdf8be691c4bfdade9131f4eb295a92b5a388f92c3c80960873522",
+          "supersessionReasonSha256": "sha256:549e302a9b967d3cabc6beeb6c5724241a40891965a5d284f104c5a4ca94eb88",
+          "auditCoverage": "complete"
+        }
+      ]
+    },
+    {
+      "decisionId": "p1-m0-04-bbb-redis-20260718",
+      "decisionType": "redis-release",
+      "personalOwner": "bbb",
+      "role": "release-owner",
+      "currentSequence": 0,
+      "history": [
+        {
+          "sequence": 0,
+          "decisionId": "p1-m0-04-bbb-redis-20260718",
+          "decisionType": "redis-release",
+          "personalOwner": "bbb",
+          "role": "release-owner",
+          "decision": "approve",
+          "decidedAt": "2026-07-18T13:56:01.906Z",
+          "recordedAt": "2026-07-18T13:56:02.238Z",
+          "templateRevision": "sha256:48301ed20a09619465a3178e5d55a8935c102ec9aba79a2f5d09b048ab83cc4e",
+          "reasonEvidence": {
+            "storedOnlyInSignedArtifact": true,
+            "length": 82,
+            "sha256": "sha256:a0548e8d30d217e9771810240a2ae5f805386690f87607e7594a6ca0301459d8",
+            "professionalReviewRequired": true
+          },
+          "conditions": null,
+          "expiresAt": null,
+          "decisionArtifact": {
+            "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-bbb-redis-20260718/decision.json",
+            "sha256": "sha256:bdabadf8958645ace87f20126f1cf8c42c60a343ba2d45c9fe6bf0a03c44ad0e"
+          },
+          "signatureRecord": {
+            "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-bbb-redis-20260718/signature.json",
+            "sha256": "sha256:6f3b19a8b18cf58ff78413562e5fb2fbcd0cbb3a2cd4e09e042eab8bd3423119"
+          },
+          "receipt": {
+            "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-bbb-redis-20260718/result.json",
+            "sha256": "sha256:2493f86094f10aba6088ebce23e5d4ad49336db1e416d51a2cc2829361ba8005",
+            "keyUri": "openbao://yujian-owner-bbb",
+            "keyVersion": 1,
+            "publicKeySha256": "sha256:94ba7186ffb1147e064a3dc74787fa73e12c277409aaec2dfe55282ccc46bde9",
+            "signatureVerified": true,
+            "credentialRevoked": true
+          },
+          "auditCoverage": "complete"
+        }
+      ]
+    },
+    {
+      "decisionId": "p1-m0-04-bbb-registry-kms-freeze-20260718",
+      "decisionType": "registry-kms-freeze",
+      "personalOwner": "bbb",
+      "role": "release-owner",
+      "currentSequence": 1,
+      "history": [
+        {
+          "sequence": 0,
+          "decisionId": "p1-m0-04-bbb-registry-kms-freeze-20260718",
+          "decisionType": "registry-kms-freeze",
+          "personalOwner": "bbb",
+          "role": "release-owner",
+          "decision": "reject",
+          "decidedAt": "2026-07-18T13:57:28.638Z",
+          "recordedAt": "2026-07-18T13:57:28.990Z",
+          "templateRevision": "sha256:7cc74696c5f4683298bfc84fe5e773e849db9ee4c32bde4996fcae4fdb22e3da",
+          "reasonEvidence": {
+            "storedOnlyInSignedArtifact": true,
+            "length": 104,
+            "sha256": "sha256:8e005eb37dd6fe41b707a2961e55c2dc3d729c1a17e3ceb9e8ea8f63eec355b6",
+            "professionalReviewRequired": true
+          },
+          "conditions": null,
+          "expiresAt": null,
+          "decisionArtifact": {
+            "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-bbb-registry-kms-freeze-20260718/decision.json",
+            "sha256": "sha256:29ace2438d43da0869d51f5f679fb6cf02eec0d2db315fa34b47a3bfa60b28bf"
+          },
+          "signatureRecord": {
+            "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-bbb-registry-kms-freeze-20260718/signature.json",
+            "sha256": "sha256:2608a116aff06b97828167d19012aab0af9e80c24d0a2c25cc83390557f888f8"
+          },
+          "receipt": {
+            "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-bbb-registry-kms-freeze-20260718/result.json",
+            "sha256": "sha256:76423bed2956cc3f1b1bf5418d26a4f75d6ba0662acbad47de3a374b80a85550",
+            "keyUri": "openbao://yujian-owner-bbb",
+            "keyVersion": 1,
+            "publicKeySha256": "sha256:94ba7186ffb1147e064a3dc74787fa73e12c277409aaec2dfe55282ccc46bde9",
+            "signatureVerified": true,
+            "credentialRevoked": true
+          },
+          "auditCoverage": "complete"
+        },
+        {
+          "sequence": 1,
+          "decisionId": "p1-m0-04-bbb-registry-kms-freeze-20260718",
+          "decisionType": "registry-kms-freeze",
+          "personalOwner": "bbb",
+          "role": "release-owner",
+          "decision": "reject",
+          "decidedAt": "2026-07-18T15:26:42.857Z",
+          "recordedAt": "2026-07-18T15:26:43.233Z",
+          "templateRevision": "sha256:7cc74696c5f4683298bfc84fe5e773e849db9ee4c32bde4996fcae4fdb22e3da",
+          "reasonEvidence": {
+            "storedOnlyInSignedArtifact": true,
+            "length": 52,
+            "sha256": "sha256:4133b58f5f0ca27618a691866c6325ea55a29048ec879bcca89bb026c33b7193",
+            "professionalReviewRequired": true
+          },
+          "conditions": null,
+          "expiresAt": null,
+          "decisionArtifact": {
+            "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-bbb-registry-kms-freeze-20260718/supersessions/000001/decision.json",
+            "sha256": "sha256:e964c2760fe0bf950a76474985f22dc30a063682aac60a7acc7d944bacd6d134"
+          },
+          "signatureRecord": {
+            "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-bbb-registry-kms-freeze-20260718/supersessions/000001/signature.json",
+            "sha256": "sha256:c2be6cf59c2da3fa4145969962999d4011fa579eb6b2ecbb66684b74e3ebbd62"
+          },
+          "receipt": {
+            "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-bbb-registry-kms-freeze-20260718/supersessions/000001/result.json",
+            "sha256": "sha256:97b140684900e01e15040ce6339b812d719e6748160ca72a24d5a0996d4e8a34",
+            "keyUri": "openbao://yujian-owner-bbb",
+            "keyVersion": 1,
+            "publicKeySha256": "sha256:94ba7186ffb1147e064a3dc74787fa73e12c277409aaec2dfe55282ccc46bde9",
+            "signatureVerified": true,
+            "credentialRevoked": true
+          },
+          "supersedesReceiptSha256": "sha256:76423bed2956cc3f1b1bf5418d26a4f75d6ba0662acbad47de3a374b80a85550",
+          "supersedesArtifactSha256": "sha256:29ace2438d43da0869d51f5f679fb6cf02eec0d2db315fa34b47a3bfa60b28bf",
+          "supersessionReasonSha256": "sha256:4133b58f5f0ca27618a691866c6325ea55a29048ec879bcca89bb026c33b7193",
+          "auditCoverage": "complete"
+        }
+      ]
+    },
+    {
+      "decisionId": "p1-m0-04-ccc-legal-20260718",
+      "decisionType": "license-notice-source-offer",
+      "personalOwner": "ccc",
+      "role": "legal-owner",
+      "currentSequence": 1,
+      "history": [
+        {
+          "sequence": 0,
+          "decisionId": "p1-m0-04-ccc-legal-20260718",
+          "decisionType": "license-notice-source-offer",
+          "personalOwner": "ccc",
+          "role": "legal-owner",
+          "decision": "reject",
+          "decidedAt": "2026-07-18T14:03:38.362Z",
+          "recordedAt": "2026-07-18T14:03:38.725Z",
+          "templateRevision": "sha256:1be698fc819db799c39b4f38b870bc56dad8a1b78ce2bed9255c6eba5f406173",
+          "reasonEvidence": {
+            "storedOnlyInSignedArtifact": true,
+            "length": 104,
+            "sha256": "sha256:97816037d1c01bddc3a728142f41ef629866f83667233ad78ad6fdef023ac817",
+            "professionalReviewRequired": true
+          },
+          "conditions": null,
+          "expiresAt": null,
+          "decisionArtifact": {
+            "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-ccc-legal-20260718/decision.json",
+            "sha256": "sha256:206d304c5c586e859adfcaea0296f139a63b8daa37ca42afc2f5dad66b167ec6"
+          },
+          "signatureRecord": {
+            "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-ccc-legal-20260718/signature.json",
+            "sha256": "sha256:f338d2f584a193c9207ede461078c552e716abaecca51cebf473fdfd392f27bd"
+          },
+          "receipt": {
+            "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-ccc-legal-20260718/result.json",
+            "sha256": "sha256:0eecfc63d9474eba1780f3c9f914bad5e5829b819cb44690686127d125f60c2f",
+            "keyUri": "openbao://yujian-owner-ccc",
+            "keyVersion": 1,
+            "publicKeySha256": "sha256:d3d7f25fadd6479ded3ae4d4317f23d81e4f2895dd74d434acf1c775f524e1ee",
+            "signatureVerified": true,
+            "credentialRevoked": true
+          },
+          "auditCoverage": "complete"
+        },
+        {
+          "sequence": 1,
+          "decisionId": "p1-m0-04-ccc-legal-20260718",
+          "decisionType": "license-notice-source-offer",
+          "personalOwner": "ccc",
+          "role": "legal-owner",
+          "decision": "reject",
+          "decidedAt": "2026-07-18T15:37:45.338Z",
+          "recordedAt": "2026-07-18T15:37:45.689Z",
+          "templateRevision": "sha256:1be698fc819db799c39b4f38b870bc56dad8a1b78ce2bed9255c6eba5f406173",
+          "reasonEvidence": {
+            "storedOnlyInSignedArtifact": true,
+            "length": 52,
+            "sha256": "sha256:61ed649d2a09e30da8f8bb641899dff7e2bc0f6097335a12c3695211a7a5f1c8",
+            "professionalReviewRequired": true
+          },
+          "conditions": null,
+          "expiresAt": null,
+          "decisionArtifact": {
+            "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-ccc-legal-20260718/supersessions/000001/decision.json",
+            "sha256": "sha256:c4e927a721463cf293925e61d390d69ff1ac183d45aeddb210411ba867e203ae"
+          },
+          "signatureRecord": {
+            "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-ccc-legal-20260718/supersessions/000001/signature.json",
+            "sha256": "sha256:67f8dd469218786f9102c9752bc4430ec8c62f5760ec0468121e4ad1d42bd7cb"
+          },
+          "receipt": {
+            "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-ccc-legal-20260718/supersessions/000001/result.json",
+            "sha256": "sha256:57891b09f42960a5e526bce92628e43d0f07a681691bed47799114466bf007cd",
+            "keyUri": "openbao://yujian-owner-ccc",
+            "keyVersion": 1,
+            "publicKeySha256": "sha256:d3d7f25fadd6479ded3ae4d4317f23d81e4f2895dd74d434acf1c775f524e1ee",
+            "signatureVerified": true,
+            "credentialRevoked": true
+          },
+          "supersedesReceiptSha256": "sha256:0eecfc63d9474eba1780f3c9f914bad5e5829b819cb44690686127d125f60c2f",
+          "supersedesArtifactSha256": "sha256:206d304c5c586e859adfcaea0296f139a63b8daa37ca42afc2f5dad66b167ec6",
+          "supersessionReasonSha256": "sha256:4e0746365f8b4cb4399a74597d517c747b9ed1f89df203a62155e474670510c0",
+          "auditCoverage": "complete"
+        }
+      ]
+    },
+    {
+      "decisionId": "p1-m0-04-ddd-compliance-20260718",
+      "decisionType": "china-distribution",
+      "personalOwner": "ddd",
+      "role": "compliance-owner",
+      "currentSequence": 1,
+      "history": [
+        {
+          "sequence": 0,
+          "decisionId": "p1-m0-04-ddd-compliance-20260718",
+          "decisionType": "china-distribution",
+          "personalOwner": "ddd",
+          "role": "compliance-owner",
+          "decision": "reject",
+          "decidedAt": "2026-07-18T14:05:27.238Z",
+          "recordedAt": "2026-07-18T14:05:27.587Z",
+          "templateRevision": "sha256:7b5974686c336f562daa69d02e892c9d3406a352ad8229c2107029f611c61035",
+          "reasonEvidence": {
+            "storedOnlyInSignedArtifact": true,
+            "length": 78,
+            "sha256": "sha256:386001b23d9cea4d5ec6096c06cc4aee0c01c632539ac49ee4e5631fd0b9e590",
+            "professionalReviewRequired": true
+          },
+          "conditions": null,
+          "expiresAt": null,
+          "decisionArtifact": {
+            "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-ddd-compliance-20260718/decision.json",
+            "sha256": "sha256:bfe38e72216ed2dd677da5062ca73d11d4b54435a017d4a4cd8828fb2a9e1926"
+          },
+          "signatureRecord": {
+            "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-ddd-compliance-20260718/signature.json",
+            "sha256": "sha256:abcc025205985312293b00923526644cff666c75b415968ec98e72d65f76dece"
+          },
+          "receipt": {
+            "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-ddd-compliance-20260718/result.json",
+            "sha256": "sha256:e9178d40fc21030b50fa76d3224b7ac8f810296b3bb0e4fcf42a723a94bb1614",
+            "keyUri": "openbao://yujian-owner-ddd",
+            "keyVersion": 1,
+            "publicKeySha256": "sha256:50acd840208f8c4a9e7e083bde9bef3591e505767d0a5d3e4c40a21ef0153641",
+            "signatureVerified": true,
+            "credentialRevoked": true
+          },
+          "auditCoverage": "complete"
+        },
+        {
+          "sequence": 1,
+          "decisionId": "p1-m0-04-ddd-compliance-20260718",
+          "decisionType": "china-distribution",
+          "personalOwner": "ddd",
+          "role": "compliance-owner",
+          "decision": "approve",
+          "decidedAt": "2026-07-18T15:44:13.549Z",
+          "recordedAt": "2026-07-18T15:44:13.928Z",
+          "templateRevision": "sha256:7b5974686c336f562daa69d02e892c9d3406a352ad8229c2107029f611c61035",
+          "reasonEvidence": {
+            "storedOnlyInSignedArtifact": true,
+            "length": 52,
+            "sha256": "sha256:9a071b3d4e72c6fdff5ad663115abd7e9bf42dc3803080fa76b7b4c91879a580",
+            "professionalReviewRequired": true
+          },
+          "conditions": null,
+          "expiresAt": null,
+          "decisionArtifact": {
+            "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-ddd-compliance-20260718/supersessions/000001/decision.json",
+            "sha256": "sha256:77bb472d07683ceac7998913b4459ad80a4413ab60ca835cc541e7dbcc83231d"
+          },
+          "signatureRecord": {
+            "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-ddd-compliance-20260718/supersessions/000001/signature.json",
+            "sha256": "sha256:729b0bb2152d6c1ea8a3de4f523debe1a5cb8cbece33959ad006d80d2093b4df"
+          },
+          "receipt": {
+            "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-ddd-compliance-20260718/supersessions/000001/result.json",
+            "sha256": "sha256:6a67a1be147224a710a76f87ed8b0b4bba24f43f290124fde34bd26f0be54501",
+            "keyUri": "openbao://yujian-owner-ddd",
+            "keyVersion": 1,
+            "publicKeySha256": "sha256:50acd840208f8c4a9e7e083bde9bef3591e505767d0a5d3e4c40a21ef0153641",
+            "signatureVerified": true,
+            "credentialRevoked": true
+          },
+          "supersedesReceiptSha256": "sha256:e9178d40fc21030b50fa76d3224b7ac8f810296b3bb0e4fcf42a723a94bb1614",
+          "supersedesArtifactSha256": "sha256:bfe38e72216ed2dd677da5062ca73d11d4b54435a017d4a4cd8828fb2a9e1926",
+          "supersessionReasonSha256": "sha256:9a071b3d4e72c6fdff5ad663115abd7e9bf42dc3803080fa76b7b4c91879a580",
+          "auditCoverage": "complete"
+        }
+      ]
+    }
+  ],
+  "audit": {
+    "schemaVersion": 2,
+    "taskId": "P1-M0-04-OWNER-APPROVAL-AUDIT",
+    "runId": "owner-approval-final-audit-20260718T154455Z",
+    "generatedAt": "2026-07-18T15:44:55Z",
+    "summaryPath": "remote:/data/models/yujianAI/p2/openbao-a/audit-snapshots/owner-approval-final-audit-20260718T154455Z/result.json",
+    "summarySha256": "sha256:3ae50e76a99543e626d46419232d1ac57f9e3044b64660740f1b1d4d26719aea",
+    "snapshotPath": "remote:/data/models/yujianAI/p2/openbao-a/audit-snapshots/owner-approval-final-audit-20260718T154455Z/audit.log",
+    "snapshotSha256": "sha256:834187c1500ceb5d445689c621a65c38eee6f1aff2d530ec783263a991cc4981",
+    "records": 175,
+    "pathCounts": {
+      "unwrap": 16,
+      "signBbb": 6,
+      "signCcc": 4,
+      "signDdd": 4,
+      "signAaa": 2,
+      "revokeSelf": 16,
+      "revokeAccessor": 2
+    },
+    "coverage": {
+      "aaa": "partial-original-complete-supersession",
+      "bbb": "complete",
+      "ccc": "complete",
+      "ddd": "complete"
+    },
+    "decisionCoverage": {
+      "p1-m0-04-aaa-security-20260718": [
+        "receipt-and-posthoc-verify-only-audit-enabled-after-decision",
+        "complete"
+      ],
+      "p1-m0-04-bbb-redis-20260718": [
+        "complete"
+      ],
+      "p1-m0-04-bbb-registry-kms-freeze-20260718": [
+        "complete",
+        "complete"
+      ],
+      "p1-m0-04-ccc-legal-20260718": [
+        "complete",
+        "complete"
+      ],
+      "p1-m0-04-ddd-compliance-20260718": [
+        "complete",
+        "complete"
+      ]
+    },
+    "activeOwnerSignoffTokens": 0,
+    "rawTokensArchived": false,
+    "productionReleaseAuthorized": false
+  },
+  "allProfessionalApprovalsGranted": false,
+  "professionalReviewRequired": true
+}

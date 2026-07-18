@@ -267,6 +267,28 @@ POLICY
   fi
 }
 
+reload_and_verify_openbao_audit() {
+  local root_token audit
+  root_token=$(jq -r '.root_token' "$DATA_ROOT/p2/openbao-ha-init.json")
+  compose kill --signal SIGHUP openbao-a openbao-b openbao-c >/dev/null
+  for _ in $(seq 1 20); do
+    audit=$(bao_exec_token openbao-a "$root_token" audit list -detailed -format=json 2>/dev/null || true)
+    if jq -e '.["yujian-owner/"].type == "file"
+      and .["yujian-owner/"].options.file_path == "/openbao/data/audit.log"
+      and .["yujian-owner/"].options.log_raw == "false"
+      and .["yujian-owner/"].options.hmac_accessor == "true"' <<<"$audit" >/dev/null 2>&1; then
+      break
+    fi
+    sleep 1
+  done
+  jq -e '.["yujian-owner/"].type == "file"
+    and .["yujian-owner/"].options.file_path == "/openbao/data/audit.log"
+    and .["yujian-owner/"].options.log_raw == "false"
+    and .["yujian-owner/"].options.hmac_accessor == "true"' <<<"$audit" >/dev/null
+  compose exec -T openbao-a sh -ec \
+    'test -s /openbao/data/audit.log && test "$(stat -c "%a" /openbao/data/audit.log)" = 600'
+}
+
 migrate() {
   ensure_env
   ensure_tls
@@ -280,6 +302,7 @@ smoke() {
   wait_for_services
   wait_for_openbao
   init_openbao
+  reload_and_verify_openbao_audit
   local root_token status peers count voters
   root_token=$(jq -r '.root_token' "$DATA_ROOT/p2/openbao-ha-init.json")
   status=$(bao_exec_token openbao-a "$root_token" status -format=json)
@@ -308,6 +331,7 @@ case "${1:-}" in
     wait_for_services
     wait_for_openbao
     init_openbao
+    reload_and_verify_openbao_audit
     compose ps
     ;;
   migrate) migrate ;;

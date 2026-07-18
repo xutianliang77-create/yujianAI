@@ -41,7 +41,17 @@
     "supply-chain:verify-signature": "node tools/supply-chain/verify-signature.mjs",
     "supply-chain:verify-image-evidence": "node tools/supply-chain/verify-image-evidence.mjs",
     "supply-chain:verify-candidate-evidence": "node tools/supply-chain/verify-image-candidate-evidence.mjs",
+    "supply-chain:verify-remediated-evidence": "node tools/supply-chain/verify-remediated-candidate-evidence.mjs",
+    "supply-chain:verify-license-remediation": "node tools/supply-chain/verify-license-remediation-evidence.mjs",
+    "supply-chain:verify-redis-decision": "node tools/supply-chain/verify-redis-release-decision.mjs",
+    "supply-chain:verify-owner-signoffs": "node tools/supply-chain/verify-owner-signoffs.mjs",
+    "supply-chain:verify-owner-templates": "for file in docs/governance/owner-decisions/*-decision.json; do node tools/supply-chain/verify-owner-decision.mjs \"$file\"; done",
+    "supply-chain:verify-owner-keys": "node tools/supply-chain/verify-owner-key-registry.mjs",
+    "supply-chain:verify-production-oci": "node tools/supply-chain/verify-production-oci-evidence.mjs",
     "test:supply-chain": "node --test tools/supply-chain/*.test.mjs",
+    "owner-approval:start": "npm start -w @yujian/owner-approval",
+    "owner-approval:test": "npm test -w @yujian/owner-approval",
+    "owner-approval:bypass-clash": "node tools/owner-approval/bypass-clash-proxy.mjs",
     "yujian:cli": "node tools/cli/yujian.mjs"
   },
   "devDependencies": {

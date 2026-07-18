@@ -14,5 +14,15 @@ listener "tcp" {
   tls_client_ca_file = "/openbao/tls/ca.crt"
 }
 
+audit "file" "yujian-owner" {
+  description = "Yujian Owner approval and KMS audit"
+  options {
+    file_path    = "/openbao/data/audit.log"
+    mode         = "0600"
+    log_raw      = "false"
+    hmac_accessor = "true"
+  }
+}
+
 api_addr     = "https://openbao-a:8200"
 cluster_addr = "https://openbao-a:8201"

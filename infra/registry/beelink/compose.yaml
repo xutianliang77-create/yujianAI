@@ -1,0 +1,25 @@
+services:
+  registry:
+    image: yujian/p1-registry:3.1.1-crypto0.52-net0.55-go1.25.12
+    container_name: yujian-production-registry
+    user: "1000:1000"
+    restart: unless-stopped
+    ports:
+      - "100.110.127.117:5443:5000"
+    environment:
+      REGISTRY_HTTP_ADDR: 0.0.0.0:5000
+      REGISTRY_HTTP_TLS_CERTIFICATE: /tls/registry.crt
+      REGISTRY_HTTP_TLS_KEY: /tls/registry.key
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: Yujian Production Registry
+      REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+      REGISTRY_STORAGE_DELETE_ENABLED: "false"
+      OTEL_TRACES_EXPORTER: none
+    volumes:
+      - /data/models/yujianAI/registry/data:/var/lib/registry
+      - /data/models/yujianAI/registry/auth:/auth:ro
+      - /data/models/yujianAI/registry/tls:/tls:ro
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL

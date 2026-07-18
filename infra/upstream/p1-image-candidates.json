@@ -11,7 +11,12 @@
       "currentVersion": "7.2.7-alpine",
       "candidateVersion": "7.2.14-alpine",
       "compatibilityBoundary": "same Redis 7.2 patch line",
-      "requiredBeforeDeployment": "P2 Redis competition, restart and rebuild regression"
+      "license": {
+        "id": "BSD-3-Clause",
+        "path": "infra/upstream/licenses/redis-7.2.14-COPYING.txt",
+        "sha256": "sha256:97f0a15b7bbae580d2609dad2e11f1956ae167be296ab60f4691ab9c30ee9828"
+      },
+      "requiredBeforeDeployment": "bbb signed decision, immutable production registry digest/signature, Redis competition, restart and rebuild regression"
     },
     {
       "id": "postgres-16.14-linux-amd64-candidate",

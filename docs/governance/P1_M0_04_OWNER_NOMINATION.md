@@ -24,10 +24,10 @@
 
 | 角色 | 建议人选与最小资格 | 主 Owner 实名 | 联系方式 | 备份人 | 任命日期 | 任命批准人 | 状态 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `security-owner` | 高级安全工程师或独立外部安全评审人；能审核 CVE/VEX、威胁模型和限期例外 | aaa | 待补 | 待补 | 2026-07-18 | eee | 已指定；资料/签字待补 |
-| `release-owner` | 拥有语见发布仓库/镜像仓权限的技术负责人；能承担签名、回滚和证据归档 | bbb | 待补 | 待补 | 2026-07-18 | eee | 已指定；资料/签字待补 |
-| `legal-owner` | 内部法务或外部执业律师；能对 LICENSE/NOTICE、source offer 和商标描述出具意见 | ccc | 待补 | 待补 | 2026-07-18 | eee | 已指定；资料/签字待补 |
-| `compliance-owner` | 语见AI内部中国数据/产品合规 DRI；能组织 PIPL、数据驻留、产品分发和上线条件复核 | ddd | 待补 | 待补 | 2026-07-18 | eee | 已指定；资料/签字待补 |
+| `security-owner` | 高级安全工程师或独立外部安全评审人；能审核 CVE/VEX、威胁模型和限期例外 | aaa | 待补 | 待补 | 2026-07-18 | eee | 原 receipt=reject；sequence 1 supersession=approve；资料待补 |
+| `release-owner` | 拥有语见发布仓库/镜像仓权限的技术负责人；能承担签名、回滚和证据归档 | bbb | 待补 | 待补 | 2026-07-18 | eee | Redis sequence 0=approve；Registry/KMS sequence 0/1=reject；资料待补 |
+| `legal-owner` | 内部法务或外部执业律师；能对 LICENSE/NOTICE、source offer 和商标描述出具意见 | ccc | 待补 | 待补 | 2026-07-18 | eee | sequence 0/1=reject；资料待补 |
+| `compliance-owner` | 语见AI内部中国数据/产品合规 DRI；能组织 PIPL、数据驻留、产品分发和上线条件复核 | ddd | 待补 | 待补 | 2026-07-18 | eee | 原 receipt=reject；sequence 1 supersession=approve；资料待补 |
 
 ## 3. 必须签字的决定
 
@@ -40,13 +40,21 @@
 
 ## 4. 本次候选镜像的待决策输入
 
-- Redis 7.2.14-alpine：Critical 从 11 降为 0，只允许进入隔离回归候选，未批准部署。
-- PostgreSQL 16.14-bookworm：Critical 27，仍阻断。
-- PostgreSQL 16.14-alpine：Critical 1，仍阻断；同时存在 Debian 到 Alpine 的兼容性变更。
-- OpenBao 2.5.4：Critical 13，仍阻断；且从 2.4 跨次版本。
+- Redis 7.2.14-alpine：Critical 从 11 降为 0，隔离竞争/重启/重建回归已通过；bbb 已签名
+  approve，但 Registry/KMS freeze 的 sequence 1 仍为 reject，当前未批准部署。
+- PostgreSQL 16.14 语见安全重建：Critical 0、High 0；许可证原文已进镜像，registry
+  digest、OpenBao KMS 签名及 attestation 已验证；11 条迁移、事务/outbox/CAS、备份恢复和
+  删除重建回归通过；aaa 当前 approve，
+  ccc sequence 1 仍为签名 reject，ddd sequence 1 为 approve。
+- OpenBao 2.5.4 语见安全重建：Critical 0、High 0；MPL-2.0 与依赖许可证已进镜像，
+  registry digest、OpenBao KMS 签名及 attestation 已验证；2.4→2.5 三节点滚动升级、Raft
+  快照恢复、TLS/HA、Transit 和 API key 生命周期/恢复回归通过；
+  aaa/ddd 当前 approve，ccc sequence 1 仍为签名 reject。
 
 扫描证据见
-[`p1-supply-chain-candidate-evidence.json`](../acceptance/p1-supply-chain-candidate-evidence.json)。
+[`p1-supply-chain-candidate-evidence.json`](../acceptance/p1-supply-chain-candidate-evidence.json)
+和
+[`p1-remediated-candidate-evidence.json`](../acceptance/p1-remediated-candidate-evidence.json)。
 
 ## 5. 任命完成条件
 

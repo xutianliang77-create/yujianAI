@@ -1,0 +1,148 @@
+openapi: 3.1.0
+info:
+  title: 语见 Owner Approval API
+  version: 0.2.0
+  description: P1-M0-04 专业 Owner 决定与 OpenBao 个人签名接口。原始决定不可覆盖，后续决定只能作为哈希链接的 supersession 追加。接口不签发凭据、不自动更新发布 Gate。
+servers:
+  - url: https://beelink.tail1e9cec.ts.net:8093
+paths:
+  /healthz:
+    get:
+      summary: 进程存活检查
+      responses:
+        "200":
+          description: 服务存活
+  /api/v1/owner-approvals:
+    get:
+      summary: 查询 Owner 审批任务
+      parameters:
+        - in: query
+          name: owner
+          schema:
+            type: string
+            enum: [aaa, bbb, ccc, ddd]
+      responses:
+        "200":
+          description: 五份冻结模板、当前有效决定及完整的追加历史；不包含 token 或完整签名
+        "404":
+          description: Owner 不存在
+  /api/v1/owner-approvals/{decisionId}:decide:
+    post:
+      summary: 由 Owner 本人签名并提交不可覆盖决定
+      parameters:
+        - in: path
+          name: decisionId
+          required: true
+          schema:
+            type: string
+            pattern: ^p1-m0-04-[a-z0-9-]{3,80}$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DecisionSubmission"
+      responses:
+        "201":
+          description: 签名、验签、token 撤销和证据归档全部成功；Gate 仍为 false
+        "400": { description: 合同、理由、条件、到期时间或 revision 无效 }
+        "401": { description: wrapped token 无效、过期或已使用 }
+        "403": { description: token Owner 或 policy 与任务不匹配 }
+        "409": { description: 已存在决定或并发审批 }
+        "429": { description: 每来源每分钟最多提交五次 }
+        "502": { description: OpenBao 签名、验签或 token 撤销未完成，决定不归档 }
+  /api/v1/owner-approvals/{decisionId}:supersede:
+    post:
+      summary: 追加一份不可覆盖的替代决定
+      description: 必须由同一个人 Owner 使用新的一次性凭据签名。新 artifact 同时绑定上一份 receipt 和 artifact 哈希，并写入独立递增目录。
+      parameters:
+        - in: path
+          name: decisionId
+          required: true
+          schema:
+            type: string
+            pattern: ^p1-m0-04-[a-z0-9-]{3,80}$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupersedingDecisionSubmission"
+      responses:
+        "201":
+          description: 替代决定已签名并追加；原始及先前记录不变，Gate 仍为 false
+        "400": { description: 合同、理由、确认项或 revision 无效 }
+        "401": { description: wrapped token 无效、过期或已使用 }
+        "403": { description: token Owner 或 policy 与任务不匹配 }
+        "409": { description: 无原始决定、expectedReceiptSha256 过期或存在并发提交 }
+        "429": { description: 每来源每分钟最多提交五次 }
+        "502": { description: OpenBao 签名、验签或 token 撤销未完成，替代决定不归档 }
+components:
+  schemas:
+    DecisionSubmission:
+      type: object
+      additionalProperties: false
+      required: [revision, decision, reason, wrappedToken, confirmEvidenceReviewed]
+      properties:
+        revision:
+          type: string
+          pattern: ^sha256:[0-9a-f]{64}$
+        decision:
+          type: string
+          enum: [approve, reject, approve-with-conditions, time-bound-exception]
+        reason:
+          type: string
+          minLength: 20
+          maxLength: 2000
+        conditions:
+          type: string
+          minLength: 20
+          maxLength: 2000
+        expiresAt:
+          type: string
+          format: date-time
+        wrappedToken:
+          type: string
+          minLength: 20
+          maxLength: 2048
+          writeOnly: true
+        confirmEvidenceReviewed:
+          const: true
+    SupersedingDecisionSubmission:
+      type: object
+      additionalProperties: false
+      required: [revision, expectedReceiptSha256, decision, reason, supersessionReason, wrappedToken, confirmEvidenceReviewed, confirmOriginalPreserved]
+      properties:
+        revision:
+          type: string
+          pattern: ^sha256:[0-9a-f]{64}$
+        expectedReceiptSha256:
+          type: string
+          pattern: ^sha256:[0-9a-f]{64}$
+        decision:
+          type: string
+          enum: [approve, reject, approve-with-conditions, time-bound-exception]
+        reason:
+          type: string
+          minLength: 20
+          maxLength: 2000
+        conditions:
+          type: string
+          minLength: 20
+          maxLength: 2000
+        expiresAt:
+          type: string
+          format: date-time
+        supersessionReason:
+          type: string
+          minLength: 20
+          maxLength: 2000
+        wrappedToken:
+          type: string
+          minLength: 20
+          maxLength: 2048
+          writeOnly: true
+        confirmEvidenceReviewed:
+          const: true
+        confirmOriginalPreserved:
+          const: true

@@ -14,11 +14,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - run: npm ci
       - run: mkdir -p outputs/sbom
+      - run: npm run owner-approval:test
+      - run: node --check apps/owner-approval/app.js
       - run: npm run supply-chain:verify
       - run: npm run test:supply-chain
       - run: npm run supply-chain:verify-image-evidence
       - run: npm run supply-chain:verify-candidate-evidence
+      - run: npm run supply-chain:verify-remediated-evidence
+      - run: npm run supply-chain:verify-license-remediation
+      - run: npm run supply-chain:verify-production-oci
+      - run: npm run supply-chain:verify-redis-decision
+      - run: npm run supply-chain:verify-owner-signoffs
+      - run: npm run supply-chain:verify-owner-templates
+      - run: npm run supply-chain:verify-owner-keys
       - uses: actions/upload-artifact@v4
         with:
           name: yujian-sbom

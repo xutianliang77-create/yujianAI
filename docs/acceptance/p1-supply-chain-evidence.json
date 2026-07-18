@@ -231,7 +231,7 @@
     "The encrypted private key is an engineering evidence key stored outside the evidence root, not an authorized production release identity.",
     "No vulnerability exception was created and the zero-Critical policy was not weakened.",
     "No container was restarted, recreated or reconfigured during evidence collection.",
-    "Personal legal, compliance, release and security owners remain unassigned."
+    "Personal legal, compliance, release and security owners are assigned but their professional decisions and signatures remain pending."
   ],
   "gate": {
     "technicalEvidence": "blocked",

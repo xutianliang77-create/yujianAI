@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "taskId": "P1-M0-04-REMEDIATED-CANDIDATES",
+  "platform": "linux/amd64",
+  "deploymentAllowed": false,
+  "builder": {
+    "reference": "golang:1.25.12-alpine3.24@sha256:56961d79ea8129efddcc0b8643fd8a5416b4e6228cfd477e3fd61deb2672c587"
+  },
+  "images": [
+    {
+      "id": "postgres-16.14-alpine-gosu-go1.25.12",
+      "dockerfile": "infra/upstream/build-images/postgres-16.14-alpine-gosu.Dockerfile",
+      "baseReference": "postgres:16.14-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777",
+      "source": {
+        "repository": "https://github.com/tianon/gosu",
+        "tag": "1.19",
+        "commit": "6456aaa0f3c854d199d0f037f068eb97515b7513"
+      },
+      "licenses": [
+        {
+          "id": "PostgreSQL",
+          "path": "infra/upstream/licenses/postgresql-16.14-COPYRIGHT.txt",
+          "sha256": "sha256:3d6af92ff8a4c2cdf69afb1cf44edea727922f5cd0cf8b5f72b11cdecac8fdfd"
+        },
+        {
+          "id": "Apache-2.0",
+          "sourcePath": "LICENSE",
+          "expectedImagePath": "/licenses/gosu-Apache-2.0.txt"
+        }
+      ],
+      "localTag": "yujian/p1-postgres:16.14-alpine-gosu-go1.25.12",
+      "purpose": "replace the Go 1.24.6 gosu binary with the fixed Go 1.25.12 runtime while preserving PostgreSQL 16.14 and the official entrypoint"
+    },
+    {
+      "id": "openbao-2.5.4-crypto0.52-net0.55-openssl3.5.7-go1.25.12",
+      "dockerfile": "infra/upstream/build-images/openbao-2.5.4-crypto.Dockerfile",
+      "baseReference": "openbao/openbao:2.5.4@sha256:436eaf9778cad75507ff70ea26ace30dcbe15606e619ac3823495663d7f7c115",
+      "source": {
+        "repository": "https://github.com/openbao/openbao",
+        "tag": "v2.5.4",
+        "commit": "4f6d47246a053375271a5fd8af85c3b75695aa46",
+        "distributionSha256": "sha256:5dd8bc003fcb8b1b601f0e75827df3819a9d5021b3094729c4d375508fd844b7"
+      },
+      "dependencyOverrides": {
+        "golang.org/x/crypto": "v0.52.0",
+        "golang.org/x/net": "v0.55.0",
+        "libcrypto3": "3.5.7-r0",
+        "libssl3": "3.5.7-r0"
+      },
+      "licenses": [
+        {
+          "id": "MPL-2.0",
+          "sourcePath": "LICENSE",
+          "sha256": "sha256:d6b1a865f1c8c697d343bd4e0ce61025f91898486a1f00d727f32e8644af77d3",
+          "expectedImagePath": "/licenses/openbao-MPL-2.0.txt"
+        },
+        {
+          "id": "OpenBao dependency notices",
+          "sourcePath": "LICENSE_DEPENDENCIES.md",
+          "sha256": "sha256:f4293107047228ac15cdf62b2054ff04ba55a22887406fbcc6b6aa564e469bd9",
+          "expectedImagePath": "/licenses/openbao-dependencies.md"
+        }
+      ],
+      "localTag": "yujian/p1-openbao:2.5.4-crypto0.52-net0.55-openssl3.5.7-go1.25.12",
+      "purpose": "remove the x/crypto and OpenSSL Critical findings plus the fixed Go stdlib and x/net High findings without changing the OpenBao upstream tag"
+    }
+  ],
+  "boundaries": [
+    "These are locally built pre-registry candidates and cannot authorize deployment.",
+    "Every output must be scanned before runtime regression.",
+    "OpenBao source modifications trigger MPL-2.0 source and notice review.",
+    "Registry promotion and signing require the explicit bbb decision contract."
+  ]
+}
