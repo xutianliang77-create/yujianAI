@@ -1075,3 +1075,70 @@ YUJIAN_UPSTREAM_MIRROR_ROOT="$HOME/.cache/yujian/upstream" npm run upstream:mirr
 YUJIAN_UPSTREAM_MIRROR_ROOT="$HOME/.cache/yujian/upstream" \
 YUJIAN_UPSTREAM_REPLAY_REPORT="outputs/p1/upstream-replay.json" npm run upstream:patch:replay
 ```
+
+## 📌 SESSION HANDOFF STATUS — P2-01–06 Beelink/Mac production acceptance passed
+
+### Current Work
+
+2026-07-18 Beelink 恢复在线后，将语见 P2 持久化数据从系统盘迁移到大盘
+`/data/models/yujianAI/p2`，并在 `/data/models/yujianAI/worktrees/p2-acceptance` 建立 detached
+clean worktree。原 `/home/beelink/yujianAI/data/p2` 保留作回滚副本，没有修改无界AI或其他旧项目。
+
+迁移暴露并修复两个真实恢复缺陷：
+
+- `deploy.sh` 原先用无空格字符串匹配 OpenBao JSON，重启后误跳过 unseal；现改为 `jq`
+  解析 `initialized`/`sealed` 布尔字段，恢复后 OpenBao 为 3 peers/3 voters。
+- closure restore 查询把 psql `:'variable'` 放进 `-c`，变量没有展开；四条带参数查询改为
+  stdin SQL + `-v` 安全绑定。Mac wrapper 同时在远端失败时输出最后 80 行日志。
+
+最终双机 run `p2-closure-20260718051008-653ebfee` 完整通过：Beelink 为服务端，本机 Mac
+以真实 RTC participant 入房；P2-04 OIDC/邀请/onboarding/持久 RBAC/IDOR/audit，P2-05
+HMAC/retry/DLQ/requeue/restart/5 次 claim heartbeat，P2-06 data-rights/crash recovery、隔离
+`pg_dump` restore 和 Redis 从 PostgreSQL 重建全部通过。
+
+### Verification
+
+- P2 PostgreSQL、Redis、OpenBao A/B/C：均 healthy；所有 bind mount 位于
+  `/data/models/yujianAI/p2`，OpenBao 3 peers/3 voters。
+- migration：001–011 共 11 条已在真实 PostgreSQL 应用；`deploy.sh smoke` 输出
+  `postgres=ready`、`redis=ready`、`openbao=tls-raft-ha`。
+- closure report：`/data/models/yujianAI/p2/reports/p2-closure-acceptance.json`，mode 0600；
+  backup mode 0600、79,104 bytes、SHA-256 与报告一致，isolated restore RTO 896 ms。
+- 独立清理复核：四组 scoped DB count 均为 0；KMS metadata HTTP 404；临时 restore DB、
+  RTC probe 和 Redis rebuild key 均为 0。
+- protected container restart count 在最终 run 前后 hash 一致；既有 LiveKit 容器仅执行
+  `start`，未 recreate，restart count 为 0。`ai-phone-staging-agent` 在本轮外部自行累计过
+  restart，本轮未操作该容器。
+- Beelink `/data`：3.3T，总剩余约 2.2T；RTX 5090 当前可见，driver 595.71.05。
+- 本地：两个修改后的 shell 脚本 `bash -n`、`git diff --check` 通过；双机完整脚本通过。
+
+证据索引已同步到 `docs/acceptance/p2-closure-evidence.json`。M2/P2-01–06 技术验收为
+**passed**；正式 Gate 2 仍等待 Gate 0/1、`data-owner`/`security-owner`/`platform-owner`
+签字、跨主机 HA、auto-unseal 和生产 KMS 合规评审，不将技术通过写成公网发布批准。
+
+### Background Tasks
+
+- Beelink `yujian-p2` 的 PostgreSQL、Redis、OpenBao A/B/C 持续运行。
+- 既有 `livekit-qkxy-livekit-1` 与 `livekit-qkxy-redis-1` 已启动供 RTC 服务使用。
+- 没有遗留验收进程、临时数据库、RTC probe 或未完成 cleanup。
+
+### Next Session Priorities
+
+1. 使用 `/data/models/yujianAI` 的隔离目录完成 P1-M0-03 真实 LiveKit bare mirror replay 和
+   clean build 证据，不写入项目 worktree。
+2. 补齐 P1-M0-04 SBOM/签名/漏洞 evidence、nightly sandbox 与 owner 签字。
+3. Gate 0/1 和正式 Gate 2 条件关闭后，再进入 P3/M3 的真实 TURN/弱网及 24/72 小时稳定性。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short --branch
+ssh beelink@100.110.127.117 \
+  'cd /data/models/yujianAI/worktrees/p2-acceptance && git rev-parse HEAD'
+ssh beelink@100.110.127.117 \
+  'cd /data/models/yujianAI/worktrees/p2-acceptance && \
+   YUJIAN_DATA_ROOT=/data/models/yujianAI \
+   YUJIAN_P2_ENV_FILE=/data/models/yujianAI/p2/runtime.env \
+   ./infra/p2/beelink/deploy.sh status'
+```

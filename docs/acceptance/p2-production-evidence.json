@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "runId": "p2-20260717095831-116ef52a",
   "environment": "beelink",
-  "report": "remote:/home/beelink/yujianAI/data/p2/reports/production-acceptance.json",
+  "report": "remote:/data/models/yujianAI/p2/reports/production-acceptance.json",
   "status": "passed-scope",
   "checks": {
     "postgres": {

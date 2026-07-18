@@ -31,7 +31,7 @@ netem、SBOM/签名校验、上游 patch replay、nightly sandbox 和 P1 evidenc
 | [技术设计](design/02-technical-design.md) | API、表、Token、dispatch、计量、状态机和可观测 |
 | [开发任务与计划](planning/01-development-tasks-and-plan.md) | 里程碑、WBS、Gate、依赖和人员建议 |
 | [P1 M0/M1 关闭计划](planning/P1_M0_M1_CLOSURE_PLAN.md) | owner、Gate 退出条件和当前缺口 |
-| [P2/P3 运行时与发布门禁](planning/P2_P3_RUNTIME_CLOSURE_PLAN.md) | M2 真实依赖、M3-M7 顺序门禁和阻断条件 |
+| [P2/P3 运行时与发布门禁](planning/P2_P3_RUNTIME_CLOSURE_PLAN.md) | M2/P2-01–06 技术验收已通过；正式 Gate 2 前置条件与 M3-M7 顺序门禁 |
 | [P2 Beelink runtime](../infra/p2/README.md) | PostgreSQL、Redis、OpenBao 数据目录部署与恢复烟测 |
 | [验收任务与计划](acceptance/01-acceptance-tasks-and-plan.md) | 兼容、功能、媒体质量、负载、安全和交付验收 |
 | [真实运行测试方案](acceptance/REAL_RUNTIME_TEST_PLAN.md) | Beelink 双节点、Web/Flutter、RTX 5090 Agent 和生产留存分层执行命令 |

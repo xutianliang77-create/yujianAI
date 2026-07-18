@@ -234,9 +234,30 @@ cd /home/beelink/yujianAI
 通过证据包括 PostgreSQL 事务 outbox/CAS、生产 API 启动与重启、双 Redis client 限流/Token
 quota 竞争、Redis 容器删除重建、API key rotate grace/revoke 传播、三节点 OpenBao HTTPS/Raft
 健康与 leader stop 后 resolver 读回。脱敏报告为
-`/home/beelink/yujianAI/data/p2/reports/production-acceptance.json`，run id
+`/data/models/yujianAI/p2/reports/production-acceptance.json`，run id
 `p2-20260717095831-116ef52a`。三节点位于同一 Beelink，仅证明单主机 process/container quorum；
 跨主机/AZ HA、auto-unseal、Webhook 真实投递、备份恢复和 data-rights executor 仍未通过。
+
+### 7.2 P2-04/05/06 closure acceptance（2026-07-18）
+
+Beelink 的 P2 数据已迁移到 `/data/models/yujianAI/p2`，验收代码使用
+`/data/models/yujianAI/worktrees/p2-acceptance` clean worktree。本机 Mac 执行：
+
+```bash
+YUJIAN_BEELINK_PROJECT_ROOT=/data/models/yujianAI/worktrees/p2-acceptance \
+YUJIAN_BEELINK_DATA_ROOT=/data/models/yujianAI \
+./tools/p2/run-closure-with-client.sh
+```
+
+run `p2-closure-20260718051008-653ebfee` 完整通过：真实 RTC participant 连接、P2-04
+身份与 RBAC、P2-05 Webhook 生命周期、P2-06 data-rights 与 crash recovery、11 migrations、
+隔离 custom-format `pg_dump` restore、Redis 从 PostgreSQL 重建和 protected restart count
+前后一致。报告为 `/data/models/yujianAI/p2/reports/p2-closure-acceptance.json`，备份
+SHA-256 与报告一致，报告和备份 mode 均为 0600，restore RTO 896 ms。独立复核确认临时
+restore DB/probe/Redis key 为 0，验收租户相关数据库记录为 0，KMS metadata 返回 404。
+
+该结果关闭 P2-01–06/M2 技术验收范围；不替代 Gate 0/1、跨主机 HA、auto-unseal、
+生产 KMS 合规评审或 owner 签字。
 
 ## 8. 报告和最终判定
 
