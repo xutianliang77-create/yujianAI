@@ -1142,3 +1142,82 @@ ssh beelink@100.110.127.117 \
    YUJIAN_P2_ENV_FILE=/data/models/yujianAI/p2/runtime.env \
    ./infra/p2/beelink/deploy.sh status'
 ```
+
+## 📌 SESSION HANDOFF STATUS — P1-M0-03 real upstream evidence passed
+
+### Current Work
+
+2026-07-18 在 Beelink 大盘建立隔离 clean worktree
+`/data/models/yujianAI/worktrees/p1-upstream`（commit
+`cc93a95ba707cbd33b29975fc2bf882e2f1f698b`），没有修改 `/home/beelink/yujianAI`、
+无界AI 或其他项目。真实上游 mirror、build 和 evidence 分别位于：
+
+- `/data/models/yujianAI/upstream-mirrors`；
+- `/data/models/yujianAI/upstream-builds/p1-clean-20260718135102`；
+- `/data/models/yujianAI/evidence/p1`。
+
+10 个唯一 LiveKit bare repository 已同步并通过 `git fsck --connectivity-only`；
+11 个 manifest component 的真实 patch replay 报告为 `status=passed`，patch/conflict
+均为 0，manifest SHA-256 为
+`42b0b74098cf1845b8b0979f5de5371df36c5253f74fbeda1245191aafde3f1f`。
+
+clean build 覆盖 Server、Protocol Go/JS、SIP、Ingress、Egress、Python/Node Agent
+core、Node Server/RTC SDK、Web SDK 和 Flutter SDK 根包。可生成产物均执行两次并
+通过逐字节或逐文件 SHA-256 对比；主要结果索引为
+`docs/acceptance/p1-upstream-evidence.json`。Egress 模板使用源码声明的
+`sha-594b3b1`/amd64 digest，Git LFS 示例资产和 Agent provider 插件不在核心包
+构建范围。
+
+Flutter 真实检查暴露了上游最低版本声明偏差：3.27.3 的 `path 1.9.0`、
+3.32.8 的 `meta 1.16.0` 不满足当前 pubspec，3.38.9 能解析源码但不匹配冻结
+lockfile。最终按官方归档 SHA-256 固定 Flutter 3.44.0/Dart 3.12.0，根包
+`pub get --enforce-lockfile --no-example`、`analyze --no-pub lib test` 通过，测试为
+260 passed/1 skipped，两次依赖图 SHA-256 均为
+`8fcfcbbb0135f6fc4eb3dfb55a4fbc304de6abc57bbe43f2b0b3dec22ef1d346`。上游未提交
+lockfile 的 `example/` 明确排除，未生成或改写任何上游跟踪文件。
+
+### Verification
+
+- `upstream-replay.json`：4,221 bytes、mode 0600、`status=passed`。
+- `clean-build-report.json`：10,210 bytes、mode 0600，SHA-256
+  `01da09189cdf16ad5b1908bc65d74581af6bde8d44514bfc6e6b47260bd46ae6`。
+- Flutter 最终日志：2,021,504 bytes、mode 0600；analyze 无问题、全部根测试通过。
+- Server/SIP/Ingress/Egress 分别生成静态或依赖完整的 linux/amd64 ELF；
+  动态依赖在按 digest 固定的构建镜像中无 `not found`。
+- 工具链 Dockerfile 已在 Beelink 真实构建；本轮新增的 GStreamer/模板/辅助镜像
+  引用已定向删除，没有执行全局 Docker prune。
+- 失败的 Flutter 3.27/3.32/3.38 工具链目录已删除；最终 3.44.0 工具链保留在
+  `/data`，约 3.7G。
+
+### Gate Status
+
+P1-M0-03 的真实 mirror/replay/clean-build **运行证据缺口已关闭**；该任务仍等待
+`rtc-owner`/`release-owner` 审批、fork 权限和差异通知演练。M0/M1 仍为
+partial，正式 Gate 0/1 仍为 **not-passed**；M2/P2-01–06 技术验收状态不变。
+
+### Background Tasks
+
+- Beelink 现有 P2 PostgreSQL/Redis/OpenBao 和 LiveKit 容器保持原状，本轮未重启/
+  recreate。
+- 无遗留 build/pull 进程或临时构建容器。
+- bare mirror、构建产物、缓存、Flutter 3.44.0 和脱敏报告持续位于 `/data`。
+
+### Next Session Priorities
+
+1. 推进 P1-M0-04：当前镜像 SBOM、签名验证、漏洞门禁和法律/owner 证据。
+2. 执行 nightly sandbox 真实租户隔离/凭据销毁/自动清理证据。
+3. 补 iOS/Android/Python、TURN/弱网/reconnect、视频/屏幕和质量指标，不将 clean
+   build 扩大成 RTC 运行兼容通过。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short --branch
+ssh beelink@100.110.127.117 \
+  'jq ".status, .gate" /data/models/yujianAI/evidence/p1/clean-build-report.json'
+ssh beelink@100.110.127.117 \
+  'jq ".status, .summary" /data/models/yujianAI/evidence/p1/upstream-replay.json'
+ssh beelink@100.110.127.117 \
+  'df -h /data && docker ps --format "{{.Names}} {{.Status}}"'
+```

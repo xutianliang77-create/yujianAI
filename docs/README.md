@@ -15,7 +15,12 @@ TURN/弱网、reconnect、Webhook、iOS/Android/Python、SBOM/签名等缺口未
 
 P1 implementation slice 已补入 Web/Flutter/Node 媒体生命周期、Python Room smoke、Linux
 netem、SBOM/签名校验、上游 patch replay、nightly sandbox 和 P1 evidence schema；这些入口
-仍必须在 Beelink/声明设备/CI 生成脱敏报告，不能直接升级 Gate 状态。
+中除下述 clean upstream 外，其余仍必须在 Beelink/声明设备/CI 生成脱敏报告，
+不能直接升级 Gate 状态。
+
+2026-07-18 已在 Beelink `/data` 完成真实 clean upstream mirror/fsck/replay 和 11
+component 冻结构建或静态测试证据；该证据只关闭 P1-M0-03 的运行证据缺口，
+不关闭 owner、合规、SBOM/签名、SDK 运行矩阵或完整 Gate 0/1。
 
 ## 核心交付
 
@@ -35,6 +40,7 @@ netem、SBOM/签名校验、上游 patch replay、nightly sandbox 和 P1 evidenc
 | [P2 Beelink runtime](../infra/p2/README.md) | PostgreSQL、Redis、OpenBao 数据目录部署与恢复烟测 |
 | [验收任务与计划](acceptance/01-acceptance-tasks-and-plan.md) | 兼容、功能、媒体质量、负载、安全和交付验收 |
 | [真实运行测试方案](acceptance/REAL_RUNTIME_TEST_PLAN.md) | Beelink 双节点、Web/Flutter、RTX 5090 Agent 和生产留存分层执行命令 |
+| [P1 clean upstream 证据](acceptance/p1-upstream-evidence.json) | 真实 mirror/replay、工具链、重复构建和 artifact digest 索引 |
 | [上游与源码复用策略](migration/SOURCE_REUSE_AND_UPSTREAM_STRATEGY.md) | LiveKit fork、同步、许可证和旧项目白名单门禁 |
 | [开发完成审计](planning/DEVELOPMENT_COMPLETION_AUDIT.md) | 任务逐项实现证据、缺口和 Gate 判定 |
 | [OpenAPI v1](api/openapi.yaml) | 控制面与媒体入口合同最小描述 |

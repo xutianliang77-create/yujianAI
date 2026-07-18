@@ -30,5 +30,10 @@ YUJIAN_UPSTREAM_REPLAY_REPORT="/tmp/yujian-upstream-replay.json" \
 固定 commit，记录 manifest/queue SHA-256、上游 base/result tree 和冲突状态；不会修改 bare
 mirror。没有 `status=passed` 的报告，不能关闭 P1-M0-03。
 
+冻结组件的 Linux AMD64 clean build 使用
+[`build-images/`](build-images/) 中按 digest/精确包版本固定的辅助工具链；工具链不进入运行时
+发行物。真实 mirror、replay、重复构建和 artifact SHA-256 的脱敏索引见
+[`p1-upstream-evidence.json`](../../docs/acceptance/p1-upstream-evidence.json)。
+
 采用策略见
 [SOURCE_REUSE_AND_UPSTREAM_STRATEGY.md](../../docs/migration/SOURCE_REUSE_AND_UPSTREAM_STRATEGY.md)。

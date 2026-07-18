@@ -18,3 +18,7 @@ mute/unpublish、SDK-internal synthetic reconnect、接收端质量采样和 Flu
 iOS/Android、Python Agent 或完整 Gate 1。SDK 合成 reconnect 不能替代网络故障注入证据。
 Mac 客户端报告不能替代 Beelink 服务器证据；服务器端报告路径见
 `PROGRESS_LOG.md` 和完成审计。
+
+2026-07-18 的 P1 clean upstream 证据另外验证了 Web/Node/Agents 产物哈希和
+Flutter 3.44.0 冻结根包的 `lib/test` analyze 与 260 passed/1 skipped；它是源码
+构建/静态测试证据，不改变上表的 RTC 真实运行状态。

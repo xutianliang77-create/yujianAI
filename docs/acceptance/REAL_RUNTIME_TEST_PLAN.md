@@ -279,6 +279,15 @@ YUJIAN_UPSTREAM_REPLAY_REPORT="outputs/p1/upstream-replay.json" \
 SHA-256 和 base/result tree。测试中的预期冲突报告只能证明 fail-closed guard，不能替代真实
 LiveKit mirror 或 clean build 证据。
 
+2026-07-18 已在 Beelink `/data/models/yujianAI` 完成 run
+`p1-upstream-20260718135102`：10 个 bare mirror 的 fsck、11 component 真实 replay
+和冻结 clean build/核心包静态测试均通过，可生成产物重复后 SHA-256 一致。
+Flutter 根包使用匹配冻结 lockfile 的 3.44.0，`lib/test` analyze 无问题，260 项
+通过、1 项跳过；未提交 lockfile 的 `example/` 不属于该冻结范围。原始 replay/
+build/Flutter 报告 mode 均为 0600，脱敏索引为
+`docs/acceptance/p1-upstream-evidence.json`。该结果关闭 P1-M0-03 的运行证据缺口，
+不替代 fork/通知权限、owner 审批、语见发行版对照或完整 Gate 0/1。
+
 每次运行至少保存：
 
 - `acceptance.log`、`summary.txt`、Compose `config` 脱敏结果、RTC/Redis 日志。
