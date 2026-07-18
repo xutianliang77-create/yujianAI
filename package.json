@@ -39,6 +39,9 @@
     "supply-chain:sbom": "node tools/supply-chain/generate-sbom.mjs",
     "supply-chain:verify": "npm run supply-chain:sbom && node tools/supply-chain/verify-sbom.mjs",
     "supply-chain:verify-signature": "node tools/supply-chain/verify-signature.mjs",
+    "supply-chain:verify-image-evidence": "node tools/supply-chain/verify-image-evidence.mjs",
+    "supply-chain:verify-candidate-evidence": "node tools/supply-chain/verify-image-candidate-evidence.mjs",
+    "test:supply-chain": "node --test tools/supply-chain/*.test.mjs",
     "yujian:cli": "node tools/cli/yujian.mjs"
   },
   "devDependencies": {

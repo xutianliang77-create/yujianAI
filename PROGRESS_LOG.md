@@ -1221,3 +1221,212 @@ ssh beelink@100.110.127.117 \
 ssh beelink@100.110.127.117 \
   'df -h /data && docker ps --format "{{.Names}} {{.Status}}"'
 ```
+
+## 📌 SESSION HANDOFF STATUS — P1-M0-04 candidate scan complete, no runtime switch
+
+### Current Work
+
+2026-07-18 按用户授权，在 Beelink 只拉取并扫描 Redis/PostgreSQL/OpenBao
+补丁候选，没有启动候选容器、修改 Compose 或切换 P2 运行服务。候选 run id
+为 `p1-m0-04-candidates-20260718T084500Z`，原始证据位于
+`/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-candidates-20260718T084500Z`。
+
+候选范围由 `infra/upstream/p1-image-candidates.json` 按 Linux AMD64 registry digest
+冻结，且 `deploymentAllowed=false`。候选 run 与当前镜像 run 使用同一 Grype DB
+快照（schema `v6.1.9`、built `2026-07-18T06:48:35Z`、SHA-256
+`5df41e43b3ea4ca0f405b12484f9f4ef6ee55c5d5f672fdf4346d206c4d72b73`）。
+
+### Verification and Findings
+
+- Redis 7.2.14-alpine：21 包，High 0、Critical 0，3 个 `NOASSERTION`；
+  `eligible-for-regression`，不是 deployment approval。
+- PostgreSQL 16.14-bookworm：149 包，High 61、Critical 27，26 个
+  `NOASSERTION`；阻断。
+- PostgreSQL 16.14-alpine 备选：51 包，High 18、Critical 1，6 个
+  `NOASSERTION`；唯一 Critical 为 `gosu` 内置 Go stdlib，同时从 Debian 改为
+  Alpine，仍阻断。
+- OpenBao 2.5.4：354 包，High 36、Critical 13，329 个 `NOASSERTION`；
+  2.4→2.5 跨次版本且仍阻断。
+- 两个 PostgreSQL 选项互斥；候选证据中的 41 Critical 合计只用于对比，
+  不代表一个可部署组合。
+- 原始候选证据共 28 个文件，全部 mode `0600`；Cosign 原生验签和
+  仓库 verifier 均通过。机器可读索引为
+  `docs/acceptance/p1-supply-chain-candidate-evidence.json`。
+- `npm run test:supply-chain` 8/8 通过；当前/候选 evidence verifier 均通过结构
+  校验；`P1_M0_04_REQUIRE_PASS=true` 按预期失败关闭；`npm run check`
+  通过（workspace 38/38，upstream replay 1/1）。
+- 四类个人 Owner 的资格、职责分离和待填字段已固化到
+  `docs/governance/P1_M0_04_OWNER_NOMINATION.md`；自然人姓名、联系方式、
+  任命日期和批准人仍等待用户提供，未伪造指派或签字。
+
+### Runtime Safety Check
+
+2026-07-18 复核时，Beelink `/data` 容量 3.3T，可用 2.2T。P2 Redis 仍运行
+`redis:7.2.7-alpine@sha256:1de7...`，PostgreSQL 仍运行
+`postgres:16.4@sha256:9a70...`，OpenBao 三节点仍运行
+`openbao/openbao:2.4.1@sha256:06a26...`；五个 P2 容器全部 healthy/running、
+`restartCount=0`。未发现遗留 Syft/Grype/Cosign/扫描 runner 任务。
+
+### Gate Status
+
+P1-M0-04 仍为 **blocked**。Redis 候选只获得“可进入回归”结论，不改变
+当前镜像、固定 digest 或 Gate 状态。PostgreSQL/OpenBao 候选未达零 Critical；
+当前镜像仍有 76 Critical 和 465 个 license `NOASSERTION`，且生产 registry
+签名与四类实名 Owner 未完成。Gate 0/1、Gate 7 和生产发布保持未通过。
+
+### Background Tasks
+
+- 无本轮遗留的 pull、Syft、Grype、Cosign 或 evidence runner 进程。
+- 候选镜像仅缓存在 Beelink Docker image store，没有候选容器。
+
+### Next Session Priorities
+
+1. 由用户提供 `security-owner`、`release-owner`、`legal-owner`、
+   `compliance-owner` 的自然人实名及联系/批准信息，再完成任命记录。
+2. 只有在用户另行授权启动候选测试容器后，才对 Redis 7.2.14-alpine
+   执行多客户竞争、quota、重启和重建回归。
+3. 不部署 PostgreSQL/OpenBao 候选；继续寻找或重建零 Critical 镜像，或由
+   实名 `security-owner` 对 advisory 逐项决策。
+4. 继续补齐 LICENSE/NOTICE 和生产 OCI registry 签名设计，再生成新的当前镜像 run。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short --branch
+npm run test:supply-chain
+npm run supply-chain:verify-image-evidence
+npm run supply-chain:verify-candidate-evidence
+P1_M0_04_REQUIRE_PASS=true npm run supply-chain:verify-image-evidence  # 当前必须失败关闭
+ssh beelink@100.110.127.117 \
+  'R=/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-candidates-20260718T084500Z; jq . "$R/run-result.json"; docker ps --filter label=com.docker.compose.project=yujian-p2 --format "{{.Names}} {{.Image}} {{.Status}}"'
+```
+
+## 📌 SESSION HANDOFF STATUS — P1-M0-04 evidence complete, gate blocked
+
+### Current Work
+
+2026-07-18 在 Beelink `/data/models/yujianAI` 对语见当前固定的 4 个 Linux AMD64
+镜像执行真实供应链验收，run id 为 `p1-m0-04-20260718T074700Z`。范围由
+`infra/upstream/p1-image-scope.json` 冻结：LiveKit Server v1.13.3、Redis 7.2.7、
+PostgreSQL 16.4、OpenBao 2.4.1。`ai-phone-*` 不属于本仓库范围；平台 API 当前没有
+已部署发布镜像，未把源码验收冒充镜像证据。
+
+Syft 1.48.0、Grype 0.116.0、Cosign 3.1.2 均从官方 release 获取并按官方 checksum
+校验，二进制保存在 `/data/models/yujianAI/toolchains/supply-chain`。每个镜像已生成
+SPDX 2.3 和 Grype JSON；Grype DB schema `v6.1.9`、built
+`2026-07-18T06:48:35Z`，数据库 SHA-256 为
+`5df41e43b3ea4ca0f405b12484f9f4ef6ee55c5d5f672fdf4346d206c4d72b73`。
+
+聚合声明包含固定 registry digest、本地 image id、SBOM/scan/tool hash，由加密工程
+证据密钥使用 Cosign v3 签名；私钥位于 evidence 根之外，报告只复制公钥。原生 Cosign
+验签和仓库 `verify-signature.mjs` bundle 入口均返回 `Verified OK`。statement SHA-256
+为 `f0582da7b0a3214d6778e2ccd0499b820aef1f9d035f43e73441bcb9b119db99`，bundle
+SHA-256 为 `d7dd846d72882161f15d7639bf3d679e54f6acc893638ce112ecc010954a21bc`。
+
+### Verification and Findings
+
+- 4 份 SPDX 共 647 个包；原始报告及仓库验签日志共 28 个文件、约 12M，全部 mode `0600`。
+- LiveKit：137 包，High 1、Critical 0，单镜像阈值通过。
+- Redis：23 包，High 82、Critical 11，阻断。
+- PostgreSQL：149 包，High 210、Critical 42，阻断；Critical 中 16 fixed、12
+  not-fixed、14 wont-fix。
+- OpenBao：338 包，High 87、Critical 23，阻断。
+- 合计 76 个未豁免 Critical 匹配；没有创建任何例外或降低零 Critical 阈值。
+- 647 个包中 465 个 `licenseDeclared=NOASSERTION`，因此 THIRD_PARTY_NOTICES 仍不是
+  最终法律清单。
+- `npm run test:supply-chain` 4/4 通过；普通 evidence verifier 可验证失败报告结构；
+  `P1_M0_04_REQUIRE_PASS=true` 会在 release preflight 中失败关闭。
+- 机器可读脱敏索引为 `docs/acceptance/p1-supply-chain-evidence.json`，Owner/法律评审为
+  `docs/compliance/P1_M0_04_SUPPLY_CHAIN_REVIEW.md`。
+
+### Gate Status
+
+P1-M0-04 的“真实执行和证据归档”已经完成，但技术门禁为 **blocked**，不能称为任务
+通过。阻断项是 76 个未豁免 Critical、465 个许可证 `NOASSERTION`、缺少语见控制的
+OCI registry 发布签名，以及 `security-owner`、`release-owner`、`legal-owner`、
+`compliance-owner` 个人负责人和签字。正式 Gate 0/1、Gate 7 和生产发布保持未通过；
+M2/P2-01–06 技术验收状态不变。
+
+### Background Tasks
+
+- 本轮没有重启、recreate 或改写 P2 PostgreSQL/Redis/OpenBao、LiveKit 或 ai-phone 容器。
+- Cosign 容器拉取因网络慢已中止，实际证据使用 checksum 校验的单文件二进制；无遗留
+  pull/scan 进程。
+- 加密工程证据私钥留在 `/data/models/yujianAI/secrets/p1-m0-04`，mode `0600`；不得
+  提交仓库，也不得冒充生产 release identity。
+
+### Next Session Priorities
+
+1. 经用户授权后只拉取 Redis/PostgreSQL/OpenBao 候选补丁镜像并扫描，不先切换运行容器。
+2. 候选通过后分别执行 Redis 竞争/重建、PostgreSQL 备份恢复/migration、OpenBao
+   Raft snapshot/TLS/HA 回归，再申请变更固定 digest。
+3. 补齐 465 个许可证归属、最终 LICENSE/NOTICE、registry 签名方案和四类个人 Owner。
+4. 重跑 P1-M0-04，要求未豁免 Critical 为 0，再继续 nightly sandbox 与 SDK/媒体矩阵。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short --branch
+npm run test:supply-chain
+npm run supply-chain:verify-image-evidence
+P1_M0_04_REQUIRE_PASS=true npm run supply-chain:verify-image-evidence  # 当前必须失败关闭
+ssh beelink@100.110.127.117 \
+  'R=/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-20260718T074700Z; \
+   jq . "$R/run-result.json"; jq -r ".[] | [.id,.vulnerabilityScan.counts.critical,.vulnerabilityScan.gate] | @tsv" "$R/images.json"'
+ssh beelink@100.110.127.117 \
+  'df -h /data && docker ps --format "{{.Names}} {{.Status}}"'
+```
+
+## 📌 SESSION HANDOFF STATUS — P1-M0-04 personal Owners named, signoff pending
+
+### Current Work
+
+2026-07-18 用户已指定 P1-M0-04 四类个人 Owner：`security-owner=aaa`、
+`release-owner=bbb`、`legal-owner=ccc`、`compliance-owner=ddd`，任命批准人为
+`eee`。任命日期按当前会话日期记录为 2026-07-18。
+
+`docs/governance/OWNERS.md`、`docs/governance/P1_M0_04_OWNER_NOMINATION.md`、
+供应链评审、计划/审计和两份机器可读 evidence JSON 已同步。候选与当前
+evidence verifier 已扩展为校验实名 Owner、任命批准人和任命日期。
+
+### Evidence Boundary
+
+- 用户未提供四位 Owner 的联系方式或备份人，对应字段保持 `null`/“待补”。
+- 未获取 aaa/bbb/ccc/ddd 各自的本人确认或对漏洞、LICENSE/NOTICE、合规、
+  registry 签名的专业决定，因此状态是 `assigned-pending-signoff`。
+- 任命信息是仓库治理记录，不改写 Beelink 原始 SPDX/Grype/Cosign 扫描产物。
+- 本轮没有拉取镜像、运行候选容器、切换 P2 服务或修改 Beelink 数据。
+
+### Verification
+
+- `npm run test:supply-chain` 10/10 通过，包含实名 Owner 任命元数据和待签状态校验。
+- 当前镜像与候选镜像 evidence verifier 通过。
+- `npm run check` 通过：workspace 38/38，upstream replay 1/1。
+- `P1_M0_04_REQUIRE_PASS=true` 仍按预期报 `release gate is not passed`，证明实名指定没有绕过发布门禁。
+
+### Gate Status
+
+P1-M0-04、Gate 0/1、Gate 7 和生产发布继续 **blocked**。四类 Owner 的
+“个人姓名未指定”缺口已转为“联系/备份/本人确认与专业签字待补”；
+当前镜像 76 Critical、465 `NOASSERTION`、PostgreSQL/OpenBao 候选 Critical 和
+生产 OCI registry 签名缺口都未因任命而改变。
+
+### Next Session Priorities
+
+1. 补齐 aaa/bbb/ccc/ddd 的联系方式、备份人和本人书面确认。
+2. 由 aaa 对 Critical/High advisory 和可能 VEX 逐项决策。
+3. 由 ccc/ddd 对 LICENSE/NOTICE、商标和中国分发适用性签字。
+4. 由 bbb 确定生产 OCI registry 签名身份、密钥轮换、归档和回滚方案。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short --branch
+npm run test:supply-chain
+npm run supply-chain:verify-image-evidence
+npm run supply-chain:verify-candidate-evidence
+P1_M0_04_REQUIRE_PASS=true npm run supply-chain:verify-image-evidence  # 仍必须失败关闭
+```

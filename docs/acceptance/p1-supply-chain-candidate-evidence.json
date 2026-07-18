@@ -1,0 +1,182 @@
+{
+  "schemaVersion": 1,
+  "taskId": "P1-M0-04-CANDIDATES",
+  "runId": "p1-m0-04-candidates-20260718T084500Z",
+  "generatedAt": "2026-07-18T08:12:53Z",
+  "status": "blocked",
+  "deploymentAllowed": false,
+  "environment": {
+    "server": "beelink",
+    "platform": "linux/amd64",
+    "evidenceRoot": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-candidates-20260718T084500Z",
+    "reportFiles": 28,
+    "reportMode": "0600"
+  },
+  "scope": {
+    "manifest": "infra/upstream/p1-image-candidates.json",
+    "manifestSha256": "sha256:ff69af22b222d013f82ec47ef482f1c239b30ec162e8e59861aac5d0eb6dac0c",
+    "runner": "tools/supply-chain/run-image-evidence.sh",
+    "runnerSha256": "sha256:c2aca8edb3ac857181edbbada4b86e4b266a0738cf401e0d4b304480b23df2fb"
+  },
+  "vulnerabilityDatabase": {
+    "schemaVersion": "v6.1.9",
+    "builtAt": "2026-07-18T06:48:35Z",
+    "checksum": "sha256:5df41e43b3ea4ca0f405b12484f9f4ef6ee55c5d5f672fdf4346d206c4d72b73",
+    "sameAsCurrentImageRun": true
+  },
+  "tools": [
+    {
+      "name": "syft",
+      "version": "1.48.0",
+      "sha256": "sha256:fd260522b9695350ee23483c88b803e96ffe9f8f3954106a7bcad7940a1ade89",
+      "checksumVerified": true
+    },
+    {
+      "name": "grype",
+      "version": "0.116.0",
+      "sha256": "sha256:766fec22cd9eb84aa5efc854a8bd569305c7d96da4e1dbd7e2940b556c4d21ff",
+      "checksumVerified": true
+    },
+    {
+      "name": "cosign",
+      "version": "v3.1.2",
+      "sha256": "sha256:f7622ed3cf22e55e1ae6377c080979ff77a22da9981c11df222a2e444991e7cf",
+      "checksumVerified": true
+    }
+  ],
+  "candidates": [
+    {
+      "id": "redis-7.2.14-linux-amd64-candidate",
+      "currentReference": "redis:7.2.7-alpine@sha256:1de7ca6a3f63a083036fa1d95dddbd6bdfcdf5865bb692c1e412d4bdf9cb1e37",
+      "reference": "redis:7.2.14-alpine@sha256:dfa18828cbc07b3ae6a95ec7343f6c214fdee2d836197b4be8e9904420762cd8",
+      "registryDigest": "sha256:dfa18828cbc07b3ae6a95ec7343f6c214fdee2d836197b4be8e9904420762cd8",
+      "localImageId": "sha256:b6636bae9624cba73c69fc9d21318151217a103a1db600b8012db8c460785c26",
+      "platform": "linux/amd64",
+      "sbom": {
+        "spdxVersion": "SPDX-2.3",
+        "packages": 21,
+        "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-candidates-20260718T084500Z/images/redis-7.2.14-linux-amd64-candidate/sbom.spdx.json",
+        "sha256": "sha256:a4fc42af6839bd4f59c6dedadd427c40965e4621bfb74c4f75da9f2fdbe05993"
+      },
+      "vulnerabilityScan": {
+        "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-candidates-20260718T084500Z/images/redis-7.2.14-linux-amd64-candidate/vulnerabilities.grype.json",
+        "sha256": "sha256:ac64613502301cb4ae53596d4840ab02b7c0598568c2c27103c25f7c4e343f1c",
+        "counts": { "negligible": 0, "low": 2, "medium": 3, "high": 0, "critical": 0, "unknown": 0 }
+      },
+      "licensesNoAssertion": 3,
+      "decision": "eligible-for-regression",
+      "requiredBeforeDeployment": "P2 Redis multi-client competition, restart and rebuild regression"
+    },
+    {
+      "id": "postgres-16.14-linux-amd64-candidate",
+      "currentReference": "postgres:16.4@sha256:9a70e4d1c03a5066080292db2dd95ee3965d3651316e21989fa0935afb8ce8ca",
+      "reference": "postgres:16.14-bookworm@sha256:92620daddcd947f8d5ab5ba66e848702fe443d87fed30c4cea8e389fd78dfc55",
+      "registryDigest": "sha256:92620daddcd947f8d5ab5ba66e848702fe443d87fed30c4cea8e389fd78dfc55",
+      "localImageId": "sha256:67d1da22f4037b29cdd93e03d870a4a1c4d079358367d0cbc56459e52cde205e",
+      "platform": "linux/amd64",
+      "sbom": {
+        "spdxVersion": "SPDX-2.3",
+        "packages": 149,
+        "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-candidates-20260718T084500Z/images/postgres-16.14-linux-amd64-candidate/sbom.spdx.json",
+        "sha256": "sha256:dd90d370df90600caf9585c4a75f2bed3fb7180ec86c4b6bc4c26ea0531dc342"
+      },
+      "vulnerabilityScan": {
+        "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-candidates-20260718T084500Z/images/postgres-16.14-linux-amd64-candidate/vulnerabilities.grype.json",
+        "sha256": "sha256:3e280afec1c6018075221070bb064fda7a40ec2b6f678f2ce32785b5fe940d46",
+        "counts": { "negligible": 118, "low": 20, "medium": 104, "high": 61, "critical": 27, "unknown": 16 }
+      },
+      "licensesNoAssertion": 26,
+      "decision": "blocked",
+      "requiredBeforeDeployment": "replace or formally assess Debian not-fixed/wont-fix findings, then run backup/restore, migrations 001-011, outbox and CAS regression"
+    },
+    {
+      "id": "postgres-16.14-alpine-linux-amd64-candidate",
+      "currentReference": "postgres:16.4@sha256:9a70e4d1c03a5066080292db2dd95ee3965d3651316e21989fa0935afb8ce8ca",
+      "reference": "postgres:16.14-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777",
+      "registryDigest": "sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777",
+      "localImageId": "sha256:de3a4eab8fdfa507ea92aac488b916b08089e515db49b055fe71dfa271ba3a28",
+      "platform": "linux/amd64",
+      "sbom": {
+        "spdxVersion": "SPDX-2.3",
+        "packages": 51,
+        "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-candidates-20260718T084500Z/images/postgres-16.14-alpine-linux-amd64-candidate/sbom.spdx.json",
+        "sha256": "sha256:6005f1e52c096210e183a412d09dc5f17dee6330a47679efa9ed538f5dd6f04e"
+      },
+      "vulnerabilityScan": {
+        "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-candidates-20260718T084500Z/images/postgres-16.14-alpine-linux-amd64-candidate/vulnerabilities.grype.json",
+        "sha256": "sha256:3a6c6ee585b3eec24c060c7753c81530af1625dfe4a87382deee12a939770c30",
+        "counts": { "negligible": 0, "low": 2, "medium": 21, "high": 18, "critical": 1, "unknown": 0 }
+      },
+      "licensesNoAssertion": 6,
+      "decision": "blocked",
+      "requiredBeforeDeployment": "wait for or rebuild gosu with a fixed Go stdlib, review Debian-to-Alpine compatibility, then run all PostgreSQL regressions"
+    },
+    {
+      "id": "openbao-2.5.4-linux-amd64-candidate",
+      "currentReference": "openbao/openbao:2.4.1@sha256:06a26f632cd0bdd0fd6e25034f55d68bc28b62590adc8efea3b8dacade11579a",
+      "reference": "openbao/openbao:2.5.4@sha256:436eaf9778cad75507ff70ea26ace30dcbe15606e619ac3823495663d7f7c115",
+      "registryDigest": "sha256:436eaf9778cad75507ff70ea26ace30dcbe15606e619ac3823495663d7f7c115",
+      "localImageId": "sha256:5cdbfe3c85e965315cd3220d2836b8d54b55f95715c551a46e233e0e6e6c9b03",
+      "platform": "linux/amd64",
+      "sbom": {
+        "spdxVersion": "SPDX-2.3",
+        "packages": 354,
+        "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-candidates-20260718T084500Z/images/openbao-2.5.4-linux-amd64-candidate/sbom.spdx.json",
+        "sha256": "sha256:06fac767825f3a50a650ffb344eeb4a5ac56b20bc5b18cd03b3017c71e1d2e0f"
+      },
+      "vulnerabilityScan": {
+        "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-candidates-20260718T084500Z/images/openbao-2.5.4-linux-amd64-candidate/vulnerabilities.grype.json",
+        "sha256": "sha256:667400a638ed6f8103a2b98e587b7ec7437e20d480e7361acfcd0bbaae24c83c",
+        "counts": { "negligible": 0, "low": 9, "medium": 34, "high": 36, "critical": 13, "unknown": 1 }
+      },
+      "licensesNoAssertion": 329,
+      "decision": "blocked",
+      "requiredBeforeDeployment": "obtain an image with OpenSSL 3.5.7 and x/crypto 0.52.0 or later, security-review the OpenBao self-version match, then run 2.4-to-2.5 Raft/TLS/HA/API-key regressions"
+    }
+  ],
+  "summary": {
+    "eligibleForRegression": 1,
+    "blocked": 3,
+    "totalCriticalMatchesAcrossAllAlternatives": 41,
+    "note": "PostgreSQL alternatives are mutually exclusive and are both retained for comparison"
+  },
+  "comparison": [
+    { "service": "redis", "currentCritical": 11, "candidateCritical": 0, "change": -11 },
+    { "service": "postgres-bookworm", "currentCritical": 42, "candidateCritical": 27, "change": -15 },
+    { "service": "postgres-alpine", "currentCritical": 42, "candidateCritical": 1, "change": -41 },
+    { "service": "openbao", "currentCritical": 23, "candidateCritical": 13, "change": -10 }
+  ],
+  "signature": {
+    "statementPath": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-candidates-20260718T084500Z/signing-statement.json",
+    "statementSha256": "sha256:0d3933a88fa264aff9aa3190bcd2ab44597c40faa628dd1b5e9b898787a0c821",
+    "bundlePath": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-candidates-20260718T084500Z/signing-statement.sigstore.json",
+    "bundleSha256": "sha256:2c3099f6ac2feefc80a3f87b47ed1ae9c89f829a19225b0f1495ee6abb331e9b",
+    "publicKeyPath": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-candidates-20260718T084500Z/signing-public.pem",
+    "publicKeySha256": "sha256:f77dcfc2978a199e4ec6a770eeafe52c01f23e0eac1dcceec533804e6f777e6c",
+    "verificationLog": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-candidates-20260718T084500Z/repository-signature-verifier.log",
+    "verified": true
+  },
+  "currentRuntime": {
+    "unchanged": true,
+    "runningReferences": {
+      "redis": "redis:7.2.7-alpine@sha256:1de7ca6a3f63a083036fa1d95dddbd6bdfcdf5865bb692c1e412d4bdf9cb1e37",
+      "postgres": "postgres:16.4@sha256:9a70e4d1c03a5066080292db2dd95ee3965d3651316e21989fa0935afb8ce8ca",
+      "openbao": "openbao/openbao:2.4.1@sha256:06a26f632cd0bdd0fd6e25034f55d68bc28b62590adc8efea3b8dacade11579a"
+    },
+    "restartCount": 0
+  },
+  "ownerNominations": [
+    { "role": "security-owner", "personalOwner": "aaa", "appointedBy": "eee", "appointedAt": "2026-07-18", "contact": null, "backupOwner": null, "status": "assigned-pending-signoff" },
+    { "role": "release-owner", "personalOwner": "bbb", "appointedBy": "eee", "appointedAt": "2026-07-18", "contact": null, "backupOwner": null, "status": "assigned-pending-signoff" },
+    { "role": "legal-owner", "personalOwner": "ccc", "appointedBy": "eee", "appointedAt": "2026-07-18", "contact": null, "backupOwner": null, "status": "assigned-pending-signoff" },
+    { "role": "compliance-owner", "personalOwner": "ddd", "appointedBy": "eee", "appointedAt": "2026-07-18", "contact": null, "backupOwner": null, "status": "assigned-pending-signoff" }
+  ],
+  "gate": {
+    "candidateScan": "partial-one-eligible-three-blocked",
+    "runtimeSwitch": "not-authorized",
+    "currentImageGate": "blocked",
+    "formalGate0": "not-passed",
+    "formalGate1": "not-passed",
+    "productionRelease": "blocked"
+  }
+}

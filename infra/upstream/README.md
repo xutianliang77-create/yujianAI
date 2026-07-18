@@ -35,5 +35,17 @@ mirror。没有 `status=passed` 的报告，不能关闭 P1-M0-03。
 发行物。真实 mirror、replay、重复构建和 artifact SHA-256 的脱敏索引见
 [`p1-upstream-evidence.json`](../../docs/acceptance/p1-upstream-evidence.json)。
 
+当前 Linux AMD64 镜像范围冻结在 [`p1-image-scope.json`](p1-image-scope.json)。在 Beelink
+使用 `tools/supply-chain/run-image-evidence.sh` 生成逐镜像 SPDX/Grype 报告，并用 Cosign
+对 digest、SBOM/scan 和工具哈希聚合声明签名。2026-07-18 的真实 run 因 76 个未豁免
+Critical 和 465 个 license `NOASSERTION` 阻断；索引见
+[`p1-supply-chain-evidence.json`](../../docs/acceptance/p1-supply-chain-evidence.json)。
+
+补丁候选独立冻结在 [`p1-image-candidates.json`](p1-image-candidates.json)，其
+`deploymentAllowed=false` 是强制边界。2026-07-18 的候选 run 只拉取/扫描，没有
+切换当前容器；只有 Redis 7.2.14-alpine 为零 Critical 并可进入后续隔离回归，
+PostgreSQL/OpenBao 候选仍阻断。索引见
+[`p1-supply-chain-candidate-evidence.json`](../../docs/acceptance/p1-supply-chain-candidate-evidence.json)。
+
 采用策略见
 [SOURCE_REUSE_AND_UPSTREAM_STRATEGY.md](../../docs/migration/SOURCE_REUSE_AND_UPSTREAM_STRATEGY.md)。

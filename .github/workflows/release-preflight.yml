@@ -26,6 +26,10 @@ jobs:
         run: npm run openapi:verify
       - name: Generate and verify SBOM
         run: npm run supply-chain:verify
+      - name: Enforce current image supply-chain gate
+        env:
+          P1_M0_04_REQUIRE_PASS: "true"
+        run: npm run supply-chain:verify-image-evidence
       - name: Check release evidence manifest
         env:
           YUJIAN_RELEASE_EVIDENCE: ${{ inputs.evidence }}

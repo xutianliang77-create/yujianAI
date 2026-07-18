@@ -288,6 +288,30 @@ build/Flutter 报告 mode 均为 0600，脱敏索引为
 `docs/acceptance/p1-upstream-evidence.json`。该结果关闭 P1-M0-03 的运行证据缺口，
 不替代 fork/通知权限、owner 审批、语见发行版对照或完整 Gate 0/1。
 
+### P1-M0-04 当前镜像供应链结果（2026-07-18）
+
+Beelink run `p1-m0-04-20260718T074700Z` 已覆盖 LiveKit Server v1.13.3、Redis 7.2.7、
+PostgreSQL 16.4 和 OpenBao 2.4.1 的固定 Linux AMD64 digest。4 份 SPDX 2.3 和 Grype
+报告、同一漏洞数据库快照、Cosign v3 bundle、公钥和两次验签日志均保存在
+`/data/models/yujianAI/evidence/p1-m0-04/`，全部文件 mode 为 `0600`。
+
+本次结果为 `failed-technical`：未豁免 Critical 匹配 76 个，其中 LiveKit 0、Redis 11、
+PostgreSQL 42、OpenBao 23；647 个包中 465 个 license 为 `NOASSERTION`。没有创建例外，
+未重启或修改任何现有容器。修复、候选镜像回归、完整 LICENSE/NOTICE、生产 registry
+签名及个人 Owner 签字完成前，P1-M0-04、Gate 0/1 和生产发布保持阻断。机器可读索引为
+`docs/acceptance/p1-supply-chain-evidence.json`。
+
+### P1-M0-04 候选补丁镜像扫描（2026-07-18）
+
+Beelink run `p1-m0-04-candidates-20260718T084500Z` 只拉取和扫描了候选镜像，
+没有启动候选容器、修改 Compose 或切换当前运行服务。同一 Grype DB 快照下，
+Redis 7.2.14-alpine 为 0 Critical，可进入后续隔离回归；PostgreSQL 16.14-bookworm
+为 27，PostgreSQL 16.14-alpine 为 1，OpenBao 2.5.4 为 13，三个选项均阻断。
+
+候选证据目录全部 mode `0600`，Cosign 和仓库 verifier 均验签通过。在获得新的
+运行授权前，不执行 Redis 回归；不对 PostgreSQL/OpenBao 执行候选部署测试。机器
+可读索引为 `docs/acceptance/p1-supply-chain-candidate-evidence.json`。
+
 每次运行至少保存：
 
 - `acceptance.log`、`summary.txt`、Compose `config` 脱敏结果、RTC/Redis 日志。

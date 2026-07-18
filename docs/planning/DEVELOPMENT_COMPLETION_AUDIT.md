@@ -26,7 +26,7 @@ D/E 证据。
 | M0-01 品牌、模式和非目标 | done | `README.md`、`docs/product/BRAND_AND_PRODUCT_CHARTER.md`；明确不做翻译 | 正式商标、域名和商业边界仍待决策 |
 | M0-02 冻结上游版本 | done | `infra/upstream/livekit-versions.json` 含 11 个组件 tag/commit 和镜像 digest；2026-07-18 Beelink 已完成真实 mirror/fsck/replay 与重复 clean build | 持续保留每次升级报告 |
 | M0-03 mirror/fork/patch queue | partial | 10 个工作区外 bare mirror fsck 通过，11 component 真实 replay `status=passed`，冻结构建重复后产物哈希一致；冲突 fail-closed 与周度 workflow 已有 | 真实 fork 权限、差异通知和 `rtc-owner`/`release-owner` 审批仍缺 |
-| M0-04 许可证/NOTICE/商标评审 | partial | `infra/upstream/THIRD_PARTY_NOTICES.md`、上游策略文档 | 法律签字、商标边界、SBOM 归档和发布检查未完成 |
+| M0-04 许可证/NOTICE/商标评审 | blocked | 4 个当前固定镜像和 4 个补丁候选的 SPDX 2.3、Grype、Cosign bundle 已归档/验签；候选未部署，仅 Redis 7.2.14 为零 Critical 可进回归；四类 Owner 已实名指定 | 当前镜像 465 个 license `NOASSERTION`/76 Critical；PostgreSQL/OpenBao 候选仍有 Critical；OCI registry 签名及 Owner 联系/备份/专业签字未关闭 |
 | M0-05 平台 ID/OpenAPI/事件/矩阵 | partial | `packages/platform-contracts`、OpenAPI、`tools/api/verify-openapi.rb` 门禁、兼容矩阵、事件合同和审批模板 | 完整 SDK 矩阵和变更审批运行证据仍缺 |
 | M0-06 语言、数据库、分析仓、队列、部署选型 | partial | ADR-0003、PostgreSQL migration、Redis/OTel/Prometheus、Helm 边界 | 首区云厂商、生产 HA 和具体队列/分析仓仍待冻结 |
 | M0-07 首区、网络资源、私有化拓扑 | partial | Beelink 双节点 compose 和 runbook | 首个托管区域、TURN、生产网络、私有化拓扑未确定 |
@@ -34,8 +34,8 @@ D/E 证据。
 | M0-09 移出翻译合同 | done | `docs/archive/translation-v1/`；历史 `packages/contracts` 已从根 workspace、默认构建和发布流程移除，当前新服务无引用 | 继续防止历史包进入新发布流程 |
 | M0-10 ADR/威胁模型/分类/DoD | partial | ADR-0001..0004、数据分类、`docs/governance/DOD.md` 和审批矩阵 | 评审签字和当前版本威胁演练仍缺 |
 
-**M0 结论：partial；Gate 0 未通过。** clean upstream 运行证据已补；主要阻断仍是
-合规/许可证证据、ADR 决策、fork/通知权限和个人 owner 签字。
+**M0 结论：partial 且 M0-04 blocked；Gate 0 未通过。** clean upstream 与供应链原始
+证据均已补；漏洞/许可证结果、ADR 决策、fork/通知权限和个人 Owner 签字仍阻断。
 
 ## 3. M1：上游发行版与兼容实验室
 
@@ -49,7 +49,7 @@ D/E 证据。
 | M1-06 音频/视频/屏幕/弱网基线 | partial | Node/Web/Flutter 已加入合成 camera/screen、mute/unpublish、receiver quality sample、SDK-internal synthetic reconnect；Linux netem runner 已加入，但新增路径尚未重新运行 | 视频/屏幕运行证据、TURN/弱网注入、真实 reconnect 和服务端质量聚合 |
 | M1-07 自动重放 patch queue | partial | patch queue actual-apply、metadata/digest/path 门禁、成功/冲突失败测试、CI 归档与 2026-07-18 真实 LiveKit mirror replay/clean build 均通过 | owner 审批、fork 权限和差异通知演练仍缺 |
 | M1-08 周期上游同步 | partial | `.github/workflows/upstream-sync.yml` 周度任务 | owner、差异通知和升级演练缺失 |
-| M1-09 许可证/SBOM/漏洞/签名流水线 | partial | SBOM generator/verifier、cosign blob verifier、supply-chain/release workflow、NOTICE/license policy | 容器 SBOM、签名验证、漏洞门禁和当前运行证据 |
+| M1-09 许可证/SBOM/漏洞/签名流水线 | blocked | Syft 1.48.0/Grype 0.116.0/Cosign 3.1.2 当前镜像和候选镜像证据均可验证；新增候选合同 verifier，候选运行切换保持禁止；四类 Owner 已指定 | 当前镜像 76 Critical/465 `NOASSERTION`；PostgreSQL 16.14 两选项仍有 27/1 Critical，OpenBao 2.5.4 有 13；生产 registry 签名和个人 Owner 专业签字 |
 | M1-10 nightly sandbox | partial | `infra/sandbox` profile/README、digest/credential lifecycle runner 和 scheduled workflow | 实际租户隔离、自动销毁、失败告警和访问入口运行证据 |
 
 **M1 结论：partial；A-C baseline passed，完整 Gate 1 未通过。** 已有 Beelink 双节点
@@ -167,14 +167,14 @@ join/leave adapter；registry/provider、网络策略、真实 job lifecycle 和
 
 | Gate | 状态 | 当前证据 | 主要缺口 |
 | --- | --- | --- | --- |
-| Gate 0 设计/上游 | partial | 章程、版本 manifest、ADR、合规清单、OpenAPI/矩阵和 DoD | 法律签字、生成门禁和评审记录 |
-| Gate 1 LiveKit 兼容 | partial（A-C baseline passed） | Beelink 双节点 Node 与本机 Web/Flutter Web 的 token、join、音频、Data/RPC、RTP bytes 证据；报告 run id `20260717T075738Z` / `20260717T080332Z`；新增 Web/Flutter 覆盖仍为 implemented-deferred | Webhook、视频、屏幕共享、TURN/弱网、真实 reconnect、iOS/Android/Python、SBOM/签名 |
+| Gate 0 设计/上游 | partial（供应链 blocked） | 章程、版本 manifest、ADR、合规清单、OpenAPI/矩阵、DoD 及当前/候选镜像签名证据；四类 Owner 已指定 | 当前 76 Critical；PostgreSQL/OpenBao 候选仍阻断；许可证缺口与四类个人 Owner 专业签字 |
+| Gate 1 LiveKit 兼容 | partial（A-C baseline passed；供应链 blocked） | Beelink 双节点 Node 与本机 Web/Flutter Web 的 token、join、音频、Data/RPC、RTP bytes 证据；报告 run id `20260717T075738Z` / `20260717T080332Z`；当前固定镜像 SPDX/扫描/验签已执行 | Webhook、视频、屏幕共享、TURN/弱网、真实 reconnect、iOS/Android/Python，以及 Critical/许可证供应链阻断 |
 | Gate 2 控制面 | partial | scoped token、CRUD、API key/KMS boundary、quota、`PostgresPlatformPersistence`、`PostgresPlatformStorePersistence`、Redis lease/token reservation、outbox/webhook、usage、Room adapter、`YUJIAN_PLATFORM_RUNTIME_MODULE` 注入入口、migration runner、静态 console 和 OpenAPI 门禁；Beelink P2-01/02/03 production acceptance（事务 outbox/CAS、production API、Redis 竞争/重建、API key 传播、OpenBao HTTPS/Raft failover）报告通过 | 真实 webhook 投递/replay、SSO、注册/邀请、持久化 RBAC、跨主机 HA、备份恢复、数据权利执行和 owner 签字 |
 | Gate 3 媒体/容量 | partial | Helm/PG/Redis/TURN boundary、telemetry、capacity/probe/runbook | 真实 TURN/网络矩阵、24/72h、容量和质量指标 |
 | Gate 4 Agent | partial | worker、deployment、provider、tool policy、deadline/circuit skeleton | 全部 Agent 生命周期、真实 provider/GPU 和故障场景 |
 | Gate 5 SIP/Ingress/Egress | partial | official media adapters、state/idempotency、Postgres media snapshot boundary、compliance gate | provider/运营商、录制删除、电话质量和真实验收 |
 | Gate 6 计量/账单 | partial | UsageLedger、PricePlan/Invoice、provider reconcile contract | 财务对账、冲正、真实数据和签字 |
-| Gate 7 安全 | partial | 安全基线和静态策略 | 当前版本安全测试、漏洞门禁、渗透和供应链证据 |
+| Gate 7 安全 | blocked | 安全基线、当前/候选镜像 SBOM/扫描、Cosign bundle 和零 Critical 门禁；security Owner 已指定为 aaa | 当前 76 个未豁免 Critical；PostgreSQL/OpenBao 候选仍阻断；High 评审、渗透、registry 签名和 aaa 的安全签字 |
 | Gate 8 私有化 | partial | Helm、offline manifest、license verifier、adapter contracts、preflight | Operator、安装/升级/恢复/轮换/卸载验收 |
 | Gate 9 可靠性/灾备 | partial | fault injection plan、backup/restore runbook、SLO/capacity artifacts | 节点/Redis/PG/provider/AZ 实际故障和 RPO/RTO |
 | Gate 10 合规/发布 | partial | applicability list、release manifest/preflight、LTS policy | 适用结论、协议/DPA、资质、签字和发布冻结 |

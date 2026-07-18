@@ -18,3 +18,7 @@
 
 精确版本和 commit 见 `livekit-versions.json`。正式分发前必须从固定源码和二进制重新
 生成完整 SBOM、LICENSE 和 NOTICE；本文件不是最终法律意见。
+
+2026-07-18 当前镜像 SPDX 共识别 647 个包，其中 465 个许可证字段为 `NOASSERTION`；
+因此本清单仍是工程库存，不是完整 NOTICE 或法律批准。逐包补全和个人 `legal-owner`/
+`compliance-owner` 签字见 `docs/compliance/P1_M0_04_SUPPLY_CHAIN_REVIEW.md` 的阻断记录。
