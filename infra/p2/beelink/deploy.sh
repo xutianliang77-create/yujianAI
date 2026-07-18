@@ -79,6 +79,10 @@ YUJIAN_KMS_TOKEN=
 EOF
     chmod 600 "$ENV_FILE"
   fi
+  set_env_value YUJIAN_DATA_ROOT "$DATA_ROOT"
+  set_env_value YUJIAN_PROJECT_ROOT "$ROOT"
+  set_env_value YUJIAN_P2_DIR "$P2_DIR"
+  set_env_value YUJIAN_P2_ENV_FILE "$ENV_FILE"
   if [[ "$(env_value YUJIAN_KMS_ADDR)" != https://127.0.0.1:18200,* ]]; then
     set_env_value YUJIAN_KMS_ADDR "https://127.0.0.1:18200,https://127.0.0.1:18201,https://127.0.0.1:18202"
   fi
