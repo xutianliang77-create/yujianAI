@@ -25,7 +25,7 @@ D/E 证据。
 | --- | --- | --- | --- |
 | M0-01 品牌、模式和非目标 | done | `README.md`、`docs/product/BRAND_AND_PRODUCT_CHARTER.md`；明确不做翻译 | 正式商标、域名和商业边界仍待决策 |
 | M0-02 冻结上游版本 | done | `infra/upstream/livekit-versions.json` 含 11 个组件 tag/commit 和镜像 digest；2026-07-17 Beelink acceptance 已完成联网 manifest 校验 | 保留可复现 clean mirror 报告 |
-| M0-03 mirror/fork/patch queue | partial | clean mirror sync、patch queue replay guard、周度 GitHub workflow | 工作区外首次同步、fork 权限和冲突报警仍无运行证据 |
+| M0-03 mirror/fork/patch queue | partial | clean mirror sync、临时 checkout actual-apply/report guard、非空 patch 成功/冲突注入测试、周度 GitHub artifact workflow | 工作区外真实 mirror 首次报告、clean build、fork 权限和通知仍缺 |
 | M0-04 许可证/NOTICE/商标评审 | partial | `infra/upstream/THIRD_PARTY_NOTICES.md`、上游策略文档 | 法律签字、商标边界、SBOM 归档和发布检查未完成 |
 | M0-05 平台 ID/OpenAPI/事件/矩阵 | partial | `packages/platform-contracts`、OpenAPI、`tools/api/verify-openapi.rb` 门禁、兼容矩阵、事件合同和审批模板 | 完整 SDK 矩阵和变更审批运行证据仍缺 |
 | M0-06 语言、数据库、分析仓、队列、部署选型 | partial | ADR-0003、PostgreSQL migration、Redis/OTel/Prometheus、Helm 边界 | 首区云厂商、生产 HA 和具体队列/分析仓仍待冻结 |
@@ -47,7 +47,7 @@ mirror/许可证证据。
 | M1-04 JS/Flutter/iOS/Android/Node/Python 矩阵 | partial | Web/Flutter/Node A-C baseline passed；Node/Web/Flutter synthetic media/lifecycle harness、Python official Room join/leave smoke harness、iOS/Android target README、机器可读矩阵 | iOS/Android/Python 实际运行和完整 SDK Gate 证据 |
 | M1-05 Token/RoomService/Webhook/Data/RPC 合同 | partial | Node/Web/Flutter baseline 的 token、RoomService、Data/RPC 通过；官方 WebhookReceiver 签名/replay adapter；新增 publisher HMAC/成功/失败/DLQ/requeue 单测 | 完整 webhook 生命周期/错误矩阵和运行证据 |
 | M1-06 音频/视频/屏幕/弱网基线 | partial | Node/Web/Flutter 已加入合成 camera/screen、mute/unpublish、receiver quality sample、SDK-internal synthetic reconnect；Linux netem runner 已加入，但新增路径尚未重新运行 | 视频/屏幕运行证据、TURN/弱网注入、真实 reconnect 和服务端质量聚合 |
-| M1-07 自动重放 patch queue | partial | patch queue replay guard、clean mirror sync 和 CI workflow | 非空 patch 的冲突失败、clean build 和报告未建立 |
+| M1-07 自动重放 patch queue | partial | patch queue actual-apply、metadata/digest/path 门禁、成功/冲突失败测试、clean mirror sync 和 CI 报告归档 | 真实 LiveKit mirror replay、clean build 和 owner 审批证据 |
 | M1-08 周期上游同步 | partial | `.github/workflows/upstream-sync.yml` 周度任务 | owner、差异通知和升级演练缺失 |
 | M1-09 许可证/SBOM/漏洞/签名流水线 | partial | SBOM generator/verifier、cosign blob verifier、supply-chain/release workflow、NOTICE/license policy | 容器 SBOM、签名验证、漏洞门禁和当前运行证据 |
 | M1-10 nightly sandbox | partial | `infra/sandbox` profile/README、digest/credential lifecycle runner 和 scheduled workflow | 实际租户隔离、自动销毁、失败告警和访问入口运行证据 |

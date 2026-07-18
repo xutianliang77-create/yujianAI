@@ -13,7 +13,7 @@
 | --- | --- | --- | --- | --- |
 | P1-M0-01 | ADR-0001..0004 owner、评审人和 review date | role-defined；个人待指派 | `platform-owner` + `security-owner` | ADR 评审记录、冲突决策和回滚说明 |
 | P1-M0-02 | PIPL/等保/ICP/AI/SIP 适用性与阻断条件 | role-defined；法律结论待补 | `compliance-owner` + `legal-owner` | 适用性结论、owner、签字或 blocker |
-| P1-M0-03 | clean upstream mirror、patch replay、digest 复现 | mirror/replay workflow implemented-deferred | `rtc-owner` + `release-owner` | clean build、manifest、非空 patch 冲突失败报告 |
+| P1-M0-03 | clean upstream mirror、patch replay、digest 复现 | actual-apply/report guard implemented；本地非空 patch 成功/冲突注入通过；外部 mirror/build deferred | `rtc-owner` + `release-owner` | clean build、manifest、真实 mirror replay 报告 |
 | P1-M0-04 | LICENSE/NOTICE、SBOM、漏洞与签名策略 | verifier/workflow implemented-deferred；法律与镜像证据待补 | `legal-owner` + `release-owner` + `security-owner` | 当前镜像 SBOM、签名验证和漏洞门禁 |
 | P1-M1-01 | Web/Flutter/Node 已通过基线；补 iOS/Android/Python | A-C passed；Python smoke harness added；iOS/Android/Python runtime deferred | `rtc-owner` | 每个 SDK 的 token/join/audio/Data/RPC/reconnect 报告 |
 | P1-M1-02 | 视频、屏幕共享、mute/unpublish、订阅失败 | Web/Flutter/Node synthetic camera/screen + lifecycle checks added; runtime deferred；subscription-failure injection pending | `rtc-owner` | Web/Flutter/Node TrackSubscribed、bytes/stats 报告 |

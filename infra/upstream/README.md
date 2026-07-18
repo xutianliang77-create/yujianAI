@@ -18,12 +18,17 @@
 npm run verify:upstream
 npm run verify:upstream:network
 npm run upstream:mirror:sync
+YUJIAN_UPSTREAM_MIRROR_ROOT="$HOME/.cache/yujian/upstream" \
+YUJIAN_UPSTREAM_REPLAY_REPORT="/tmp/yujian-upstream-replay.json" \
+  npm run upstream:patch:replay
 ```
 
 第一条只执行离线结构校验，进入仓库 `check`。第二条访问官方 Git 和 npm registry，
 确认 tag、commit 与包版本仍可解析。第三条只在 Beelink 上执行，把官方仓库同步到
 `${YUJIAN_UPSTREAM_MIRROR_ROOT:-~/.cache/yujian/upstream}`，并验证所有冻结 commit
-存在；脚本拒绝把 mirror 放入本工作区。
+存在；脚本拒绝把 mirror 放入本工作区。第四条在临时 checkout 中把登记补丁真正应用到
+固定 commit，记录 manifest/queue SHA-256、上游 base/result tree 和冲突状态；不会修改 bare
+mirror。没有 `status=passed` 的报告，不能关闭 P1-M0-03。
 
 采用策略见
 [SOURCE_REUSE_AND_UPSTREAM_STRATEGY.md](../../docs/migration/SOURCE_REUSE_AND_UPSTREAM_STRATEGY.md)。

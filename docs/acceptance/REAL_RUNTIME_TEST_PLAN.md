@@ -245,6 +245,19 @@ P1 汇总报告使用 `docs/acceptance/p1-evidence.example.json` 的结构，由
 且所有 target 都有脱敏 report 时，才允许写入 P1 closed；默认校验只检查合同，不把
 `deferred` 自动升级为通过。
 
+clean upstream replay 必须在工作区外 bare mirror 上运行，并保存独立报告：
+
+```bash
+YUJIAN_UPSTREAM_MIRROR_ROOT="$HOME/.cache/yujian/upstream" npm run upstream:mirror:sync
+YUJIAN_UPSTREAM_MIRROR_ROOT="$HOME/.cache/yujian/upstream" \
+YUJIAN_UPSTREAM_REPLAY_REPORT="outputs/p1/upstream-replay.json" \
+  npm run upstream:patch:replay
+```
+
+报告必须为 `status=passed`，component commit 与 manifest 一致，且包含 manifest/queue
+SHA-256 和 base/result tree。测试中的预期冲突报告只能证明 fail-closed guard，不能替代真实
+LiveKit mirror 或 clean build 证据。
+
 每次运行至少保存：
 
 - `acceptance.log`、`summary.txt`、Compose `config` 脱敏结果、RTC/Redis 日志。

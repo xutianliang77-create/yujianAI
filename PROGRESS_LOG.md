@@ -1022,3 +1022,56 @@ npm run openapi:verify
 - 验证：`npm test -w @yujian/platform-api` 20/20 通过；migration 目录枚举为 001–011
   共 11 个文件；`git diff --check` 通过。
 - 本次只同步文档，不改变 Gate 判定：P2-04/05/06 与完整 P2 Gate 仍为 **not-passed**。
+
+## 📌 SESSION HANDOFF STATUS — P1-M0-03 upstream replay evidence guard
+
+### Current Work
+
+2026-07-18 在不连接 Beelink、不下载真实 mirror 的前提下，补齐 clean upstream patch replay
+证据门禁。`replay-patch-queue.mjs` 不再只检查 patch 引用存在，而是在固定 component commit
+的临时 checkout 中执行 `git apply --check` 和实际 apply，随后记录 base/result tree。
+
+门禁要求 mirror 位于工作区外且为 origin 匹配的 clean bare repository；patch 必须绑定 manifest
+component/base commit，并通过 metadata、SHA-256、review date、相对路径和 realpath 防逃逸检查。
+成功或失败报告以原子 rename 写入 mode 0600 JSON，失败使用稳定错误码；`PATCH_CONFLICT`
+不会被自动解决。临时 checkout 结束后必定删除，bare mirror 不被修改。
+
+周度 upstream workflow 会归档 30 天 replay report。本地临时 Git fixture 同时验证了非空 patch
+成功产生不同 result tree，以及上下文冲突 fail closed 并写出 `status=failed/PATCH_CONFLICT`。
+
+### Verification
+
+- `npm run verify:upstream:network`：11 个固定 LiveKit component 的 tag/commit/npm 解析通过。
+- `npm run check`：新增 upstream replay 1/1、既有 workspace 38/38 均通过，lint 通过。
+- `node --check`：replay 实现和测试语法通过。
+- Ruby YAML parse：`.github/workflows/upstream-sync.yml` 通过。
+- `git diff --check`：通过。
+
+### Gate Status
+
+P1-M0-03 为 **guard implemented / real evidence deferred**。本机不存在
+`~/.cache/yujian/upstream`，本轮没有同步真实 LiveKit bare mirror，也没有执行各上游组件 clean
+build，因此 Gate 0、完整 Gate 1 和 P2 完整 Gate 均保持 **not-passed**。
+
+### Background Tasks
+
+无。本轮未连接 Beelink，未修改 LiveKit、无界AI或其他旧项目，未启动后台同步。
+
+### Next Session Priorities
+
+1. 在 Beelink 或隔离 CI 外部目录首次同步真实 mirror，生成并归档 `status=passed` replay report。
+2. 为各冻结组件定义可复现 clean build 子集和 artifact digest 报告，不把 mirror 存入 workspace。
+3. 完成真实报告后再评估 P1-M0-03；随后推进 P1-M0-04 SBOM/签名/漏洞证据。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short --branch
+npm run verify:upstream
+npm run verify:upstream:network
+# 只在隔离 runner/Beelink 可用时：
+YUJIAN_UPSTREAM_MIRROR_ROOT="$HOME/.cache/yujian/upstream" npm run upstream:mirror:sync
+YUJIAN_UPSTREAM_MIRROR_ROOT="$HOME/.cache/yujian/upstream" \
+YUJIAN_UPSTREAM_REPLAY_REPORT="outputs/p1/upstream-replay.json" npm run upstream:patch:replay
+```
