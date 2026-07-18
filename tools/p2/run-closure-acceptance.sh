@@ -83,12 +83,24 @@ RESTORE_MS=$(( $(date +%s%3N) - START_MS ))
 
 MIGRATIONS=$(compose exec -T postgres psql -U "$YUJIAN_POSTGRES_USER" -d "$RESTORE_DB" -Atqc "SELECT count(*) FROM yujian_schema_migrations")
 RESTORED_SNAPSHOT=$(compose exec -T postgres psql -U "$YUJIAN_POSTGRES_USER" -d "$RESTORE_DB" -Atqc "SELECT updated_at::text FROM platform_store_snapshots WHERE snapshot_id='default'")
-RESTORED_TENANT=$(compose exec -T postgres psql -U "$YUJIAN_POSTGRES_USER" -d "$RESTORE_DB" -v tenant_id="$TENANT_ID" -Atqc "SELECT count(*) FROM platform_store_snapshots WHERE snapshot_id='default' AND snapshot->'tenants' @> jsonb_build_array(jsonb_build_object('tenantId', :'tenant_id'))")
-RESTORED_RIGHTS=$(compose exec -T postgres psql -U "$YUJIAN_POSTGRES_USER" -d "$RESTORE_DB" -v export_id="$EXPORT_ID" -v delete_id="$DELETE_ID" -v recovery_id="$RECOVERY_ID" -Atqc "SELECT count(*) FROM data_subject_requests WHERE request_id IN (:'export_id', :'delete_id', :'recovery_id') AND status='completed'")
-RESTORED_RECEIPTS=$(compose exec -T postgres psql -U "$YUJIAN_POSTGRES_USER" -d "$RESTORE_DB" -v delete_id="$DELETE_ID" -v recovery_id="$RECOVERY_ID" -Atqc "SELECT count(*) FROM data_rights_evidence_receipts WHERE request_id IN (:'delete_id', :'recovery_id')")
+RESTORED_TENANT=$(compose exec -T postgres psql -U "$YUJIAN_POSTGRES_USER" -d "$RESTORE_DB" -v tenant_id="$TENANT_ID" -Atq <<'SQL'
+SELECT count(*) FROM platform_store_snapshots WHERE snapshot_id='default' AND snapshot->'tenants' @> jsonb_build_array(jsonb_build_object('tenantId', :'tenant_id'));
+SQL
+)
+RESTORED_RIGHTS=$(compose exec -T postgres psql -U "$YUJIAN_POSTGRES_USER" -d "$RESTORE_DB" -v export_id="$EXPORT_ID" -v delete_id="$DELETE_ID" -v recovery_id="$RECOVERY_ID" -Atq <<'SQL'
+SELECT count(*) FROM data_subject_requests WHERE request_id IN (:'export_id', :'delete_id', :'recovery_id') AND status='completed';
+SQL
+)
+RESTORED_RECEIPTS=$(compose exec -T postgres psql -U "$YUJIAN_POSTGRES_USER" -d "$RESTORE_DB" -v delete_id="$DELETE_ID" -v recovery_id="$RECOVERY_ID" -Atq <<'SQL'
+SELECT count(*) FROM data_rights_evidence_receipts WHERE request_id IN (:'delete_id', :'recovery_id');
+SQL
+)
 [[ "$MIGRATIONS" == 11 && "$RESTORED_TENANT" == 1 && "$RESTORED_RIGHTS" == 3 && "$RESTORED_RECEIPTS" == 2 && "$SOURCE_SNAPSHOT" == "$RESTORED_SNAPSHOT" ]] || { echo "isolated PostgreSQL restore verification failed" >&2; exit 1; }
 
-MEMBER_COUNT=$(compose exec -T postgres psql -U "$YUJIAN_POSTGRES_USER" -d "$YUJIAN_POSTGRES_DB" -v tenant_id="$TENANT_ID" -Atqc "SELECT count(*) FROM tenant_members WHERE tenant_id = :'tenant_id' AND status='active'")
+MEMBER_COUNT=$(compose exec -T postgres psql -U "$YUJIAN_POSTGRES_USER" -d "$YUJIAN_POSTGRES_DB" -v tenant_id="$TENANT_ID" -Atq <<'SQL'
+SELECT count(*) FROM tenant_members WHERE tenant_id = :'tenant_id' AND status='active';
+SQL
+)
 REDIS_KEY="p2:rbac-rebuild:${RUN_ID}"
 compose exec -T redis redis-cli --no-auth-warning -a "$YUJIAN_REDIS_PASSWORD" DEL "$REDIS_KEY" >/dev/null
 compose exec -T redis redis-cli --no-auth-warning -a "$YUJIAN_REDIS_PASSWORD" SET "$REDIS_KEY" "$MEMBER_COUNT" EX 600 >/dev/null

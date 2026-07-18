@@ -62,6 +62,13 @@ for _ in $(seq 1 40); do [[ -s "$LOCAL_RESULT" ]] && break; sleep 0.5; done
 scp -q "$LOCAL_RESULT" "$HOST:$REMOTE_INPUT.result.json"
 wait "$CLIENT_PID"
 CLIENT_PID=""
+set +e
 wait "$REMOTE_PID"
+REMOTE_STATUS=$?
+set -e
 REMOTE_PID=""
+if [[ "$REMOTE_STATUS" -ne 0 ]]; then
+  tail -n 80 "$LOCAL_LOG" >&2
+  exit "$REMOTE_STATUS"
+fi
 tail -n 80 "$LOCAL_LOG"
