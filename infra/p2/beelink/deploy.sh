@@ -168,8 +168,8 @@ bao_exec_token() {
 }
 
 node_status() { bao_exec "$1" status -format=json 2>/dev/null || true; }
-node_initialized() { [[ "$(node_status "$1")" == *'"initialized":true'* ]]; }
-node_sealed() { [[ "$(node_status "$1")" == *'"sealed":true'* ]]; }
+node_initialized() { [[ "$(node_status "$1" | jq -r '.initialized // false')" == true ]]; }
+node_sealed() { [[ "$(node_status "$1" | jq -r '.sealed // false')" == true ]]; }
 
 set_runtime_token() {
   local token="$1"
