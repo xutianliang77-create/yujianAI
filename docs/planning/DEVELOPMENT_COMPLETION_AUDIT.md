@@ -1,10 +1,10 @@
 # 开发完成审计基线
 
 版本：v1.0  
-日期：2026-07-17  
+日期：2026-07-18
 审计范围：`docs/planning/01-development-tasks-and-plan.md` 的 M0-M7 任务，以及
 `docs/acceptance/01-acceptance-tasks-and-plan.md` 的 Gate 要求。  
-审计方式：检查当前工作区的源码、配置、文档及 2026-07-17 A-C 运行证据；服务器端报告
+审计方式：检查当前工作区的源码、配置、文档、本地回归及 2026-07-17 A-C 运行证据；服务器端报告
 位于 Beelink 的 `outputs/beelink/20260717T075738Z`，客户端 summary 位于本仓库的
 `outputs/client/20260717T080332Z/`。本审计不把 A-C 证据扩展为完整 Gate 1，也不把它扩展为
 D/E 证据。
@@ -137,12 +137,12 @@ join/leave adapter；registry/provider、网络策略、真实 job lifecycle 和
 | M6-02 最小/高可用拓扑/容量计算器 | partial | capacity calculator、RTC 双副本、topology spread/HPA/PDB、双节点 Beelink topology | HA RTC/PG/Redis topology and capacity evidence |
 | M6-03 国内 IaaS/KMS/对象存储/日志 adapter | partial | `services/platform-adapters` 冻结 KMS、对象存储、身份和日志接口，并新增 HTTPS gateway adapters、canonical base64/算法/subject/key/URI 响应校验 | 至少一个真实 provider、KMS 加密实现和私有替换验收 |
 | M6-04 OIDC/SAML/审计导出 | partial | enterprise identity/SCIM adapter contracts、audit export boundary、内置严格 RS256/JWKS `OidcIdentityAdapter`（含 exp/nbf finite 校验）、`OidcPlatformIdentityBridge` scope resolver、平台 API `PlatformIdentityProvider` runtime 接线 | SAML/SCIM provider、真实身份映射与审计导出运行验收 |
-| M6-05 备份/恢复/升级/回滚预检 | partial | SQL migration 001–008、backup/restore runbook、release/private preflight、`tools/private-deployment/upgrade-preflight.mjs` 的连续迁移/schema skew/上一版镜像策略校验、production runtime module chart gate | 自动备份工具、兼容检查和演练记录 |
+| M6-05 备份/恢复/升级/回滚预检 | partial | SQL migration 001–011、backup/restore runbook、release/private preflight、`tools/private-deployment/upgrade-preflight.mjs` 的连续迁移/schema skew/上一版镜像策略校验、production runtime module chart gate | 自动备份工具、兼容检查和演练记录 |
 | M6-06 License/离线策略 | partial | 严格 Ed25519 license verifier（payload 字段、tenant/feature/node/grace/expiry/base64url 校验）、offline manifest and grace period | 签发服务、客户 license distribution 和离线演练 |
 | M6-07 支持包/巡检/远程协助审批 | partial | redacted support bundle、private preflight、短期授权文档 | 客户巡检报告、审批存储和真实操作审计 |
 | M6-08 国内模型 provider | partial | ProviderCapability/Adapter contracts、KMS/secret policy、cost/quality SLO | 至少一个国内 provider implementation 和审批证据 |
 | M6-09 HarmonyOS/小程序 adapter | partial | `docs/ecosystem/harmonyos-mini-program-feasibility.md` 冻结可行性评估和非承诺边界 | 原型、权限/审核结论和最小 adapter |
-| M6-10 客户环境验收工具 | partial | Beelink preflight/acceptance + `tools/private-deployment/preflight.sh` 的 001–008 migration、离线/release manifest、artifact root 路径/digest 校验、chart schema 和 helm lint 门禁 | 通用客户安装、离线校验和报告归档仍需实现 |
+| M6-10 客户环境验收工具 | partial | Beelink preflight/acceptance + `tools/private-deployment/preflight.sh` 的 001–011 migration、离线/release manifest、artifact root 路径/digest 校验、chart schema 和 helm lint 门禁 | 通用客户安装、离线校验和报告归档仍需实现 |
 
 **M6 结论：partial；Gate 6 未通过。** 已有 Helm 最小 chart、离线包边界和容量计算器；Operator、完整离线镜像包、KMS/对象存储/OIDC/升级恢复仍缺失。
 

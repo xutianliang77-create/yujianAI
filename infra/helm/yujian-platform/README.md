@@ -20,7 +20,7 @@ Agent Control/单 GPU worker 的私有化拓扑。生产环境仍必须由客户
 `agentControl.baseUrl` 设置为 `https://` 服务地址。chart 会拒绝以明文 HTTP 暴露这两个内部
 控制面。
 
-`tools/private-deployment/preflight.sh` 会检查 001–008 migration、离线 manifest、release
+`tools/private-deployment/preflight.sh` 会检查 001–011 migration、离线 manifest、release
 manifest 和 production runtime module 路径；它不会替代集群安装、备份恢复或回滚演练。
 
 此 chart 将 `NODE_ENV` 固定为 `production`。生产控制面必须设置 `platformRuntime.modulePath`，指向平台镜像内由部署方维护的 ESM runtime

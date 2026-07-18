@@ -1011,3 +1011,14 @@ npm run openapi:verify
 # 只在用户确认 Beelink 恢复后：
 ./tools/p2/run-closure-with-client.sh
 ```
+
+## 📌 2026-07-18 P2 文档状态同步
+
+- 将 P2-04 当前本地回归状态从过期的 platform-api 18/18 更新为 20/20。
+- 将开发完成审计和 Helm preflight 文档中的当前 migration 范围从 001–008 更新为
+  001–011，并将审计日期更新为 2026-07-18。
+- 保留 2026-07-17 P2-01/02/03 Beelink production acceptance 的 8/8 migration 记录；这是
+  当次真实运行证据，不用当前 11 条源码 migration 覆盖历史事实。
+- 验证：`npm test -w @yujian/platform-api` 20/20 通过；migration 目录枚举为 001–011
+  共 11 个文件；`git diff --check` 通过。
+- 本次只同步文档，不改变 Gate 判定：P2-04/05/06 与完整 P2 Gate 仍为 **not-passed**。
