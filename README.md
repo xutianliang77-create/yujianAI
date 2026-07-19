@@ -57,8 +57,10 @@ tests/                 兼容性、集成、媒体质量、负载和安全测试
 tools/                 上游同步、许可证、构建和仓库工具
 ```
 
-设计交付入口：[docs/README.md](docs/README.md)  
-统一架构入口：[docs/architecture/README.md](docs/architecture/README.md)
+- 项目详细介绍：[docs/PROJECT_DETAILED_INTRODUCTION.md](docs/PROJECT_DETAILED_INTRODUCTION.md)
+- 工程交接文档：[docs/PROJECT_HANDOVER.md](docs/PROJECT_HANDOVER.md)
+- 设计交付入口：[docs/README.md](docs/README.md)
+- 统一架构入口：[docs/architecture/README.md](docs/architecture/README.md)
 
 ## 当前阶段
 

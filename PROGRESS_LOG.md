@@ -3301,3 +3301,44 @@ sed -n '1,260p' docs/acceptance/M7_GA_IMPLEMENTATION_AND_EVIDENCE.md
 sed -n '145,220p' docs/planning/DEVELOPMENT_COMPLETION_AUDIT.md
 # 测试授权恢复前不要运行 npm test/check/build、verifier、migration、Docker/Helm/Kubernetes 或 Beelink 命令。
 ```
+
+## 📌 SESSION HANDOFF STATUS — 项目详细介绍与工程交接文档完成
+
+### Current Work
+
+2026-07-19 新增两份统一交付文档：
+
+- `docs/PROJECT_DETAILED_INTRODUCTION.md`：统一说明语见AI的产品定位、非目标、六平面架构、
+  RTC/Agent/SIP/媒体/控制面/私有化能力、领域模型、技术栈、安全治理、M0–M7 状态和主要阻断。
+- `docs/PROJECT_HANDOVER.md`：记录仓库与 commit 基线、Beelink `/data` 布局、工程边界、模块地图、
+  migration 001–016、Gate 0–10、Owner 决定、真实验收恢复顺序、证据索引、风险和接手检查表。
+- 根 README 与 `docs/README.md` 已增加两份文档入口；设计索引版本更新为 v2.3。
+
+### Verification Boundary
+
+- 本轮只修改 Markdown 文档，没有修改业务代码、合同、migration、部署配置或既有证据。
+- 本轮没有运行 build、lint、unit、contract、OpenAPI、migration、Docker、Helm、Kubernetes、
+  Beelink、浏览器或外部服务测试。
+- 文档保持 `implemented-not-run`、Gate blocked 和 `productionReleaseAuthorized=false` 的真实边界。
+
+### Background Tasks
+
+- 本轮未启动本机或 Beelink background process。
+- 未探测、停止、重启或修改 Beelink 服务。
+
+### Next Session Priorities
+
+1. 用户恢复测试授权后，使用 Node 24 执行当前 workspace build/lint/unit/contract、OpenAPI、
+   Helm 和 migration 001–016 门禁。
+2. 按交接文档 Phase B–E 顺序执行 M1 完整兼容、M2 当前 schema、M3–M7 真实验收。
+3. 任何 Owner 结论变化必须在新证据上追加 superseding decision，不能覆盖原 receipt。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short --branch
+sed -n '1,260p' docs/PROJECT_DETAILED_INTRODUCTION.md
+sed -n '1,300p' docs/PROJECT_HANDOVER.md
+tail -n 100 PROGRESS_LOG.md
+```
