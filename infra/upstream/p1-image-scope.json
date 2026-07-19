@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "policy": "current-pinned-yujian-images",
+  "platform": "linux/amd64",
+  "images": [
+    {
+      "id": "livekit-server-linux-amd64",
+      "reference": "livekit/livekit-server:v1.13.3@sha256:8ef3ee244ded8477d5b40d9dff4b084e1809a9fa0e4d9ed8d29943b3c6322998",
+      "expectedLocalImageId": "sha256:66be6ead8451a76456025a7d47bcce1a767a4c33d2cd359afde5c1e7e2086d21",
+      "usage": "RTC server and SFU"
+    },
+    {
+      "id": "redis-linux-amd64",
+      "reference": "redis:7.2.7-alpine@sha256:1de7ca6a3f63a083036fa1d95dddbd6bdfcdf5865bb692c1e412d4bdf9cb1e37",
+      "expectedLocalImageId": "sha256:04bec005426e7e601aa34c3125553c6ac19f9dce12b1dc145e3ee3a6a241bedc",
+      "usage": "RTC routing and P2 data-plane cache"
+    },
+    {
+      "id": "postgres-linux-amd64",
+      "reference": "postgres:16.4@sha256:9a70e4d1c03a5066080292db2dd95ee3965d3651316e21989fa0935afb8ce8ca",
+      "expectedLocalImageId": "sha256:6b14e73a48cf2518aeb37e8b758a907473bcc72727297a7353a665afa069ef10",
+      "usage": "P2 control-plane persistence"
+    },
+    {
+      "id": "openbao-linux-amd64",
+      "reference": "openbao/openbao:2.4.1@sha256:06a26f632cd0bdd0fd6e25034f55d68bc28b62590adc8efea3b8dacade11579a",
+      "expectedLocalImageId": "sha256:bb9de737e0cac0a6b420830b069bc32335d359c7d7c1144763f8cbf966e61afb",
+      "usage": "P2 KMS and secret boundary"
+    }
+  ],
+  "excluded": [
+    "ai-phone containers and images are outside the yujianAI repository scope",
+    "livekit-qkxy containers are not modified; their current local image content is already represented by the pinned LiveKit v1.13.3 image",
+    "Yujian service images are not claimed because platform-api was accepted from source and no release image is currently deployed"
+  ]
+}

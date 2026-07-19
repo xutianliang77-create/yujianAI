@@ -1,0 +1,223 @@
+{
+  "schemaVersion": 1,
+  "runId": "p1-upstream-20260718135102",
+  "generatedAt": "2026-07-18T07:15:14Z",
+  "status": "passed-scope",
+  "environment": {
+    "server": "beelink",
+    "platform": "linux/amd64",
+    "dataRoot": "/data/models/yujianAI",
+    "worktreeCommit": "cc93a95ba707cbd33b29975fc2bf882e2f1f698b",
+    "buildRoot": "/data/models/yujianAI/upstream-builds/p1-clean-20260718135102"
+  },
+  "manifest": {
+    "components": 11,
+    "repositories": 10,
+    "sha256": "42b0b74098cf1845b8b0979f5de5371df36c5253f74fbeda1245191aafde3f1f"
+  },
+  "mirror": {
+    "root": "/data/models/yujianAI/upstream-mirrors",
+    "bareRepositories": 10,
+    "fsck": "passed",
+    "syncLog": "remote:/data/models/yujianAI/evidence/p1/mirror-sync.log",
+    "fsckLog": "remote:/data/models/yujianAI/evidence/p1/mirror-fsck.log",
+    "logMode": "0600"
+  },
+  "replay": {
+    "status": "passed",
+    "components": 11,
+    "patches": 0,
+    "conflicts": 0,
+    "patchQueueSha256": "b58a411ada705529bb6aa36acb7d1fdc51697d8f8f7eea096c93708d1f973ef2",
+    "report": "remote:/data/models/yujianAI/evidence/p1/upstream-replay.json",
+    "reportMode": "0600"
+  },
+  "toolchains": [
+    {
+      "id": "node",
+      "reference": "node:24.18.0-bookworm@sha256:5711a0d445a1af54af9589066c646df387d1831a608226f4cd694fc59e745059",
+      "imageId": "sha256:fcd0f74fb415c75280d0d6d26ed68c57b6498f56f6ebcf47aecdfe7970a33861"
+    },
+    {
+      "id": "go",
+      "reference": "golang:1.26.2-bookworm@sha256:47ce5636e9936b2c5cbf708925578ef386b4f8872aec74a67bd13a627d242b19",
+      "imageId": "sha256:962e4695d843cf55fac32114d1e26e465eb9ef1efb9713f4f29dd72e57809e1d"
+    },
+    {
+      "id": "node-protobuf",
+      "imageId": "sha256:d25fcc929795daa3993e5dbe5f28b456c6eda2c691f742d70f4cae51be4359b9",
+      "dockerfileSha256": "4cea1f61284b48555f7a670c143765ee34396bbe3640df6a41cdce18d3588a80",
+      "protoc": "3.21.12"
+    },
+    {
+      "id": "go-sip",
+      "imageId": "sha256:267993fd6ab217be3eb68de04ee008a2ec5a36bd0c38bee7828b5cffa7e3bed5",
+      "dockerfileSha256": "8e54534d11b22f93b4409a43d619294c2f2ec6e46c581108be557a50cbb4191d"
+    },
+    {
+      "id": "go-gstreamer-ingress",
+      "imageId": "sha256:60c08aa62078e28ef2056446bac3fb428d9314804862ba6243f2a4fc26b5a0c8",
+      "dockerfileSha256": "baffa94c9368ed488c20b41f4cccac82aafffd4369e38ef907d363a6f02cfc52",
+      "gstreamerAmd64Digest": "sha256:f7d6ea2f09738481355aecd31948092e14e9aa0cb04e9e308e07fd8e4a645ecb"
+    },
+    {
+      "id": "go-gstreamer-egress",
+      "imageId": "sha256:137d09e4164a87dbaa5811e15d716e0dec9d545ebd320225db51b1486e4f3017",
+      "dockerfileSha256": "ccf3a7ac5fec5bba7048c5181d5028d6e63ece6ed75a6336c61e7969d644920f",
+      "gstreamerAmd64Digest": "sha256:57c24ac3e870adaf4dad0819293592fbc7d3cb1330c66ac206cecc5d23456628"
+    },
+    {
+      "id": "uv",
+      "version": "0.8.22",
+      "installation": "/data/models/yujianAI/toolchains/uv-0.8.22"
+    },
+    {
+      "id": "flutter",
+      "version": "3.44.0",
+      "dart": "3.12.0",
+      "archiveSha256": "e1ec95e6c550458a34de93580cb85dac24da0e9bedb9bb42811f050ac5a0c7d5",
+      "installation": "/data/models/yujianAI/toolchains/flutter-3.44.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "server",
+      "commit": "8f6a9cb8b735549f0c5770df8ea70ac51f860ecb",
+      "status": "passed",
+      "scope": "linux-amd64 server binary",
+      "command": "CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -buildvcs=false -o livekit-server ./cmd/server",
+      "artifactSha256": "8aad9030f1e78df1d4dd10d3dd95b0feef2531697d492cde3c5beb131ee01552",
+      "repeatedBuildEquivalent": true
+    },
+    {
+      "id": "protocol",
+      "commit": "74296228107d852bafdc3e0ca9cc72643150be43",
+      "status": "passed",
+      "scope": "go tests and JavaScript package",
+      "commands": ["go test ./...", "pnpm --filter @livekit/protocol build"],
+      "artifactManifestFiles": 7,
+      "artifactManifestSha256": "c450bfd844b1f38671073e71209934ecaaebe5fe2c9bcde7fd026a04c7bbfc05",
+      "repeatedBuildEquivalent": true
+    },
+    {
+      "id": "sip",
+      "commit": "d5d1e09bbe826baaae9c335d8f42523192c7ce29",
+      "status": "passed",
+      "scope": "linux-amd64 SIP binary",
+      "command": "CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -a -trimpath -buildvcs=false ./cmd/livekit-sip",
+      "artifactSha256": "b25ec536f6bcae8cb959e1fddf03c28e5abb631b238ea0630e447e3d3fbfc10e",
+      "repeatedBuildEquivalent": true,
+      "dynamicDependencies": "resolved-in-build-image"
+    },
+    {
+      "id": "ingress",
+      "commit": "363f6090d572db8eef5b60c273c0970826fb7ca6",
+      "status": "passed",
+      "scope": "linux-amd64 ingress binary",
+      "command": "CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -a -trimpath -buildvcs=false ./cmd/server",
+      "artifactSha256": "6b0816481bc75cab7e80ac90228d264181cb191b1538ba781adda89e2ab7a868",
+      "repeatedBuildEquivalent": true,
+      "dynamicDependencies": "resolved-in-build-image"
+    },
+    {
+      "id": "egress",
+      "commit": "7d3572a0bf1959cbbc452f5ba390b6a90b7dc249",
+      "status": "passed",
+      "scope": "linux-amd64 egress binary with frozen templates",
+      "command": "CGO_ENABLED=1 GOOS=linux GOARCH=amd64 GODEBUG=disablethp=1 go build -a -trimpath -buildvcs=false ./cmd/server",
+      "templateVersion": "sha-594b3b1",
+      "templateAmd64Digest": "sha256:24de7d2d6bd76b6f49033282f5243ef398f5982721cb35086c032f439358be4c",
+      "artifactSha256": "e0a7d02cfde56a4455c1162f4433d094eeefa270a96cf92a4337baab4f14a05a",
+      "repeatedBuildEquivalent": true,
+      "dynamicDependencies": "resolved-in-build-image"
+    },
+    {
+      "id": "agents-python",
+      "commit": "dbc38dfbc113a2e06d36feb1278e543af3585ea9",
+      "status": "passed",
+      "scope": "livekit-agents core sdist and wheel",
+      "command": "SOURCE_DATE_EPOCH=<commit-time> uv build --package livekit-agents",
+      "wheelSha256": "763693514aca93c8e7c81eb558204e2eb3711fb01fd8aca4e2b6873180f2bb06",
+      "sdistSha256": "b4a5310b306a60f3bf7d58c06f35ff7f6c6383690ac882816a587261bbff80f2",
+      "repeatedBuildEquivalent": true
+    },
+    {
+      "id": "agents-node",
+      "commit": "24ad2fbbe9cc2edd0ee41222043baedf4e167275",
+      "status": "passed",
+      "scope": "@livekit/agents core package",
+      "command": "pnpm install --frozen-lockfile --filter @livekit/agents... --ignore-scripts && pnpm --filter @livekit/agents build",
+      "artifactManifestFiles": 1509,
+      "artifactManifestSha256": "db1ce4a09d042799fdd532e7b329044c8e352e505c8049ff90a274b11121c57d",
+      "repeatedBuildEquivalent": true
+    },
+    {
+      "id": "server-sdk-node",
+      "commit": "5c0721add1d3671e1692278a174e90063b99e118",
+      "status": "passed",
+      "scope": "livekit-server-sdk package",
+      "command": "pnpm --filter livekit-server-sdk build",
+      "artifactManifestFiles": 133,
+      "artifactManifestSha256": "1c9c651a04a599736128cb80be2d109d614366b812bb7976820887ab04b2632f",
+      "repeatedBuildEquivalent": true
+    },
+    {
+      "id": "rtc-sdk-node",
+      "commit": "5c0721add1d3671e1692278a174e90063b99e118",
+      "status": "passed",
+      "scope": "@livekit/rtc-node package",
+      "command": "pnpm --filter @livekit/rtc-node build",
+      "artifactManifestFiles": 200,
+      "artifactManifestSha256": "9b9e7e8859316bd9cf1b583eced7942d8a7bf2dc675c825c37ded969a35f95c2",
+      "repeatedBuildEquivalent": true
+    },
+    {
+      "id": "client-sdk-js",
+      "commit": "3da1eb3a1367f29aa1a4a4734f3287aa2ef29416",
+      "status": "passed",
+      "scope": "livekit-client package",
+      "command": "pnpm build:clean",
+      "artifactManifestFiles": 390,
+      "artifactManifestSha256": "1e57fd40089e4258b9e6474685b74bf78d3f20a09c9a686fdf87c68c5ebf0d82",
+      "repeatedBuildEquivalent": true
+    },
+    {
+      "id": "client-sdk-flutter",
+      "commit": "d11065f2551d66a833522488431502efc15048d7",
+      "status": "passed",
+      "scope": "frozen root package dependency resolution, lib/test analysis and root tests",
+      "command": "flutter pub get --enforce-lockfile --no-example && flutter analyze --no-pub lib test && flutter test --no-pub",
+      "dependencyGraphSha256": "8fcfcbbb0135f6fc4eb3dfb55a4fbc304de6abc57bbe43f2b0b3dec22ef1d346",
+      "tests": { "passed": 260, "skipped": 1 },
+      "repeatedDependencyResolutionEquivalent": true
+    }
+  ],
+  "boundaries": [
+    "No LiveKit tracked source file was modified; Egress templates were materialized from its source-declared frozen template version.",
+    "Git LFS example payloads were not mirrored and were excluded from package/core build scopes.",
+    "The agents-node result covers @livekit/agents core; unrelated provider plugin postinstall hooks were excluded.",
+    "Go modules used goproxy.cn with sum.golang.google.cn checksum verification.",
+    "Flutter 3.27.3 and 3.32.8 exposed minimum-SDK dependency conflicts; 3.38.9 resolved the source constraints but did not match the frozen lockfile; 3.44.0 matches its SDK-pinned dependencies.",
+    "The Flutter example application has no committed lockfile and was excluded from the frozen root-package scope; no example lockfile was generated.",
+    "This evidence covers clean source builds and static tests, not runtime service images, cross-SDK RTC behavior, release publication, or production approval."
+  ],
+  "artifacts": {
+    "report": "remote:/data/models/yujianAI/evidence/p1/clean-build-report.json",
+    "reportMode": "0600",
+    "flutterLog": "remote:/data/models/yujianAI/evidence/p1/flutter-clean-build.log",
+    "flutterDiagnosticLogs": "remote:/data/models/yujianAI/evidence/p1/flutter-3.27.3-failed.log, flutter-3.32.8-failed.log, flutter-3.38.9-frozen-failed.log, flutter-3.38.9-unfrozen.log, flutter-3.44.0-example-lock-failed.log and flutter-3.44.0-example-unresolved.log",
+    "buildRoot": "remote:/data/models/yujianAI/upstream-builds/p1-clean-20260718135102"
+  },
+  "cleanup": {
+    "temporaryContainers": 0,
+    "specificBuildImagesRemoved": true,
+    "failedFlutterToolchainsRemoved": true,
+    "protectedContainersTouchedByCommands": false
+  },
+  "gate": {
+    "p1M003RuntimeEvidence": "passed",
+    "p1M003OwnerApproval": "pending",
+    "formalGate0": "not-passed",
+    "formalGate1": "not-passed"
+  }
+}

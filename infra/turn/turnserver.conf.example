@@ -5,11 +5,13 @@ lt-cred-mech
 use-auth-secret
 static-auth-secret=<inject-from-kms>
 realm=turn.yujian.local
+min-port=49160
+max-port=49200
 no-cli
 no-multicast-peers
 no-loopback-peers
 stale-nonce=600
 total-quota=1000
 user-quota=20
-cert=<inject-from-secret>
-pkey=<inject-from-secret>
+cert=/etc/coturn/tls/tls.crt
+pkey=/etc/coturn/tls/tls.key

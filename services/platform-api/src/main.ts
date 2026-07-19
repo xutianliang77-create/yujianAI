@@ -11,10 +11,17 @@ const serverPromise = loadPlatformRuntime(runtimeSpecifier, config).then((depend
     if (dependencies.rateLimiter === undefined) throw new Error("production platform api requires a distributed rate limiter");
     if (dependencies.resourceUsage === undefined) throw new Error("production platform api requires a resource usage provider");
     if (dependencies.tokenQuota === undefined) throw new Error("production platform api requires a distributed token quota provider");
+    if (dependencies.telemetryPersistence === undefined) throw new Error("production platform api requires durable RTC telemetry persistence");
+    if (dependencies.entitlements === undefined) throw new Error("production platform api requires a durable entitlement service");
+    if (dependencies.support === undefined) throw new Error("production platform api requires a durable support service");
+    if (dependencies.billing === undefined) throw new Error("production platform api requires a durable billing read model");
+    if (dependencies.dataRights === undefined) throw new Error("production platform api requires a durable data-rights service");
+    if (config.requireRtcCapacity && dependencies.rtcCapacity === undefined) throw new Error("production platform api requires a distributed RTC capacity provider");
+    if (config.requireTurnCredentials && dependencies.turnCredentials === undefined) throw new Error("production platform api requires a KMS-backed TURN credential issuer");
     if (dependencies.outboxWorker === undefined) throw new Error("production platform api requires an outbox delivery worker");
     if (dependencies.persistence.listUsage === undefined || dependencies.persistence.listAudit === undefined) throw new Error("production platform api requires durable usage and audit readers");
   }
-  return { server: createPlatformServer(config, dependencies), worker: dependencies.outboxWorker };
+  return { server: createPlatformServer(config, dependencies), worker: dependencies.outboxWorker, close: dependencies.close };
 });
 
 let runtime: Awaited<typeof serverPromise> | undefined;
@@ -46,6 +53,7 @@ function shutdown(signal: string) {
   const activeRuntime = runtime;
   void (async () => {
     await activeRuntime.worker?.stop();
+    await activeRuntime.close?.();
     activeRuntime.server.close((error) => {
       if (error) {
         console.error(

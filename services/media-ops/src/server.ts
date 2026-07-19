@@ -1,9 +1,12 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { createServer as createHttpsServer } from "node:https";
-import type { MediaOperationStatusV1, MediaProviderStatusUpdateV1 } from "@yujian/platform-contracts";
+import type { MediaOperationStatusV1, MediaProviderStatusUpdateV1, SipCallV1 } from "@yujian/platform-contracts";
 import { MediaOpsControl, MediaOpsError, type MediaOpsProvider } from "./control.js";
 import type { MediaOpsPersistence } from "./persistence.js";
+import { MediaOperationAdmissionError } from "./governed-provider.js";
+import type { MediaProviderStatusVerifier } from "./provider-status-verifier.js";
+import type { MediaLifecycleObserver } from "./lifecycle-observer.js";
 
 function equalSecret(supplied: string | undefined, expected: string): boolean {
   if (supplied === undefined) return false;
@@ -43,34 +46,43 @@ const MEDIA_STATUSES = new Set<MediaOperationStatusV1>([
 ]);
 
 function parseProviderStatusUpdate(body: Record<string, unknown>): MediaProviderStatusUpdateV1 {
-  const allowed = new Set(["status", "providerId", "objectUri", "retentionExpiresAt"]);
+  const allowed = new Set(["status", "providerId", "objectUri", "retentionExpiresAt", "reasonCode", "participantIdentity"]);
   const unknown = Object.keys(body).find((key) => !allowed.has(key));
   if (unknown !== undefined) throw new MediaOpsError("CONFLICT", `unknown provider status field ${unknown}`);
   if (typeof body.status !== "string" || !MEDIA_STATUSES.has(body.status as MediaOperationStatusV1)) {
     throw new MediaOpsError("CONFLICT", "status is not a supported media operation status");
   }
-  const optionalText = (field: string): string | undefined => {
+  const optionalText = (field: string, maximum = 256): string | undefined => {
     const value = body[field];
     if (value === undefined) return undefined;
-    if (typeof value !== "string" || value.length === 0 || value.length > 256 || value.trim() !== value) {
+    if (typeof value !== "string" || value.length === 0 || value.length > maximum || value.trim() !== value) {
       throw new MediaOpsError("CONFLICT", `${field} must be a trimmed non-empty string`);
     }
     return value;
   };
   const providerId = optionalText("providerId");
-  const objectUri = optionalText("objectUri");
-  const retentionExpiresAt = optionalText("retentionExpiresAt");
+  const objectUri = optionalText("objectUri", 2_048);
+  const retentionExpiresAt = optionalText("retentionExpiresAt", 128);
+  const reasonCode = optionalText("reasonCode", 128);
+  const participantIdentity = optionalText("participantIdentity", 128);
   return {
     status: body.status as MediaOperationStatusV1,
     ...(providerId === undefined ? {} : { providerId }),
     ...(objectUri === undefined ? {} : { objectUri }),
     ...(retentionExpiresAt === undefined ? {} : { retentionExpiresAt }),
+    ...(reasonCode === undefined ? {} : { reasonCode }),
+    ...(participantIdentity === undefined ? {} : { participantIdentity }),
   };
 }
 
 type MediaOpsOptions = ConstructorParameters<typeof MediaOpsControl>[0];
 
-function createHandler(internalCredential: string, control: MediaOpsControl, provider?: MediaOpsProvider, persistence?: MediaOpsPersistence) {
+function providerFailure(error: unknown, message: string): MediaOpsError {
+  if (error instanceof MediaOperationAdmissionError) return new MediaOpsError(error.code === "BUDGET" ? "QUOTA_EXCEEDED" : "POLICY_DISABLED", error.message);
+  return new MediaOpsError("PROVIDER_UNAVAILABLE", message);
+}
+
+function createHandler(internalCredential: string, control: MediaOpsControl, provider?: MediaOpsProvider, persistence?: MediaOpsPersistence, providerCallbackCredential = internalCredential, statusVerifier?: MediaProviderStatusVerifier, lifecycleObserver?: MediaLifecycleObserver) {
   const restored = persistence === undefined ? Promise.resolve() : persistence.load().then((snapshot) => { if (snapshot !== undefined) control.restore(snapshot); });
   let persistTail: Promise<void> = Promise.resolve();
   const persistSnapshot = async (): Promise<void> => {
@@ -88,10 +100,6 @@ function createHandler(internalCredential: string, control: MediaOpsControl, pro
         send(response, 200, { status: "ok" });
         return;
       }
-      if (!equalSecret(request.headers["x-yujian-internal-token"] as string | undefined, internalCredential)) {
-        send(response, 401, { error: "authentication_failed" });
-        return;
-      }
       const url = new URL(request.url ?? "/", "http://media-ops.local");
       const path = url.pathname.split("/").filter(Boolean);
       const basePath = path[0] === "internal" && path[1] === "v1" && path[2] === "environments" && path[4] === "media";
@@ -102,6 +110,13 @@ function createHandler(internalCredential: string, control: MediaOpsControl, pro
         (path.length === 7 && (isIngressPath || isEgressPath) && path[6]?.endsWith(":status")) ||
         (path.length === 8 && isSipPath && path[7]?.endsWith(":status"))
       );
+      const suppliedCredential = isStatusPath
+        ? request.headers["x-yujian-provider-token"] as string | undefined
+        : request.headers["x-yujian-internal-token"] as string | undefined;
+      if (!equalSecret(suppliedCredential, isStatusPath ? providerCallbackCredential : internalCredential)) {
+        send(response, 401, { error: "authentication_failed" });
+        return;
+      }
       const isTransferPath = request.method === "POST" && path.length === 8 && isSipPath && path[7]?.endsWith(":transfer");
       const isHangupPath = request.method === "POST" && path.length === 8 && isSipPath && path[7]?.endsWith(":hangup");
       const isCreatePath = request.method === "POST" && ((path.length === 6 && (isIngressPath || isEgressPath)) || (path.length === 7 && isSipPath));
@@ -121,8 +136,21 @@ function createHandler(internalCredential: string, control: MediaOpsControl, pro
         if (kind === "ingress") control.getIngress(resourceId, environmentId);
         else if (kind === "egress") control.getEgress(resourceId, environmentId);
         else control.getSipCall(resourceId, environmentId);
-        const data = control.applyProviderStatus(kind, resourceId, update);
-        await sendMutation(response, 200, { data });
+        const attestationHeader = request.headers["x-yujian-edge-attestation"];
+        const edgeAttestation = typeof attestationHeader === "string" ? attestationHeader : undefined;
+        const verification = statusVerifier === undefined ? undefined : await statusVerifier.verify({ environmentId, resourceKind: kind, resourceId, update, edgeAttestation })
+          .catch(() => { throw new MediaOpsError("POLICY_DISABLED", "provider status attestation was rejected"); });
+        const data = control.applyProviderStatus(kind, resourceId, { ...update, ...(verification ?? {}) });
+        if (kind === "call" && (update.status === "completed" || update.status === "failed" || update.status === "cancelled")) {
+          const terminalCall = data as SipCallV1;
+          try { await provider?.completeSipCall?.({ callId: resourceId, environmentId, ...(terminalCall.sipTrunkId === undefined ? {} : { sipTrunkId: terminalCall.sipTrunkId }) }); } catch { /* Redis lease TTL remains the fail-safe cleanup. */ }
+        }
+        if ((kind === "ingress" || kind === "egress") && (update.status === "completed" || update.status === "failed" || update.status === "cancelled")) {
+          try { await provider?.completeMediaResource?.({ kind, resourceId, environmentId }); } catch { /* Redis lease TTL remains the fail-safe cleanup. */ }
+        }
+        await persistSnapshot();
+        if (kind === "call" && (update.status === "completed" || update.status === "failed" || update.status === "cancelled")) await lifecycleObserver?.onSipTerminal(data as SipCallV1);
+        send(response, 200, { data });
         return;
       }
       if (isTransferPath || isHangupPath) {
@@ -142,13 +170,13 @@ function createHandler(internalCredential: string, control: MediaOpsControl, pro
         if (isTransferPath) {
           const transferTo = body.transferTo;
           if (typeof transferTo !== "string" || transferTo.length === 0 || transferTo.length > 256 || transferTo.trim() !== transferTo) throw new MediaOpsError("CONFLICT", "transferTo must be a trimmed non-empty string");
-          await provider.transferSipCall({ callId: call.callId, roomName: call.roomName, participantIdentity: call.participantIdentity, transferTo, idempotencyKey });
+          await provider.transferSipCall({ callId: call.callId, environmentId, roomName: call.roomName, participantIdentity: call.participantIdentity, transferTo, ...(call.sipTrunkId === undefined ? {} : { sipTrunkId: call.sipTrunkId }), idempotencyKey }).catch((error) => { throw providerFailure(error, "SIP transfer provider failed"); });
           const result = control.getSipCall(callId, environmentId);
           control.saveOperationResult(operation, environmentId, callId, idempotencyKey, result);
           await sendMutation(response, 200, { data: result });
           return;
         }
-        await provider.hangupSipCall({ callId: call.callId, roomName: call.roomName, participantIdentity: call.participantIdentity, idempotencyKey });
+        await provider.hangupSipCall({ callId: call.callId, environmentId, roomName: call.roomName, participantIdentity: call.participantIdentity, ...(call.sipTrunkId === undefined ? {} : { sipTrunkId: call.sipTrunkId }), idempotencyKey }).catch((error) => { throw providerFailure(error, "SIP hangup provider failed"); });
         const result = control.completeSipCall(callId);
         control.saveOperationResult(operation, environmentId, callId, idempotencyKey, result);
         await sendMutation(response, 200, { data: result });
@@ -180,7 +208,7 @@ function createHandler(internalCredential: string, control: MediaOpsControl, pro
         const existing = control.findIngressByIdempotency(environmentId, idempotencyKey);
         const sourceUrl = typeof body.url === "string" ? body.url : undefined;
         const job = control.createIngress({ environmentId, roomName: String(body.roomName ?? ""), inputType: body.inputType as "rtmp" | "whip" | "url", idempotencyKey, ...(sourceUrl === undefined ? {} : { sourceUrl }) });
-        const data = provider === undefined || existing !== undefined ? job : await provider.createIngress({ ingressId: job.ingressId, environmentId, roomName: job.roomName, inputType: job.inputType, ...(sourceUrl === undefined ? {} : { sourceUrl }) }).then((result) => control.activateIngress(job.ingressId, result.providerIngressId)).catch(async (error) => { control.fail("ingress", job.ingressId); await persistSnapshot(); throw new MediaOpsError("PROVIDER_UNAVAILABLE", error instanceof Error ? error.message : "Ingress provider failed"); });
+        const data = provider === undefined || existing !== undefined ? job : await provider.createIngress({ ingressId: job.ingressId, environmentId, roomName: job.roomName, inputType: job.inputType, ...(sourceUrl === undefined ? {} : { sourceUrl }) }).then((result) => control.activateIngress(job.ingressId, result.providerIngressId)).catch(async (error) => { try { await provider.completeMediaResource?.({ kind: "ingress", resourceId: job.ingressId, environmentId }); } catch { /* Lease TTL remains fail-safe. */ } control.fail("ingress", job.ingressId); await persistSnapshot(); throw providerFailure(error, "Ingress provider failed"); });
         await sendMutation(response, 201, { data });
         return;
       }
@@ -188,7 +216,7 @@ function createHandler(internalCredential: string, control: MediaOpsControl, pro
         const existing = control.findEgressByIdempotency(environmentId, idempotencyKey);
         const outputTarget = typeof body.outputTarget === "string" ? body.outputTarget : undefined;
         const job = control.createEgress({ environmentId, roomName: String(body.roomName ?? ""), outputType: body.outputType as "mp4" | "hls" | "rtmp", idempotencyKey, ...(outputTarget === undefined ? {} : { outputTarget }) });
-        const data = provider === undefined || existing !== undefined ? job : await provider.createEgress({ egressId: job.egressId, environmentId, roomName: job.roomName, outputType: job.outputType, ...(outputTarget === undefined ? {} : { outputTarget }) }).then((result) => control.activateEgress(job.egressId, result)).catch(async (error) => { control.fail("egress", job.egressId); await persistSnapshot(); throw new MediaOpsError("PROVIDER_UNAVAILABLE", error instanceof Error ? error.message : "Egress provider failed"); });
+        const data = provider === undefined || existing !== undefined ? job : await provider.createEgress({ egressId: job.egressId, environmentId, roomName: job.roomName, outputType: job.outputType, ...(outputTarget === undefined ? {} : { outputTarget }) }).then((result) => control.activateEgress(job.egressId, result)).catch(async (error) => { try { await provider.completeMediaResource?.({ kind: "egress", resourceId: job.egressId, environmentId }); } catch { /* Lease TTL remains fail-safe. */ } control.fail("egress", job.egressId); await persistSnapshot(); throw providerFailure(error, "Egress provider failed"); });
         await sendMutation(response, 201, { data });
         return;
       }
@@ -205,7 +233,7 @@ function createHandler(internalCredential: string, control: MediaOpsControl, pro
           remoteNumber: String(body.remoteNumber ?? ""),
           idempotencyKey,
         });
-        const data = provider === undefined || existing !== undefined ? call : await provider.requestSipCall({
+        const data = provider === undefined || existing !== undefined || call.direction === "inbound" ? call : await provider.requestSipCall({
           callId: call.callId,
           environmentId,
           roomName: call.roomName,
@@ -214,18 +242,19 @@ function createHandler(internalCredential: string, control: MediaOpsControl, pro
           ...(dtmf === undefined ? {} : { dtmf }),
           direction: call.direction,
           remoteNumber: String(body.remoteNumber ?? ""),
-          idempotencyKey: call.idempotencyKey,
+          idempotencyKey,
         }).then((result) => {
           if (result.participantIdentity !== undefined && call.participantIdentity === undefined) control.setSipParticipantIdentity(call.callId, result.participantIdentity);
+          if (result.sipTrunkId !== undefined && call.sipTrunkId === undefined) control.setSipTrunkId(call.callId, result.sipTrunkId);
           return control.activateSipCall(call.callId, result.providerCallId);
-        }).catch(async (error) => { control.fail("call", call.callId); await persistSnapshot(); throw new MediaOpsError("PROVIDER_UNAVAILABLE", error instanceof Error ? error.message : "SIP provider failed"); });
+        }).catch(async (error) => { const current = control.getSipCall(call.callId); try { await provider.completeSipCall?.({ callId: call.callId, environmentId, ...(current.sipTrunkId === undefined ? {} : { sipTrunkId: current.sipTrunkId }) }); } catch { /* Lease TTL remains fail-safe. */ } control.fail("call", call.callId); await persistSnapshot(); throw providerFailure(error, "SIP provider failed"); });
         await sendMutation(response, 201, { data });
         return;
       }
       send(response, 404, { error: "resource_not_found" });
     } catch (error) {
       const status = error instanceof MediaOpsError ? statusForMediaError(error) : 400;
-      send(response, status, { error: error instanceof Error ? error.message : "request_failed" });
+      send(response, status, { error: error instanceof MediaOpsError ? error.message : "request_failed" });
     }
   };
 }
@@ -236,8 +265,11 @@ export function createMediaOpsServer(
   options?: MediaOpsOptions,
   provider?: MediaOpsProvider,
   persistence?: MediaOpsPersistence,
+  providerCallbackCredential?: string,
+  statusVerifier?: MediaProviderStatusVerifier,
+  lifecycleObserver?: MediaLifecycleObserver,
 ) {
-  return createServer(createHandler(internalCredential, control ?? new MediaOpsControl(options ?? { sipEnabled: false }), provider, persistence));
+  return createServer(createHandler(internalCredential, control ?? new MediaOpsControl(options ?? { sipEnabled: false }), provider, persistence, providerCallbackCredential, statusVerifier, lifecycleObserver));
 }
 
 export function createMediaOpsHttpsServer(
@@ -247,6 +279,9 @@ export function createMediaOpsHttpsServer(
   options?: MediaOpsOptions,
   provider?: MediaOpsProvider,
   persistence?: MediaOpsPersistence,
+  providerCallbackCredential?: string,
+  statusVerifier?: MediaProviderStatusVerifier,
+  lifecycleObserver?: MediaLifecycleObserver,
 ) {
-  return createHttpsServer(tls, createHandler(internalCredential, control ?? new MediaOpsControl(options ?? { sipEnabled: false }), provider, persistence));
+  return createHttpsServer(tls, createHandler(internalCredential, control ?? new MediaOpsControl(options ?? { sipEnabled: false }), provider, persistence, providerCallbackCredential, statusVerifier, lifecycleObserver));
 }

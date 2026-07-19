@@ -1,0 +1,15 @@
+{
+  "name": "@yujian/deployment-operator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "语见AI私有化部署 Operator",
+  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/main.js"
+  },
+  "devDependencies": { "@types/node": "^24.0.0", "typescript": "^5.9.2" }
+}

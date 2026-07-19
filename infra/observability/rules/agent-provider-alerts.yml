@@ -1,0 +1,23 @@
+groups:
+  - name: yujian-agent-provider
+    rules:
+      - alert: YujianAgentProviderHighFailureRate
+        expr: |
+          sum by (provider, capability) (rate(yujian_provider_invocations_total{outcome="failure"}[10m]))
+          /
+          clamp_min(sum by (provider, capability) (rate(yujian_provider_invocations_total[10m])), 0.001)
+          > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Agent provider failure rate exceeds 5 percent
+      - alert: YujianAgentProviderP95LatencyHigh
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le, provider, capability) (rate(yujian_provider_duration_ms_bucket[10m]))) > 5000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Agent provider P95 latency exceeds 5 seconds

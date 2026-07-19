@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "policyId": "p1-m0-04-registry-kms-freeze-20260719",
+  "status": "implemented-awaiting-runtime-evidence-and-owner-supersession",
+  "dataRoot": "/data/models/yujianAI",
+  "registry": {
+    "host": "beelink.tail1e9cec.ts.net:5443",
+    "bindAddress": "100.110.127.117:5443",
+    "containerName": "yujian-production-registry",
+    "composeFile": "infra/registry/beelink/compose.yaml",
+    "dataPath": "/data/models/yujianAI/registry/data",
+    "backupPath": "/data/models/yujianAI/registry/backups",
+    "evidencePath": "/data/models/yujianAI/registry/evidence/registry-kms-freeze",
+    "runtimeImage": "beelink.tail1e9cec.ts.net:5443/yujian/p1/distribution-registry@sha256:564d023747cfff89a76cc61c46f99ef7b7a1953099d002504a126a131e1fa749",
+    "transport": "tailscale-tls-basic-auth",
+    "deleteEnabled": false,
+    "digestPinRequired": true,
+    "tagMutation": "release-tool-denied",
+    "garbageCollection": "manual-after-verified-backup-and-owner-window",
+    "tls": {
+      "certificateNotAfter": "2026-10-11T03:18:23Z",
+      "renewBeforeDays": 30,
+      "owner": "bbb"
+    },
+    "recovery": {
+      "mode": "isolated-loopback-registry",
+      "bindAddress": "127.0.0.1:55443",
+      "rpoTargetSeconds": 86400,
+      "rtoTargetSeconds": 14400,
+      "productionRestoreRequiresSeparateApproval": true
+    }
+  },
+  "kms": {
+    "uri": "openbao://yujian-oci-release",
+    "keyName": "yujian-oci-release",
+    "runtimeImage": "openbao/openbao:2.4.1@sha256:06a26f632cd0bdd0fd6e25034f55d68bc28b62590adc8efea3b8dacade11579a",
+    "addresses": [
+      "https://127.0.0.1:18200",
+      "https://127.0.0.1:18201",
+      "https://127.0.0.1:18202"
+    ],
+    "clusterBoundary": "three-voters-single-beelink-host",
+    "algorithm": "ecdsa-p256",
+    "exportable": false,
+    "plaintextBackupAllowed": false,
+    "publicKeySha256": "sha256:5f362c145a7b75f9fb28d9860952dbd67240e8f20238476450a88e51aef9492e",
+    "raftSnapshotPath": "/data/models/yujianAI/p2/backups/registry-kms",
+    "recovery": {
+      "mode": "isolated-single-node-raft-restore",
+      "bindAddress": "127.0.0.1:19200",
+      "rpoTargetSeconds": 86400,
+      "rtoTargetSeconds": 14400
+    },
+    "rotation": {
+      "owner": "bbb",
+      "securityOwner": "aaa",
+      "minimumIntervalDays": 90,
+      "preserveHistoricalPublicKeys": true,
+      "automaticOldVersionRetirement": false,
+      "irreversibleRetirementRequiresFreshOwnerReceipts": true,
+      "rollbackModel": "preserve-old-public-key-and-digest-verification"
+    }
+  },
+  "artifacts": [
+    {
+      "id": "redis-7.2.14",
+      "digestReference": "beelink.tail1e9cec.ts.net:5443/yujian/p1/redis@sha256:18e7e254e2fe1fa185f9434450649b33c1efb9a7dcda9daaf1ce0dfb133bc16b"
+    },
+    {
+      "id": "postgres-16.14-yujian",
+      "digestReference": "beelink.tail1e9cec.ts.net:5443/yujian/p1/postgres@sha256:ca0b040cfb1d7cef610a54d985b14d735ea5735c44be86b1ae946a73eb577646"
+    },
+    {
+      "id": "openbao-2.5.4-yujian.2",
+      "digestReference": "beelink.tail1e9cec.ts.net:5443/yujian/p1/openbao@sha256:8f0a920223e6974c5a959153bc0f0aeee5602314fdd8ef010bb74c53500f8a71"
+    },
+    {
+      "id": "distribution-registry-3.1.1-yujian.1",
+      "digestReference": "beelink.tail1e9cec.ts.net:5443/yujian/p1/distribution-registry@sha256:564d023747cfff89a76cc61c46f99ef7b7a1953099d002504a126a131e1fa749"
+    }
+  ],
+  "evidence": {
+    "appendOnly": true,
+    "overwriteAllowed": false,
+    "rawSecretsAllowed": false,
+    "requiredStages": [
+      "registry-backup",
+      "registry-isolated-restore",
+      "kms-raft-snapshot",
+      "kms-isolated-restore",
+      "kms-key-rotation",
+      "rollback-verification"
+    ]
+  },
+  "ownerDecision": {
+    "decisionId": "p1-m0-04-bbb-registry-kms-freeze-20260718",
+    "sequence": 1,
+    "decision": "reject",
+    "receiptPath": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-approvals/p1-m0-04-bbb-registry-kms-freeze-20260718/supersessions/000001/result.json",
+    "receiptSha256": "sha256:97b140684900e01e15040ce6339b812d719e6748160ca72a24d5a0996d4e8a34",
+    "supersedingDecisionRequired": true
+  },
+  "productionReleaseAuthorized": false
+}

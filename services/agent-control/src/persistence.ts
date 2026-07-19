@@ -1,4 +1,4 @@
-import type { AgentControlSnapshot } from "./controller.js";
+import type { AgentControlSnapshot } from "./control-types.js";
 
 export interface AgentControlSqlResult<Row extends object> {
   rows: readonly Row[];

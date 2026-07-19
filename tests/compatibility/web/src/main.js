@@ -1,5 +1,6 @@
 import {
   LocalAudioTrack,
+  LocalVideoTrack,
   Room,
   RoomEvent,
   Track,
@@ -50,6 +51,97 @@ async function waitForRemoteAudioStats(remoteTrack) {
   return undefined;
 }
 
+async function waitForRemoteVideoStats(remoteTrack) {
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    const stats = await remoteTrack.getReceiverStats();
+    if (stats?.bytesReceived > 0) return stats;
+  }
+  return undefined;
+}
+
+function summarizeReceiverQuality(stats) {
+  return {
+    bytesReceived: stats?.bytesReceived ?? null,
+    packetsReceived: stats?.packetsReceived ?? null,
+    packetsLost: stats?.packetsLost ?? null,
+    jitter: stats?.jitter ?? null,
+  };
+}
+
+async function runSyntheticReconnect(room) {
+  const reconnecting = waitForEvent(
+    room,
+    RoomEvent.Reconnecting,
+    "synthetic reconnect did not emit reconnecting",
+  );
+  const reconnected = waitForEvent(
+    room,
+    RoomEvent.Reconnected,
+    "synthetic reconnect did not emit reconnected",
+  );
+  await Promise.all([
+    room.simulateScenario("full-reconnect"),
+    reconnecting,
+    reconnected,
+  ]);
+}
+
+function createSyntheticVideoTrack(label, color) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 320;
+  canvas.height = 180;
+  const context = canvas.getContext("2d");
+  if (!context || typeof canvas.captureStream !== "function") {
+    throw new Error(`${label} synthetic video is not supported`);
+  }
+  let frame = 0;
+  const draw = () => {
+    context.fillStyle = color;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = "white";
+    context.font = "24px sans-serif";
+    context.fillText(`${label} ${frame}`, 16, 36);
+    frame += 1;
+  };
+  draw();
+  const timer = setInterval(draw, 100);
+  const mediaTrack = canvas.captureStream(10).getVideoTracks()[0];
+  const track = new LocalVideoTrack(mediaTrack);
+  return {
+    track,
+    stop() {
+      clearInterval(timer);
+      track.stop();
+    },
+  };
+}
+
+function waitForRemoteTrack(room, source, message) {
+  return withTimeout(
+    new Promise((resolve) => room.on(RoomEvent.TrackSubscribed, function listener(track, publication, participant) {
+      if (publication.source !== source) return;
+      room.off(RoomEvent.TrackSubscribed, listener);
+      resolve([track, publication, participant]);
+    })),
+    message,
+  );
+}
+
+function waitForRemoteTrackLifecycle(room, event, source, message) {
+  return withTimeout(
+    new Promise((resolve) => {
+      const listener = (publication, participant) => {
+        if (publication?.source !== source) return;
+        room.off(event, listener);
+        resolve([publication, participant]);
+      };
+      room.on(event, listener);
+    }),
+    message,
+  );
+}
+
 async function runCompatibilityTest() {
   if (!isBrowserSupported()) throw new Error("browser does not support WebRTC");
   runButton.disabled = true;
@@ -61,6 +153,7 @@ async function runCompatibilityTest() {
   const secondaryRoom = new Room();
   let oscillator;
   let localAudioTrack;
+  const syntheticVideoTracks = [];
 
   try {
     secondaryRoom.registerRpcMethod(
@@ -130,13 +223,77 @@ async function runCompatibilityTest() {
     const audioStats = await waitForRemoteAudioStats(remoteTrack);
     if (!audioStats) throw new Error("remote audio Track did not receive RTP bytes");
 
+    const muted = waitForRemoteTrackLifecycle(
+      secondaryRoom,
+      RoomEvent.TrackMuted,
+      Track.Source.Microphone,
+      "remote audio Track did not emit muted",
+    );
+    await localAudioTrack.mute();
+    await muted;
+    const unmuted = waitForRemoteTrackLifecycle(
+      secondaryRoom,
+      RoomEvent.TrackUnmuted,
+      Track.Source.Microphone,
+      "remote audio Track did not emit unmuted",
+    );
+    await localAudioTrack.unmute();
+    await unmuted;
+
+    const cameraSubscribed = waitForRemoteTrack(
+      secondaryRoom,
+      Track.Source.Camera,
+      "camera Track was not subscribed",
+    );
+    const screenSubscribed = waitForRemoteTrack(
+      secondaryRoom,
+      Track.Source.ScreenShare,
+      "screen-share Track was not subscribed",
+    );
+    const camera = createSyntheticVideoTrack("camera", "#164e63");
+    const screen = createSyntheticVideoTrack("screen", "#7c2d12");
+    syntheticVideoTracks.push(camera, screen);
+    await primaryRoom.localParticipant.publishTrack(camera.track, {
+      source: Track.Source.Camera,
+    });
+    await primaryRoom.localParticipant.publishTrack(screen.track, {
+      source: Track.Source.ScreenShare,
+    });
+    const [cameraTrack, cameraPublication, cameraPublisher] = await cameraSubscribed;
+    const [screenTrack, screenPublication, screenPublisher] = await screenSubscribed;
+    if (cameraPublisher.identity !== "web-primary" || cameraPublication.source !== Track.Source.Camera) {
+      throw new Error("camera Track publisher or source mismatch");
+    }
+    if (screenPublisher.identity !== "web-primary" || screenPublication.source !== Track.Source.ScreenShare) {
+      throw new Error("screen-share Track publisher or source mismatch");
+    }
+    const cameraStats = await waitForRemoteVideoStats(cameraTrack);
+    const screenStats = await waitForRemoteVideoStats(screenTrack);
+    if (!cameraStats || !screenStats) throw new Error("remote video Track did not receive RTP bytes");
+
+    const unpublished = waitForRemoteTrackLifecycle(
+      secondaryRoom,
+      RoomEvent.TrackUnpublished,
+      Track.Source.Microphone,
+      "remote audio Track did not emit unpublished",
+    );
+    await primaryRoom.localParticipant.unpublishTrack(localAudioTrack);
+    await unpublished;
+
+    // SDK-internal fault injection only; real TURN/weak-network recovery remains deferred.
+    await runSyntheticReconnect(secondaryRoom);
+    const audioQuality = summarizeReceiverQuality(audioStats);
+    const cameraQuality = summarizeReceiverQuality(cameraStats);
+    const screenQuality = summarizeReceiverQuality(screenStats);
+
     setStatus(
       "passed",
-      `通过：双节点连接、Data、RPC、音频 Track（${audioStats.bytesReceived} bytes）`,
+      `通过：双节点连接、Data、RPC、音视频/屏幕 Track、synthetic reconnect（audio=${audioQuality.bytesReceived} bytes/loss=${audioQuality.packetsLost ?? "n/a"}, camera=${cameraQuality.bytesReceived} bytes/loss=${cameraQuality.packetsLost ?? "n/a"}, screen=${screenQuality.bytesReceived} bytes/loss=${screenQuality.packetsLost ?? "n/a"}）`,
     );
   } finally {
     oscillator?.stop();
     localAudioTrack?.stop();
+    syntheticVideoTracks.forEach(({ stop }) => stop());
     await Promise.allSettled([primaryRoom.disconnect(), secondaryRoom.disconnect()]);
     await audioContext.close();
     runButton.disabled = false;

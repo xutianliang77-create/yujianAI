@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createAgentControlHttpsServer, createAgentControlServer } from "./server.js";
 import type { AgentControlServerOptions } from "./server.js";
-import { loadAgentArtifactVerifier, loadAgentControlPersistence } from "./runtime.js";
+import { loadAgentArtifactVerifier, loadAgentControlPersistence, loadAgentDispatchQuota } from "./runtime.js";
 
 const credential = process.env.YUJIAN_AGENT_INTERNAL_CREDENTIAL;
 if (credential === undefined || credential.length < 32) throw new Error("YUJIAN_AGENT_INTERNAL_CREDENTIAL must be at least 32 characters");
@@ -15,16 +15,20 @@ const tlsKeyFile = process.env.AGENT_CONTROL_TLS_KEY_FILE;
 if ((tlsCertFile === undefined) !== (tlsKeyFile === undefined)) throw new Error("AGENT_CONTROL_TLS_CERT_FILE and AGENT_CONTROL_TLS_KEY_FILE must be set together");
 const persistenceSpecifier = process.env.YUJIAN_AGENT_CONTROL_PERSISTENCE_MODULE;
 const artifactVerifierSpecifier = process.env.YUJIAN_AGENT_ARTIFACT_VERIFIER_MODULE;
+const dispatchQuotaSpecifier = process.env.YUJIAN_AGENT_DISPATCH_QUOTA_MODULE ?? persistenceSpecifier;
 const serverPromise = Promise.all([
   loadAgentControlPersistence(persistenceSpecifier),
   loadAgentArtifactVerifier(artifactVerifierSpecifier),
-]).then(([persistence, artifactVerifier]) => {
+  loadAgentDispatchQuota(dispatchQuotaSpecifier),
+]).then(([persistence, artifactVerifier, dispatchQuota]) => {
   if (process.env.NODE_ENV === "production" && persistence === undefined) throw new Error("production agent control requires a persistence adapter");
   if (process.env.NODE_ENV === "production" && artifactVerifier === undefined) throw new Error("production agent control requires an artifact verifier");
+  if (process.env.NODE_ENV === "production" && dispatchQuota === undefined) throw new Error("production agent control requires distributed dispatch quota");
   const options: AgentControlServerOptions = {};
   if (adminCredential !== undefined) options.adminCredential = adminCredential;
   if (persistence !== undefined) options.persistence = persistence;
   if (artifactVerifier !== undefined) options.artifactVerifier = artifactVerifier;
+  if (dispatchQuota !== undefined) options.dispatchQuota = dispatchQuota;
   return tlsCertFile === undefined || tlsKeyFile === undefined
     ? createAgentControlServer(credential, undefined, options)
     : createAgentControlHttpsServer(credential, { cert: readFileSync(tlsCertFile, "utf8"), key: readFileSync(tlsKeyFile, "utf8") }, undefined, options);

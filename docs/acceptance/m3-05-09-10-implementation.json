@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "evidenceType": "m3-05-09-10-implementation-status",
+  "generatedAt": "2026-07-19T00:00:00+08:00",
+  "scope": ["M3-05", "M3-09", "M3-10"],
+  "implementationStatus": "completed",
+  "runtimeStatus": "not-executed",
+  "testStatus": "not-executed-by-user-direction",
+  "carrierNetwork": {
+    "matrix": "cmcc-cucc-ctcc-by-north-east-south",
+    "cellsRequired": 9,
+    "minimumJoinAttemptsPerCell": 30,
+    "httpSyntheticSampler": true,
+    "httpSampleSubstitutesForRtcEvidence": false,
+    "requiredMetrics": ["join-success", "p50-p95-p99", "p95-rtt", "p95-packet-loss", "udp-tcp-tls"],
+    "partialMatrixAccepted": false
+  },
+  "designPartner": {
+    "minimumClosedTrials": 2,
+    "pseudonymousPartnerId": true,
+    "isolatedTenantEnvironment": true,
+    "versionCasStateMachine": ["planned", "onboarding", "active", "paused", "closing", "closed"],
+    "p0P1AutoPause": true,
+    "blockingDefectRequiresFixAndRegressionDigest": true,
+    "closeRequiresCoreFlowsAndCleanup": true,
+    "closedStateImmutable": true
+  },
+  "reliability": {
+    "stabilityHoursRequired": [24, 72],
+    "appendOnlyFsyncSamples": true,
+    "interruptedRunStatus": "aborted",
+    "faultScenariosRequired": 5,
+    "destructiveProductionAutomationProvided": false,
+    "releaseOwnerMaintenanceReceiptRequired": true,
+    "zeroLedgerLossRequired": true,
+    "zeroResidualResourcesRequired": true,
+    "productionOverwriteAllowed": false
+  },
+  "evidence": [
+    "infra/acceptance/m3-preview-evidence-policy.json",
+    "tools/ops/synthetic-probe.mjs",
+    "tools/ops/run-stability-probe.mjs",
+    "tools/acceptance/create-m3-preview-execution-plan.mjs",
+    "tools/acceptance/verify-m3-preview-evidence.mjs",
+    "packages/platform-contracts/src/preview-trial.ts",
+    "docs/acceptance/M3_PREVIEW_EXECUTION_AND_EVIDENCE.md",
+    "docs/preview/design-partner-trial.md",
+    "docs/reliability/fault-injection-plan.md"
+  ],
+  "notExecuted": [
+    "javascript-syntax-check",
+    "typescript-build",
+    "unit-tests",
+    "execution-plan-generator",
+    "carrier-network-probes",
+    "sdk-media-matrix",
+    "design-partner-trials",
+    "24-hour-stability",
+    "72-hour-stability",
+    "fault-injection",
+    "m3-evidence-verifier"
+  ],
+  "gate": {
+    "gateId": "Gate 3",
+    "status": "not-passed",
+    "productionReleaseAuthorized": false
+  },
+  "ownerDecisionBoundary": {
+    "bbbRegistryKms": "reject-sequence-1-remains-effective",
+    "cccLegal": "reject-sequence-1-remains-effective",
+    "supersededByThisImplementation": false
+  }
+}

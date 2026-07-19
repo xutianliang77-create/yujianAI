@@ -38,6 +38,8 @@ exports/
 logs/
 tmp/
 outputs/
+.playwright-cli/
+output/playwright/
 
 # Infrastructure-generated files
 infra/**/generated/

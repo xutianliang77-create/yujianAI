@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "taskId": "P1-M0-04-OWNER-DECISION",
+  "decisionId": "p1-m0-04-bbb-redis-20260718",
+  "personalOwner": "bbb",
+  "role": "release-owner",
+  "decisionType": "redis-release",
+  "status": "awaiting-personal-decision",
+  "decision": null,
+  "decidedAt": null,
+  "reason": null,
+  "conditions": null,
+  "expiresAt": null,
+  "evidence": [
+    {
+      "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-redis-regression-20260718T101047Z/report.json",
+      "sha256": "sha256:b52848641e435b69302275e0d042f5ce4779226855d8c6d46c7ea4067dfd66bd"
+    },
+    {
+      "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/production-oci/production-oci-redis-20260718T122200Z/result.json",
+      "sha256": "sha256:1a1202e709c5049e9bbb1a75d73d7231458e287a3ee6752269ba899419afa6d6"
+    },
+    {
+      "path": "remote:/data/models/yujianAI/registry/evidence/p1-m0-04-production-oci-summary-20260718T122500Z.json",
+      "sha256": "sha256:61f63898512b6444d92cdee4f1ececbc6269ef5575efb1c04c1c72a0cf33e1a3"
+    }
+  ],
+  "facts": {
+    "currentReference": "redis:7.2.7-alpine@sha256:1de7ca6a3f63a083036fa1d95dddbd6bdfcdf5865bb692c1e412d4bdf9cb1e37",
+    "candidateReference": "beelink.tail1e9cec.ts.net:5443/yujian/p1/redis@sha256:18e7e254e2fe1fa185f9434450649b33c1efb9a7dcda9daaf1ce0dfb133bc16b",
+    "candidateRegressionPassed": true,
+    "signatureAndAttestationVerified": true,
+    "rollbackPlanAccepted": false,
+    "registryFreezeSigned": false
+  }
+}

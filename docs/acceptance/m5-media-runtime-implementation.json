@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "task": "M5-01-10-media-runtime-development",
+  "status": "implemented-not-run",
+  "gate5Passed": false,
+  "productionReleaseAuthorized": false,
+  "sourceSchema": "001-014",
+  "implemented": [
+    "separate-provider-callback-auth-and-edge-attestation",
+    "provider-sequence-and-out-of-order-reconciliation",
+    "safe-sip-trunk-policy-and-fraud-boundary",
+    "redis-sip-frequency-concurrency-and-cost-admission",
+    "redis-ingress-egress-capacity-admission",
+    "inbound-adoption-outbound-idempotency-transfer-hangup",
+    "recording-compliance-retention-and-deletion-evidence",
+    "immutable-provider-usage-and-deterministic-reconciliation",
+    "sip-quality-lifecycle-and-low-cardinality-metrics",
+    "platform-entitlement-quota-audit-and-console"
+  ],
+  "notExecuted": [
+    "build-lint-test-openapi",
+    "migration-014",
+    "helm-render",
+    "redis-multi-replica-contention",
+    "carrier-sbc-tls-srtp",
+    "livekit-sip-ingress-egress",
+    "object-storage-retention-delete",
+    "provider-webhook-invoice-reconciliation",
+    "prometheus-grafana-load",
+    "telephone-quality-and-disaster-drill",
+    "legal-carrier-owner-approval"
+  ]
+}

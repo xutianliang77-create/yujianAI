@@ -9,3 +9,9 @@
 5. TURN/公网 UDP 禁用：验证 TCP/TLS fallback 和告警。
 
 每个场景记录注入时间、P50/P95/P99、错误率、恢复时间、RPO/RTO、残留资源和回滚决定。
+
+每次注入必须先有 release-owner 签发的限时维护 receipt，只在隔离或明确声明的
+演练环境执行。仓库只生成 pending plan 和严格 verifier，不提供自动破坏生产的
+命令。最终证据必须明确 `ledgerLoss=false`、`residualResources=false`、
+`productionOverwrite=false`，并绑定批准和运行 artifact SHA-256。详见
+[M3 Preview 执行与证据合同](../acceptance/M3_PREVIEW_EXECUTION_AND_EVIDENCE.md)。

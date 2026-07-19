@@ -240,9 +240,11 @@ dispatch metadata 必须有大小、敏感字段和保留时间限制。
 - `direction`
 - `provider`
 - `region`
-- `numbers`
+- `numberRefs`（KMS/provider reference 或不可逆 hash，不保存完整号码）
 - `credentialRef`
-- `allowedDestinations`
+- `allowedDestinationPrefixes`
+- `secureTransport`, `fraudPolicyRef`, `dispatchRuleRef`
+- `maxConcurrentCalls`, `maxCallsPerMinute`, `maxDailyCostMicros`
 - `status`
 
 ### 7.2 SipCall
@@ -339,4 +341,3 @@ BillingLine 是费率应用后的结果：
 - 质量数据与账单数据采用不同保留策略。
 - 账号关闭执行冻结、导出、结算、延迟删除和销毁证据。
 - 私有部署的数据保留由客户配置，但最低安全审计要求写入合同。
-

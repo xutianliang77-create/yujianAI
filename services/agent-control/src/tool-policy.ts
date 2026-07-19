@@ -1,9 +1,11 @@
+import { createHash } from "node:crypto";
 import type { AgentToolPolicyV1, PlatformRoleV1 } from "@yujian/platform-contracts";
 
 export interface ToolInvocationContext {
   subject: string;
   roles: readonly PlatformRoleV1[];
   explicitApproval: boolean;
+  approvalReceiptRef?: string;
   idempotencyKey: string;
   traceId: string;
 }
@@ -16,9 +18,13 @@ export interface ToolResultStore {
 export interface ToolAuditSink {
   append(event: { toolId: string; key: string; traceId: string; subject: string; outcome: "denied" | "executed" | "replayed"; occurredAt: string }): Promise<void>;
 }
+export interface ToolApprovalVerifier {
+  verify(input: { toolId: string; subject: string; traceId: string; receiptRef: string }): Promise<boolean>;
+}
 export interface ToolPolicyEngineOptions {
   resultStore?: ToolResultStore;
   audit?: ToolAuditSink;
+  approvalVerifier?: ToolApprovalVerifier;
   now?: () => Date;
 }
 
@@ -38,18 +44,22 @@ export class ToolPolicyEngine {
     execute: () => Promise<T>,
   ): Promise<T> {
     const now = () => (this.options.now ?? (() => new Date()))().toISOString();
+    const key = createHash("sha256").update(`${context.subject}\u0000${policy.toolId}\u0000${context.idempotencyKey}`).digest("hex");
     const denied = async (message: string): Promise<never> => {
-      await this.options.audit?.append({ toolId: policy.toolId, key: context.idempotencyKey, traceId: context.traceId, subject: context.subject, outcome: "denied", occurredAt: now() });
+      await this.options.audit?.append({ toolId: policy.toolId, key, traceId: context.traceId, subject: context.subject, outcome: "denied", occurredAt: now() });
       throw new ToolPolicyDeniedError(message);
     };
     if (policy.idempotencyRequired && context.idempotencyKey.length === 0) return denied("tool idempotency key is required");
     if (context.idempotencyKey.length > 128 || context.traceId.length === 0 || context.traceId.length > 256) return denied("tool invocation context is invalid");
-    if (policy.requiresExplicitApproval && !context.explicitApproval) return denied("explicit approval is required for this tool");
+    if (policy.requiresExplicitApproval && (!context.explicitApproval || context.approvalReceiptRef === undefined || this.options.approvalVerifier === undefined)) return denied("verifiable explicit approval is required for this tool");
     if (!context.roles.some((role) => policy.allowedRoles.includes(role))) return denied("subject role is not allowed for this tool");
-    const key = `${policy.toolId}:${context.idempotencyKey}`;
     const inFlight = this.inFlight.get(key);
     if (inFlight !== undefined) return inFlight as Promise<T>;
     const run = (async () => {
+      if (policy.requiresExplicitApproval) {
+        const verified = await this.options.approvalVerifier!.verify({ toolId: policy.toolId, subject: context.subject, traceId: context.traceId, receiptRef: context.approvalReceiptRef! });
+        if (!verified) return denied("explicit approval receipt was rejected");
+      }
       if (this.completed.has(key)) {
         await this.options.audit?.append({ toolId: policy.toolId, key, traceId: context.traceId, subject: context.subject, outcome: "replayed", occurredAt: now() });
         return this.completed.get(key) as T;

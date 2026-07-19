@@ -54,7 +54,7 @@ export class AgentDispatchRunner {
       await this.control.complete(this.worker.workerId, job.dispatchId);
       this.observe({ event: "completed", dispatchId: job.dispatchId, traceId: job.traceId, durationMs: Date.now() - startedAt });
     } catch (error) {
-      const reason = error instanceof Error ? error.message.slice(0, 256) : "dispatch handler failed";
+      const reason = signalReason(error);
       await this.control.fail(this.worker.workerId, dispatch.dispatchId, reason).catch(() => undefined);
       this.observe({ event: "failed", dispatchId: job.dispatchId, traceId: job.traceId, durationMs: Date.now() - startedAt, error: reason });
     }
@@ -94,4 +94,9 @@ export class AgentDispatchRunner {
       // Observation is best-effort; a metrics sink must never change dispatch state.
     }
   }
+}
+
+function signalReason(error: unknown): string {
+  if (error instanceof DOMException && error.name === "AbortError") return "dispatch cancelled";
+  return "dispatch handler failed";
 }

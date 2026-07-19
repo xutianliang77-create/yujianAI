@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "policyId": "m3-preview-gate-v1",
+  "carrierNetwork": {
+    "requiredCarriers": ["cmcc", "cucc", "ctcc"],
+    "requiredRegions": ["north", "east", "south"],
+    "minimumJoinAttemptsPerCell": 30,
+    "maximumJoinFailureRatio": 0.01,
+    "maximumP95JoinLatencyMs": 3000,
+    "maximumP99JoinLatencyMs": 5000,
+    "maximumP95RttMs": 300,
+    "maximumP95PacketLossRatio": 0.05,
+    "requiredFallbackTransports": ["udp", "tcp", "tls"]
+  },
+  "designPartners": {
+    "minimumClosedTrials": 2,
+    "requiredCoreFlows": ["token", "join", "publish-audio", "subscribe-audio", "data", "rpc", "reconnect"],
+    "blockingSeverities": ["p0", "p1"],
+    "requireSyntheticOrAuthorizedData": true,
+    "requireApiKeyRevocation": true,
+    "requireResourceDeletion": true,
+    "requireAuditExport": true
+  },
+  "reliability": {
+    "requiredStabilityHours": [24, 72],
+    "minimumAvailabilityRatio": 0.999,
+    "maximumSampleIntervalSeconds": 60,
+    "minimumSampleCoverageRatio": 0.95,
+    "requiredFaultScenarios": ["rtc-node-stop", "redis-unavailable", "postgres-primary-unavailable", "provider-timeout-rate-limit", "turn-udp-disabled"],
+    "requireZeroLedgerLoss": true,
+    "requireNoResidualResources": true
+  }
+}

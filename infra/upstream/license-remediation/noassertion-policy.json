@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "taskId": "P1-M0-04-NOASSERTION-REMEDIATION",
+  "expected": {
+    "declaredNoAssertion": 335,
+    "images": {
+      "postgres-16.14-alpine-gosu-go1.25.12": 6,
+      "openbao-2.5.4-crypto0.52-net0.55-openssl3.5.7-go1.25.12": 329
+    }
+  },
+  "customLicenseRefs": [
+    {
+      "licenseId": "LicenseRef-Yujian-Image-Aggregate",
+      "name": "Yujian image aggregate record",
+      "extractedText": "This synthetic SPDX package represents the complete OCI image. It has no single license; the licenses concluded for the image packages and the attached LICENSE/NOTICE payload control.",
+      "comment": "This identifier is an inventory marker, not a redistribution permission or legal approval."
+    },
+    {
+      "licenseId": "LicenseRef-Yujian-ReedSolomon-Pending-Legal",
+      "name": "yeqown/reedsolomon v1.0.0 license requires legal confirmation",
+      "extractedText": "The v1.0.0 tag does not contain a LICENSE, COPYING or NOTICE file. The upstream repository added an MIT license in commit c5f4bc9af094852b52e593a5f964647c43028c51 on 2026-03-08, after the 2018 v1.0.0 tag. Legal owner confirmation is required before distribution.",
+      "seeAlsos": [
+        "https://github.com/yeqown/reedsolomon/tree/v1.0.0",
+        "https://github.com/yeqown/reedsolomon/commit/c5f4bc9af094852b52e593a5f964647c43028c51"
+      ],
+      "comment": "The later MIT text is retained as evidence but is not silently applied to the old tag."
+    }
+  ],
+  "overrides": [
+    {
+      "image": "postgres-16.14-alpine-gosu-go1.25.12",
+      "name": ".postgresql-rundeps",
+      "licenseConcluded": "NONE",
+      "resolutionStatus": "no-independent-content",
+      "evidence": ["Alpine virtual dependency package created with apk --virtual; the SPDX record contains no independent software content"]
+    },
+    {
+      "image": "postgres-16.14-alpine-gosu-go1.25.12",
+      "name": "github.com/moby/sys/user",
+      "version": "v0.1.0",
+      "licenseConcluded": "Apache-2.0",
+      "resolutionStatus": "engineering-concluded",
+      "evidence": ["licenses/gosu-and-moby-sys-user-Apache-2.0.txt", "Go module sum h1:WmZ93f5Ux6het5iituh9x2zAG7NFY9Aqi49jjE1PaQg="]
+    },
+    {
+      "image": "postgres-16.14-alpine-gosu-go1.25.12",
+      "name": "github.com/tianon/gosu",
+      "licenseConcluded": "Apache-2.0",
+      "resolutionStatus": "engineering-concluded",
+      "evidence": ["licenses/gosu-and-moby-sys-user-Apache-2.0.txt", "gosu commit 6456aaa0f3c854d199d0f037f068eb97515b7513"]
+    },
+    {
+      "image": "postgres-16.14-alpine-gosu-go1.25.12",
+      "name": "golang.org/x/sys",
+      "version": "v0.1.0",
+      "licenseConcluded": "BSD-3-Clause",
+      "resolutionStatus": "engineering-concluded",
+      "evidence": ["licenses/golang-x-sys-v0.1.0-BSD-3-Clause.txt", "Go module sum h1:kunALQeHf1/185U1i0GOB/fy1IPRDDpuoOOqRReG57U="]
+    },
+    {
+      "image": "postgres-16.14-alpine-gosu-go1.25.12",
+      "name": "postgresql",
+      "version": "16.14",
+      "licenseConcluded": "PostgreSQL",
+      "resolutionStatus": "engineering-concluded",
+      "evidence": ["licenses/postgresql-16.14-COPYRIGHT.txt"]
+    },
+    {
+      "image": "postgres-16.14-alpine-gosu-go1.25.12",
+      "name": "yujian/p1-postgres",
+      "licenseConcluded": "LicenseRef-Yujian-Image-Aggregate",
+      "resolutionStatus": "informational-aggregate",
+      "evidence": ["remediated-sbom/postgres.spdx.json", "NOTICE.md"]
+    },
+    {
+      "image": "openbao-2.5.4-crypto0.52-net0.55-openssl3.5.7-go1.25.12",
+      "name": "github.com/boltdb/bolt",
+      "licenseConcluded": "MPL-2.0",
+      "resolutionStatus": "engineering-concluded",
+      "evidence": ["source-evidence/openbao-helper-stubbolt.go", "local go.mod replacement github.com/boltdb/bolt => ./helper/stubbolt"]
+    },
+    {
+      "image": "openbao-2.5.4-crypto0.52-net0.55-openssl3.5.7-go1.25.12",
+      "name": "github.com/openbao/openbao",
+      "licenseConcluded": "MPL-2.0",
+      "resolutionStatus": "engineering-concluded",
+      "evidence": ["licenses/openbao-2.5.4-MPL-2.0.txt"]
+    },
+    {
+      "image": "openbao-2.5.4-crypto0.52-net0.55-openssl3.5.7-go1.25.12",
+      "name": "github.com/openbao/openbao-template",
+      "version": "v1.0.1",
+      "licenseConcluded": "MPL-2.0",
+      "resolutionStatus": "engineering-concluded",
+      "evidence": ["licenses/openbao-template-v1.0.1-MPL-2.0.txt"]
+    },
+    {
+      "image": "openbao-2.5.4-crypto0.52-net0.55-openssl3.5.7-go1.25.12",
+      "name": "github.com/openbao/openbao/api/auth/kubernetes/v2",
+      "licenseConcluded": "MPL-2.0",
+      "resolutionStatus": "engineering-concluded",
+      "evidence": ["licenses/openbao-2.5.4-MPL-2.0.txt", "OpenBao v2.5.4 source distribution"]
+    },
+    {
+      "image": "openbao-2.5.4-crypto0.52-net0.55-openssl3.5.7-go1.25.12",
+      "name": "github.com/openbao/openbao/api/v2",
+      "licenseConcluded": "MPL-2.0",
+      "resolutionStatus": "engineering-concluded",
+      "evidence": ["licenses/openbao-2.5.4-MPL-2.0.txt", "OpenBao v2.5.4 source distribution"]
+    },
+    {
+      "image": "openbao-2.5.4-crypto0.52-net0.55-openssl3.5.7-go1.25.12",
+      "name": "github.com/openbao/openbao/sdk/v2",
+      "licenseConcluded": "MPL-2.0",
+      "resolutionStatus": "engineering-concluded",
+      "evidence": ["licenses/openbao-2.5.4-MPL-2.0.txt", "OpenBao v2.5.4 source distribution"]
+    },
+    {
+      "image": "openbao-2.5.4-crypto0.52-net0.55-openssl3.5.7-go1.25.12",
+      "name": "github.com/yeqown/reedsolomon",
+      "version": "v1.0.0",
+      "licenseConcluded": "LicenseRef-Yujian-ReedSolomon-Pending-Legal",
+      "resolutionStatus": "legal-owner-review-required",
+      "evidence": ["licenses/yeqown-reedsolomon-MIT-added-20260308-pending-legal.txt", "v1.0.0 tree has no license file", "upstream license commit c5f4bc9af094852b52e593a5f964647c43028c51"]
+    },
+    {
+      "image": "openbao-2.5.4-crypto0.52-net0.55-openssl3.5.7-go1.25.12",
+      "name": "yujian/p1-openbao",
+      "licenseConcluded": "LicenseRef-Yujian-Image-Aggregate",
+      "resolutionStatus": "informational-aggregate",
+      "evidence": ["remediated-sbom/openbao.spdx.json", "NOTICE.md"]
+    }
+  ]
+}

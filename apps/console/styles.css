@@ -13,12 +13,15 @@ h1 { margin: 8px 0; font-size: clamp(32px, 6vw, 56px); }
 .subtitle { color: #aeb9d9; margin-bottom: 34px; }
 .card { background: rgba(20, 29, 56, .88); border: 1px solid #293761; border-radius: 18px; padding: 24px; margin: 16px 0; box-shadow: 0 16px 48px rgba(0,0,0,.2); }
 h2 { font-size: 18px; margin: 0 0 18px; }
+h3 { font-size: 15px; margin: 24px 0 14px; color: #cdd8ff; }
 .grid { display: grid; gap: 14px; }
 .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 label { color: #aeb9d9; font-size: 13px; display: grid; gap: 7px; }
-input { width: 100%; border: 1px solid #3b4d7d; background: #10182e; color: #f2f5ff; border-radius: 9px; padding: 11px 12px; font: inherit; }
-input:focus { outline: 2px solid #7190ff; outline-offset: 1px; }
+input, select { width: 100%; border: 1px solid #3b4d7d; background: #10182e; color: #f2f5ff; border-radius: 9px; padding: 11px 12px; font: inherit; }
+input:focus, select:focus { outline: 2px solid #7190ff; outline-offset: 1px; }
+.confirm { display: flex; align-items: center; gap: 10px; margin-top: 18px; }
+.confirm input { width: auto; }
 .actions { display: flex; gap: 10px; margin-top: 18px; }
 button { border: 1px solid #526aa9; border-radius: 9px; padding: 10px 16px; color: #eef2ff; background: #1d2b50; cursor: pointer; font-weight: 650; }
 button:hover { background: #293e72; }

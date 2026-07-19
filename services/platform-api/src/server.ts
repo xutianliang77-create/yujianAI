@@ -6,6 +6,7 @@ import {
   YujianRegionRouter,
   YujianRtcCapacityController,
   YujianRtcNodePool,
+  type RtcCapacityRequestV1,
   type YujianRtcProbeResult,
   type YujianRtcReadiness,
 } from "@yujian/livekit-compat";
@@ -14,6 +15,8 @@ import type {
   InvoiceV1,
   BillingAdjustmentV1,
   IssuedRoomTokenV1,
+  IssuedTurnCredentialV1,
+  NormalizedTurnCredentialRequestV1,
   NormalizedIssueRoomTokenRequestV1,
   QuotaSnapshotV1,
   QuotaPolicyV1,
@@ -24,10 +27,17 @@ import {
   parseCreateApiKeyRequest,
   parseCreateEnvironmentRequest,
   parseCreateTenantMemberRequest,
+  parseOnboardTenantRequest,
   parseCreateProjectRequest,
+  parseCreateSupportTicketRequest,
   parseCreateTenantRequest,
+  parseIssueSupportAccessGrantRequest,
   parseIssueRoomTokenRequest,
+  parseRegisterSupportBundleRequest,
+  parseUpsertEnvironmentEntitlementRequest,
+  parseTurnCredentialRequest,
   parseUpdateTenantMemberRequest,
+  parseUpdateSupportTicketRequest,
   parseUpdateEnvironmentRequest,
   type PlatformScopeV1,
   type PlatformErrorV1,
@@ -49,9 +59,16 @@ import { RtcTelemetryBuffer } from "./rtc-telemetry.js";
 import type { RtcTelemetryPersistence } from "./telemetry-persistence.js";
 import { PlatformRateLimiter, type RateLimiter } from "./rate-limit.js";
 import { PlatformMetrics } from "./metrics.js";
+import { recordRtcQualityMetrics } from "./rtc-quality-metrics.js";
 import { DisabledMediaOps, HttpMediaOpsClient, MediaOpsRequestError, MediaOpsUnavailableError, type PlatformMediaOps } from "./media-client.js";
+import type { PlatformRtcCapacityProvider, RtcCapacityAdmissionLease } from "./redis-rtc-capacity.js";
+import { EntitlementError, type PlatformEntitlementService } from "./postgres-entitlements.js";
+import { SupportServiceError, type PlatformSupportService } from "./postgres-support.js";
+import { RemoteAssistanceError, type IssuedRemoteAssistanceSession, type RemoteAssistanceSession, type RemoteCommandClass } from "./postgres-remote-assistance.js";
 
 const TOKEN_PATH = "/platform/v1/rtc/token";
+const CAPACITY_REPORT_PATH = "/internal/v1/rtc/capacity";
+const TURN_CREDENTIAL_PATH = "/platform/v1/rtc/turn-credentials";
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/u;
 const ROOM_SEGMENT_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/u;
 const OUTBOX_EVENT_ID_PATTERN = /^[A-Za-z0-9._:-]{1,256}$/u;
@@ -84,6 +101,10 @@ export interface PlatformRoomService {
 
 export interface PlatformTokenIssuer {
   issue(request: NormalizedIssueRoomTokenRequestV1): Promise<IssuedRoomTokenV1>;
+}
+
+export interface PlatformTurnCredentialIssuer {
+  issue(request: NormalizedTurnCredentialRequestV1): IssuedTurnCredentialV1 | Promise<IssuedTurnCredentialV1>;
 }
 
 export interface PlatformRegionRouter {
@@ -120,8 +141,16 @@ export interface PlatformDataRightsService {
 /** Deployment-owned OIDC/SAML bridge; it maps a verified subject to a scoped platform credential. */
 export type PlatformIdentityCredential = Omit<PlatformCredential, "credential">;
 
+export interface PlatformIdentitySubject {
+  subject: string;
+  tenantId?: string;
+  roles: readonly string[];
+}
+
 export interface PlatformIdentityProvider {
   authenticate(accessToken: string, request: IncomingMessage): Promise<PlatformIdentityCredential | undefined>;
+  /** Verifies an identity before it has a platform scope, for registration and invitation acceptance. */
+  authenticateSubject?(accessToken: string, request: IncomingMessage): Promise<PlatformIdentitySubject | undefined>;
 }
 
 export interface PlatformOutboxReplayService {
@@ -135,7 +164,15 @@ export interface PlatformBackgroundWorker {
 
 export interface PlatformTelemetryPersistence extends RtcTelemetryPersistence {}
 
+export interface PlatformRemoteAssistanceService {
+  begin(accessToken: string, ticketId: string, permission: "remote.inspect" | "remote.execute"): Promise<IssuedRemoteAssistanceSession>;
+  record(sessionId: string, sessionToken: string, commandClass: RemoteCommandClass, commandDigest: string, outcome: "allowed" | "denied" | "succeeded" | "failed"): Promise<RemoteAssistanceSession>;
+  end(sessionId: string, sessionToken: string): Promise<RemoteAssistanceSession>;
+}
+
 export interface PlatformServerDependencies {
+  /** Closes deployment-owned clients such as PostgreSQL pools and Redis connections. */
+  close?: () => Promise<void>;
   readinessCheck?: () => Promise<YujianRtcProbeResult | YujianRtcReadiness>;
   logger?: (event: PlatformLogEvent) => void;
   store?: PlatformStore;
@@ -152,6 +189,11 @@ export interface PlatformServerDependencies {
   /** Durable tenant/project/environment/API-key projection; required by production runtime. */
   storePersistence?: PlatformStorePersistence;
   capacityController?: YujianRtcCapacityController;
+  rtcCapacity?: PlatformRtcCapacityProvider;
+  turnCredentials?: PlatformTurnCredentialIssuer;
+  entitlements?: PlatformEntitlementService;
+  support?: PlatformSupportService;
+  remoteAssistance?: PlatformRemoteAssistanceService;
   billing?: PlatformBillingService;
   dataRights?: PlatformDataRightsService;
   identity?: PlatformIdentityProvider;
@@ -259,6 +301,20 @@ function credentialAllows(credential: PlatformCredential, permission: string): b
   return credentialHasPermission(credential, permission);
 }
 
+function supportAccessToken(request: IncomingMessage): string | undefined {
+  const authorization = request.headers.authorization;
+  if (typeof authorization !== "string" || !authorization.startsWith("Bearer ")) return undefined;
+  const token = authorization.slice("Bearer ".length);
+  return /^yj_sup_[A-Za-z0-9_-]{43}$/u.test(token) ? token : undefined;
+}
+
+function remoteSessionToken(request: IncomingMessage): string | undefined {
+  const authorization = request.headers.authorization;
+  if (typeof authorization !== "string" || !authorization.startsWith("Bearer ")) return undefined;
+  const token = authorization.slice("Bearer ".length);
+  return /^yj_remote_[A-Za-z0-9_-]{43}$/u.test(token) ? token : undefined;
+}
+
 function publicNodeStatuses(
   statuses: YujianRtcReadiness["nodes"],
 ) {
@@ -323,6 +379,11 @@ export function createPlatformServer(
   const roomService: PlatformRoomService = dependencies.roomService ?? new YujianRoomServiceAdapter(nodePool.nodes);
   const regionRouter: PlatformRegionRouter = dependencies.regionRouter ?? new YujianRegionRouter(nodePool.nodes);
   const capacityController = dependencies.capacityController;
+  const rtcCapacity = dependencies.rtcCapacity;
+  const turnCredentials = dependencies.turnCredentials;
+  const entitlements = dependencies.entitlements;
+  const support = dependencies.support;
+  const remoteAssistance = dependencies.remoteAssistance;
   const tokenIssuers: ReadonlyMap<string, PlatformTokenIssuer> = dependencies.tokenIssuers ?? new Map(
     nodePool.nodes.map(
       (node): [string, PlatformTokenIssuer] => [node.id, new YujianRoomTokenIssuer(node)],
@@ -392,7 +453,7 @@ export function createPlatformServer(
     if (config.corsOrigin !== undefined && requestOrigin === config.corsOrigin) {
       response.setHeader("access-control-allow-origin", config.corsOrigin);
       response.setHeader("access-control-allow-headers", "authorization, content-type, idempotency-key, x-request-id");
-      response.setHeader("access-control-allow-methods", "GET, POST, PATCH, DELETE, OPTIONS");
+      response.setHeader("access-control-allow-methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
       response.setHeader("access-control-max-age", "600");
       response.setHeader("vary", "Origin");
     }
@@ -410,6 +471,7 @@ export function createPlatformServer(
     let errorName: string | undefined;
     let requestScope: PlatformScopeV1 | undefined;
     let releaseTokenQuota: (() => void | Promise<void>) | undefined;
+    let failedCapacityLease: RtcCapacityAdmissionLease | undefined;
 
     try {
       await restored;
@@ -448,6 +510,29 @@ export function createPlatformServer(
           service: "@yujian/platform-api",
           version: "0.1.0",
         });
+        return;
+      }
+
+      if (url.pathname === CAPACITY_REPORT_PATH) {
+        if (method !== "POST") {
+          statusCode = 405;
+          sendPlatformError(response, requestId, statusCode, { code: "METHOD_NOT_ALLOWED", message: "This resource only accepts POST", retryable: false }, { allow: "POST" });
+          return;
+        }
+        if (!bearerCredentialMatches(request.headers, config.rtcCapacityCredential)) {
+          statusCode = config.rtcCapacityCredential === undefined ? 503 : 401;
+          sendPlatformError(response, requestId, statusCode, { code: statusCode === 503 ? "UPSTREAM_UNAVAILABLE" : "AUTHENTICATION_FAILED", message: "RTC capacity reporting is unavailable", retryable: statusCode === 503 });
+          return;
+        }
+        if (rtcCapacity === undefined) {
+          statusCode = 503;
+          sendPlatformError(response, requestId, statusCode, { code: "UPSTREAM_UNAVAILABLE", message: "Distributed RTC capacity storage is unavailable", retryable: true });
+          return;
+        }
+        if (!contentTypeIsJson(request)) throw new ContractValidationError([{ field: "Content-Type", reason: "must be application/json" }]);
+        const report = await rtcCapacity.publish(await readJsonBody(request));
+        statusCode = 202;
+        sendJson(response, statusCode, { apiVersion: PLATFORM_API_VERSION, requestId, data: { nodeId: report.nodeId, sequence: report.sequence, expiresAt: report.expiresAt } });
         return;
       }
 
@@ -496,6 +581,58 @@ export function createPlatformServer(
       }
 
       const path = url.pathname.split("/").filter(Boolean);
+      const isOnboarding = method === "POST" && url.pathname === "/platform/v1/onboarding";
+      const invitationAccept = method === "POST"
+        ? url.pathname.match(/^\/platform\/v1\/invitations\/([^/:]+):accept$/u)
+        : null;
+      if (isOnboarding || invitationAccept !== null) {
+        if (identityProvider?.authenticateSubject === undefined) {
+          statusCode = 503;
+          sendPlatformError(response, requestId, statusCode, { code: "UPSTREAM_UNAVAILABLE", message: "OIDC identity onboarding is not configured", retryable: true });
+          return;
+        }
+        const authorization = request.headers.authorization;
+        if (typeof authorization !== "string" || !authorization.startsWith("Bearer ")) {
+          statusCode = 401;
+          sendPlatformError(response, requestId, statusCode, { code: "AUTHENTICATION_FAILED", message: "A verified OIDC identity is required", retryable: false });
+          return;
+        }
+        let identity: PlatformIdentitySubject | undefined;
+        try { identity = await identityProvider.authenticateSubject(authorization.slice("Bearer ".length), request); }
+        catch { identity = undefined; }
+        if (identity === undefined) {
+          statusCode = 401;
+          sendPlatformError(response, requestId, statusCode, { code: "AUTHENTICATION_FAILED", message: "OIDC identity verification failed", retryable: false });
+          return;
+        }
+        if (invitationAccept !== null) {
+          const member = store.getMember(invitationAccept[1] ?? "");
+          if (member.subject !== identity.subject || member.status !== "invited") {
+            statusCode = 403;
+            sendPlatformError(response, requestId, statusCode, { code: "AUTHORIZATION_FAILED", message: "The invitation cannot be accepted by this identity", retryable: false });
+            return;
+          }
+          const accepted = store.updateMember(member.memberId, { status: "active" });
+          await persistAudit(store, persistence, { tenantId: accepted.tenantId, actorType: "human", actorId: identity.subject, action: "tenant.invitation.accept", resourceType: "tenant-member", resourceId: accepted.memberId, requestId, result: "success", riskLevel: "medium", occurredAt: new Date().toISOString() });
+          await persistStore();
+          statusCode = 200;
+          sendJson(response, statusCode, { apiVersion: PLATFORM_API_VERSION, requestId, data: accepted });
+          return;
+        }
+        if (!contentTypeIsJson(request)) {
+          statusCode = 400;
+          sendPlatformError(response, requestId, statusCode, { code: "VALIDATION_FAILED", message: "Content-Type must be application/json", retryable: false });
+          return;
+        }
+        const endpoint = nodePool.nodes[0]?.wsUrl;
+        if (endpoint === undefined) throw new Error("RTC endpoint is unavailable for onboarding");
+        const onboarded = store.onboardTenant(identity.subject, parseOnboardTenantRequest(await readJsonBody(request)), endpoint, requiredIdempotencyKeyFrom(request));
+        await persistAudit(store, persistence, { tenantId: onboarded.tenant.tenantId, projectId: onboarded.project.projectId, environmentId: onboarded.environment.environmentId, actorType: "human", actorId: identity.subject, action: "tenant.onboard", resourceType: "tenant", resourceId: onboarded.tenant.tenantId, requestId, result: "success", riskLevel: "medium", occurredAt: new Date().toISOString() });
+        await persistStore();
+        statusCode = 201;
+        sendJson(response, statusCode, { apiVersion: PLATFORM_API_VERSION, requestId, data: onboarded });
+        return;
+      }
       const isTenantGet = method === "GET" && path.length === 4 && path[0] === "platform" && path[1] === "v1" && path[2] === "tenants";
       const isProjectGet = method === "GET" && path.length === 4 && path[0] === "platform" && path[1] === "v1" && path[2] === "projects";
       const isEnvironmentGet = method === "GET" && path.length === 4 && path[0] === "platform" && path[1] === "v1" && path[2] === "environments";
@@ -538,6 +675,246 @@ export function createPlatformServer(
         await persistStore();
         statusCode = 200;
         sendJson(response, statusCode, { apiVersion: PLATFORM_API_VERSION, requestId, data: updated });
+        return;
+      }
+      const isEntitlementGet = method === "GET" && path.length === 5 && path[0] === "platform" && path[1] === "v1" && path[2] === "environments" && path[4] === "entitlement";
+      const isEntitlementPut = method === "PUT" && path.length === 6 && path[0] === "platform" && path[1] === "v1" && path[2] === "admin" && path[3] === "environments" && path[5] === "entitlement";
+      if (isEntitlementGet || isEntitlementPut) {
+        if (entitlements === undefined) {
+          statusCode = 503;
+          sendPlatformError(response, requestId, statusCode, { code: "UPSTREAM_UNAVAILABLE", message: "Entitlement service is unavailable", retryable: true });
+          return;
+        }
+        const environmentId = isEntitlementGet ? path[3] ?? "" : path[4] ?? "";
+        if (isEntitlementPut) {
+          if (!bearerCredentialMatches(request.headers, adminCredential)) {
+            statusCode = adminCredential === undefined ? 401 : 403;
+            sendPlatformError(response, requestId, statusCode, { code: statusCode === 401 ? "AUTHENTICATION_FAILED" : "AUTHORIZATION_FAILED", message: "A control-plane admin credential is required", retryable: false });
+            return;
+          }
+          const environment = store.getEnvironmentById(environmentId);
+          const scope = { tenantId: environment.tenantId, projectId: environment.projectId, environmentId };
+          if (!contentTypeIsJson(request)) throw new ContractValidationError([{ field: "Content-Type", reason: "must be application/json" }]);
+          const entitlement = await entitlements.upsert(scope, parseUpsertEnvironmentEntitlementRequest(await readJsonBody(request)));
+          await persistAudit(store, persistence, { ...scope, actorType: "service", actorId: "platform-admin", action: "entitlement.upsert", resourceType: "environment-entitlement", resourceId: entitlement.entitlementId, requestId, result: "success", riskLevel: "high", occurredAt: new Date().toISOString(), details: { planId: entitlement.planId, version: entitlement.version } });
+          await persistStore();
+          statusCode = 200;
+          sendJson(response, statusCode, { apiVersion: PLATFORM_API_VERSION, requestId, data: entitlement });
+          return;
+        }
+        const credential = await resolveRequestCredential(request, config, store, identityProvider);
+        if (credential === undefined || credential.environmentId !== environmentId || !credentialAllows(credential, "usage.read")) {
+          statusCode = credential === undefined ? 401 : 403;
+          sendPlatformError(response, requestId, statusCode, { code: statusCode === 401 ? "AUTHENTICATION_FAILED" : "AUTHORIZATION_FAILED", message: "The credential cannot read this entitlement", retryable: false });
+          return;
+        }
+        const scope = { tenantId: credential.tenantId, projectId: credential.projectId, environmentId: credential.environmentId };
+        store.getEnvironment(scope);
+        const entitlement = await entitlements.get(scope);
+        statusCode = 200;
+        sendJson(response, statusCode, { apiVersion: PLATFORM_API_VERSION, requestId, data: entitlement });
+        return;
+      }
+      const isSupportCollection = path.length === 6 && path[0] === "platform" && path[1] === "v1" && path[2] === "environments" && path[4] === "support" && path[5] === "tickets";
+      const isSupportItem = path.length === 7 && path[0] === "platform" && path[1] === "v1" && path[2] === "environments" && path[4] === "support" && path[5] === "tickets";
+      if (isSupportCollection || isSupportItem) {
+        if (support === undefined) {
+          statusCode = 503;
+          sendPlatformError(response, requestId, statusCode, { code: "UPSTREAM_UNAVAILABLE", message: "Support service is unavailable", retryable: true });
+          return;
+        }
+        const credential = await resolveRequestCredential(request, config, store, identityProvider);
+        const environmentId = path[3] ?? "";
+        const permission = method === "GET" ? "support.ticket.read" : "support.ticket.write";
+        if (credential === undefined || credential.environmentId !== environmentId || !credentialAllows(credential, permission)) {
+          statusCode = credential === undefined ? 401 : 403;
+          sendPlatformError(response, requestId, statusCode, { code: statusCode === 401 ? "AUTHENTICATION_FAILED" : "AUTHORIZATION_FAILED", message: "The credential cannot access support tickets", retryable: false });
+          return;
+        }
+        requestScope = scopeFromCredential(credential);
+        store.getEnvironment(requestScope);
+        if (isSupportItem) {
+          if (method !== "GET" || !validRoomSegment(path[6])) {
+            statusCode = 405;
+            sendPlatformError(response, requestId, statusCode, { code: "METHOD_NOT_ALLOWED", message: "This support ticket resource only accepts GET", retryable: false }, { allow: "GET" });
+            return;
+          }
+          const ticket = await support.get(requestScope, path[6]);
+          statusCode = 200;
+          sendJson(response, statusCode, { apiVersion: PLATFORM_API_VERSION, requestId, data: ticket });
+          return;
+        }
+        if (method === "GET") {
+          const tickets = await support.list(requestScope);
+          statusCode = 200;
+          sendJson(response, statusCode, { apiVersion: PLATFORM_API_VERSION, requestId, data: { tickets } });
+          return;
+        }
+        if (method !== "POST") {
+          statusCode = 405;
+          sendPlatformError(response, requestId, statusCode, { code: "METHOD_NOT_ALLOWED", message: "Support ticket collection accepts GET and POST", retryable: false }, { allow: "GET, POST" });
+          return;
+        }
+        if (!contentTypeIsJson(request)) throw new ContractValidationError([{ field: "Content-Type", reason: "must be application/json" }]);
+        const ticket = await support.create(requestScope, parseCreateSupportTicketRequest(await readJsonBody(request)), requiredIdempotencyKeyFrom(request));
+        await persistAudit(store, persistence, { ...requestScope, actorType: "service", actorId: "platform-credential", action: "support.ticket.create", resourceType: "support-ticket", resourceId: ticket.ticketId, requestId, result: "success", riskLevel: "low", occurredAt: new Date().toISOString(), details: { severity: ticket.severity, category: ticket.category } });
+        await persistStore();
+        statusCode = 201;
+        sendJson(response, statusCode, { apiVersion: PLATFORM_API_VERSION, requestId, data: ticket });
+        return;
+      }
+      const isSupportAccessTicket = method === "GET" && path.length === 5 && path[0] === "platform" && path[1] === "v1" && path[2] === "support" && path[3] === "tickets";
+      const isSupportAccessBundle = method === "GET" && path.length === 7 && path[0] === "platform" && path[1] === "v1" && path[2] === "support" && path[3] === "tickets" && path[5] === "bundles";
+      if (isSupportAccessTicket || isSupportAccessBundle) {
+        if (support === undefined) {
+          statusCode = 503;
+          sendPlatformError(response, requestId, statusCode, { code: "UPSTREAM_UNAVAILABLE", message: "Support service is unavailable", retryable: true });
+          return;
+        }
+        const token = supportAccessToken(request);
+        const ticketId = path[4];
+        const bundleId = path[6] ?? "";
+        if (token === undefined || !validRoomSegment(ticketId) || (isSupportAccessBundle && !validRoomSegment(bundleId))) {
+          statusCode = 401;
+          sendPlatformError(response, requestId, statusCode, { code: "AUTHENTICATION_FAILED", message: "A valid one-time support access token is required", retryable: false });
+          return;
+        }
+        const permission = isSupportAccessBundle ? "bundle.download" : "ticket.read";
+        const grant = await support.consumeAccess(token, permission, ticketId);
+        const ticket = await support.getById(ticketId);
+        requestScope = { tenantId: ticket.tenantId, projectId: ticket.projectId, environmentId: ticket.environmentId };
+        const resource = isSupportAccessBundle ? await support.getBundle(ticketId, bundleId) : ticket;
+        await persistAudit(store, persistence, { ...requestScope, actorType: "human", actorId: grant.operatorSubject, action: isSupportAccessBundle ? "support.bundle.access" : "support.ticket.access", resourceType: isSupportAccessBundle ? "support-bundle" : "support-ticket", resourceId: isSupportAccessBundle ? bundleId : ticketId, requestId, result: "success", riskLevel: "high", occurredAt: new Date().toISOString(), details: { grantId: grant.grantId } });
+        await persistStore();
+        statusCode = 200;
+        sendJson(response, statusCode, { apiVersion: PLATFORM_API_VERSION, requestId, data: resource });
+        return;
+      }
+      const isRemoteBegin = method === "POST" && path.length === 6 && path[0] === "platform" && path[1] === "v1" && path[2] === "support" && path[3] === "tickets" && path[5] === "remote-sessions";
+      const isRemoteAction = method === "POST" && path.length === 6 && path[0] === "platform" && path[1] === "v1" && path[2] === "support" && path[3] === "remote-sessions" && (path[5] === "events" || path[5] === "end");
+      if (isRemoteBegin || isRemoteAction) {
+        if (support === undefined || remoteAssistance === undefined) {
+          statusCode = 503;
+          sendPlatformError(response, requestId, statusCode, { code: "UPSTREAM_UNAVAILABLE", message: "Remote assistance service is unavailable", retryable: true });
+          return;
+        }
+        if (!contentTypeIsJson(request)) throw new ContractValidationError([{ field: "Content-Type", reason: "must be application/json" }]);
+        if (isRemoteBegin) {
+          const accessToken = supportAccessToken(request);
+          const ticketId = path[4] ?? "";
+          const input = await readJsonBody(request) as Record<string, unknown>;
+          if (accessToken === undefined || !validRoomSegment(ticketId) || Object.keys(input).some((key) => key !== "permission") || (input.permission !== "remote.inspect" && input.permission !== "remote.execute")) throw new RemoteAssistanceError("DENIED", "a valid remote support grant and permission are required");
+          const session = await remoteAssistance.begin(accessToken, ticketId, input.permission);
+          const ticket = await support.getById(ticketId);
+          requestScope = { tenantId: ticket.tenantId, projectId: ticket.projectId, environmentId: ticket.environmentId };
+          await persistAudit(store, persistence, { ...requestScope, actorType: "human", actorId: session.operatorSubject, action: "support.remote.begin", resourceType: "remote-assistance-session", resourceId: session.sessionId, requestId, result: "success", riskLevel: "high", occurredAt: new Date().toISOString(), details: { grantId: session.grantId, permission: session.permission } });
+          await persistStore();
+          statusCode = 201;
+          response.setHeader("cache-control", "no-store");
+          sendJson(response, statusCode, { apiVersion: PLATFORM_API_VERSION, requestId, data: session });
+          return;
+        }
+        const sessionId = path[4] ?? "";
+        const sessionToken = remoteSessionToken(request);
+        if (!validRoomSegment(sessionId) || sessionToken === undefined) throw new RemoteAssistanceError("DENIED", "a valid remote session token is required");
+        let session: RemoteAssistanceSession;
+        let action: string;
+        if (path[5] === "end") {
+          const input = await readJsonBody(request) as Record<string, unknown>;
+          if (Object.keys(input).length !== 0) throw new ContractValidationError([{ field: "$", reason: "remote session end body must be empty" }]);
+          session = await remoteAssistance.end(sessionId, sessionToken);
+          action = "support.remote.end";
+          statusCode = 200;
+        } else {
+          const input = await readJsonBody(request) as Record<string, unknown>;
+          const allowed = new Set(["commandClass", "commandDigest", "outcome"]);
+          if (Object.keys(input).some((key) => !allowed.has(key)) || typeof input.commandClass !== "string" || typeof input.commandDigest !== "string" || typeof input.outcome !== "string") throw new ContractValidationError([{ field: "$", reason: "remote event requires commandClass, commandDigest and outcome" }]);
+          session = await remoteAssistance.record(sessionId, sessionToken, input.commandClass as RemoteCommandClass, input.commandDigest, input.outcome as "allowed" | "denied" | "succeeded" | "failed");
+          action = "support.remote.command.audit";
+          statusCode = 202;
+        }
+        const ticket = await support.getById(session.ticketId);
+        requestScope = { tenantId: ticket.tenantId, projectId: ticket.projectId, environmentId: ticket.environmentId };
+        await persistAudit(store, persistence, { ...requestScope, actorType: "human", actorId: session.operatorSubject, action, resourceType: "remote-assistance-session", resourceId: session.sessionId, requestId, result: "success", riskLevel: "high", occurredAt: new Date().toISOString(), details: { grantId: session.grantId } });
+        await persistStore();
+        sendJson(response, statusCode, { apiVersion: PLATFORM_API_VERSION, requestId, data: session });
+        return;
+      }
+      const supportRevokeSegment = path[5];
+      const isSupportAccessRevoke = method === "POST" && path.length === 6 && path[0] === "platform" && path[1] === "v1" && path[2] === "admin" && path[3] === "support" && path[4] === "access-grants" && supportRevokeSegment?.endsWith(":revoke") === true;
+      if (isSupportAccessRevoke) {
+        if (support === undefined) {
+          statusCode = 503;
+          sendPlatformError(response, requestId, statusCode, { code: "UPSTREAM_UNAVAILABLE", message: "Support service is unavailable", retryable: true });
+          return;
+        }
+        if (!bearerCredentialMatches(request.headers, adminCredential)) {
+          statusCode = adminCredential === undefined ? 401 : 403;
+          sendPlatformError(response, requestId, statusCode, { code: statusCode === 401 ? "AUTHENTICATION_FAILED" : "AUTHORIZATION_FAILED", message: "A control-plane admin credential is required", retryable: false });
+          return;
+        }
+        const grantId = supportRevokeSegment?.slice(0, -":revoke".length) ?? "";
+        if (!validRoomSegment(grantId)) throw new ContractValidationError([{ field: "grantId", reason: "must be a valid resource id" }]);
+        const grant = await support.revokeAccess(grantId);
+        const ticket = await support.getById(grant.ticketId);
+        requestScope = { tenantId: ticket.tenantId, projectId: ticket.projectId, environmentId: ticket.environmentId };
+        await persistAudit(store, persistence, { ...requestScope, actorType: "service", actorId: "platform-admin", action: "support.access.revoke", resourceType: "support-access-grant", resourceId: grant.grantId, requestId, result: "success", riskLevel: "high", occurredAt: new Date().toISOString() });
+        await persistStore();
+        statusCode = 200;
+        sendJson(response, statusCode, { apiVersion: PLATFORM_API_VERSION, requestId, data: grant });
+        return;
+      }
+      const isSupportAdminTicket = path.length === 6 && path[0] === "platform" && path[1] === "v1" && path[2] === "admin" && path[3] === "support" && path[4] === "tickets";
+      const isSupportAdminAction = path.length === 7 && path[0] === "platform" && path[1] === "v1" && path[2] === "admin" && path[3] === "support" && path[4] === "tickets";
+      if (isSupportAdminTicket || isSupportAdminAction) {
+        if (support === undefined) {
+          statusCode = 503;
+          sendPlatformError(response, requestId, statusCode, { code: "UPSTREAM_UNAVAILABLE", message: "Support service is unavailable", retryable: true });
+          return;
+        }
+        if (!bearerCredentialMatches(request.headers, adminCredential)) {
+          statusCode = adminCredential === undefined ? 401 : 403;
+          sendPlatformError(response, requestId, statusCode, { code: statusCode === 401 ? "AUTHENTICATION_FAILED" : "AUTHORIZATION_FAILED", message: "A control-plane admin credential is required", retryable: false });
+          return;
+        }
+        if (method !== "PATCH" && method !== "POST") {
+          statusCode = 405;
+          sendPlatformError(response, requestId, statusCode, { code: "METHOD_NOT_ALLOWED", message: "Unsupported support administration method", retryable: false }, { allow: "POST, PATCH" });
+          return;
+        }
+        const ticketId = path[5];
+        if (!validRoomSegment(ticketId) || !contentTypeIsJson(request)) throw new ContractValidationError([{ field: "ticketId/Content-Type", reason: "valid ticket id and application/json are required" }]);
+        const ticket = await support.getById(ticketId);
+        requestScope = { tenantId: ticket.tenantId, projectId: ticket.projectId, environmentId: ticket.environmentId };
+        if (isSupportAdminTicket) {
+          if (method !== "PATCH") throw new ContractValidationError([{ field: "method", reason: "ticket update requires PATCH" }]);
+          const updated = await support.update(ticket.ticketId, parseUpdateSupportTicketRequest(await readJsonBody(request)));
+          await persistAudit(store, persistence, { ...requestScope, actorType: "service", actorId: "platform-admin", action: "support.ticket.update", resourceType: "support-ticket", resourceId: updated.ticketId, requestId, result: "success", riskLevel: "medium", occurredAt: new Date().toISOString(), details: { status: updated.status, version: String(updated.version) } });
+          await persistStore();
+          statusCode = 200;
+          sendJson(response, statusCode, { apiVersion: PLATFORM_API_VERSION, requestId, data: updated });
+          return;
+        }
+        if (method !== "POST") throw new ContractValidationError([{ field: "method", reason: "support action requires POST" }]);
+        if (path[6] === "access-grants") {
+          const grant = await support.issueAccess(ticket.ticketId, parseIssueSupportAccessGrantRequest(await readJsonBody(request)));
+          await persistAudit(store, persistence, { ...requestScope, actorType: "service", actorId: "platform-admin", action: "support.access.issue", resourceType: "support-access-grant", resourceId: grant.grantId, requestId, result: "success", riskLevel: "high", occurredAt: new Date().toISOString(), details: { operatorSubject: grant.operatorSubject, expiresAt: grant.expiresAt } });
+          await persistStore();
+          statusCode = 201;
+          response.setHeader("cache-control", "no-store");
+          sendJson(response, statusCode, { apiVersion: PLATFORM_API_VERSION, requestId, data: grant });
+          return;
+        }
+        if (path[6] === "bundles") {
+          const bundle = await support.registerBundle(ticket.ticketId, parseRegisterSupportBundleRequest(await readJsonBody(request)));
+          await persistAudit(store, persistence, { ...requestScope, actorType: "service", actorId: "platform-admin", action: "support.bundle.register", resourceType: "support-bundle", resourceId: bundle.bundleId, requestId, result: "success", riskLevel: "medium", occurredAt: new Date().toISOString(), details: { sha256: bundle.sha256, expiresAt: bundle.expiresAt } });
+          await persistStore();
+          statusCode = 201;
+          sendJson(response, statusCode, { apiVersion: PLATFORM_API_VERSION, requestId, data: bundle });
+          return;
+        }
+        statusCode = 404;
+        sendPlatformError(response, requestId, statusCode, { code: "RESOURCE_NOT_FOUND", message: "Unknown support action", retryable: false });
         return;
       }
       const isTenantCreate = method === "POST" && url.pathname === "/platform/v1/tenants";
@@ -865,6 +1242,9 @@ export function createPlatformServer(
         path[1] === "v1" &&
         path[2] === "tenants" &&
         path[4] === "members";
+      const isMemberInvite =
+        method === "POST" && path.length === 5 && path[0] === "platform" && path[1] === "v1" &&
+        path[2] === "tenants" && path[4] === "invitations";
       const isMemberList =
         method === "GET" &&
         path.length === 5 &&
@@ -878,7 +1258,7 @@ export function createPlatformServer(
         path[0] === "platform" &&
         path[1] === "v1" &&
         path[2] === "tenant-members";
-      if (isApiKeyCreate || isApiKeyMutation || isApiKeyList || isApiKeyGet || isMemberCreate || isMemberList || isMemberUpdate) {
+      if (isApiKeyCreate || isApiKeyMutation || isApiKeyList || isApiKeyGet || isMemberCreate || isMemberInvite || isMemberList || isMemberUpdate) {
         if (isApiKeyList || isApiKeyGet) {
           const credential = await resolveRequestCredential(request, config, store, identityProvider);
           const admin = bearerCredentialMatches(request.headers, adminCredential);
@@ -912,14 +1292,24 @@ export function createPlatformServer(
           sendJson(response, statusCode, { apiVersion: PLATFORM_API_VERSION, requestId, data: metadata });
           return;
         }
-        if (isMemberCreate || isMemberList || isMemberUpdate) {
-          if (!bearerCredentialMatches(request.headers, adminCredential)) {
-            statusCode = adminCredential === undefined ? 401 : 403;
+        if (isMemberCreate || isMemberInvite || isMemberList || isMemberUpdate) {
+          const admin = bearerCredentialMatches(request.headers, adminCredential);
+          const credential = admin ? undefined : await resolveRequestCredential(request, config, store, identityProvider);
+          const permission = isMemberList ? "member.read" : "member.write";
+          if (!admin && credential === undefined) {
+            statusCode = 401;
             sendPlatformError(response, requestId, statusCode, {
-              code: adminCredential === undefined ? "AUTHENTICATION_FAILED" : "AUTHORIZATION_FAILED",
-              message: "A control-plane admin credential is required",
+              code: "AUTHENTICATION_FAILED",
+              message: "A valid member-management credential is required",
               retryable: false,
             });
+            return;
+          }
+          const currentMember = isMemberUpdate ? store.getMember(path[3] ?? "") : undefined;
+          const tenantId = currentMember?.tenantId ?? path[3] ?? "";
+          if (!admin && (credential?.tenantId !== tenantId || !credentialAllows(credential, permission))) {
+            statusCode = 403;
+            sendPlatformError(response, requestId, statusCode, { code: "AUTHORIZATION_FAILED", message: "The credential cannot manage this tenant's members", retryable: false });
             return;
           }
           if (isMemberList) {
@@ -937,8 +1327,8 @@ export function createPlatformServer(
             });
             return;
           }
-          if (isMemberCreate) {
-            const member = store.createMember(
+          if (isMemberCreate || isMemberInvite) {
+            const member = (isMemberInvite ? store.inviteMember.bind(store) : store.createMember.bind(store))(
               path[3] ?? "",
               parseCreateTenantMemberRequest(await readJsonBody(request)),
               requiredIdempotencyKeyFrom(request),
@@ -946,8 +1336,8 @@ export function createPlatformServer(
             await persistAudit(store, persistence, {
               tenantId: member.tenantId,
               actorType: "service",
-              actorId: "platform-admin",
-              action: "tenant.member.create",
+              actorId: admin ? "platform-admin" : "platform-credential",
+              action: isMemberInvite ? "tenant.invitation.create" : "tenant.member.create",
               resourceType: "tenant-member",
               resourceId: member.memberId,
               requestId,
@@ -967,7 +1357,7 @@ export function createPlatformServer(
           await persistAudit(store, persistence, {
             tenantId: member.tenantId,
             actorType: "service",
-            actorId: "platform-admin",
+            actorId: admin ? "platform-admin" : "platform-credential",
             action: "tenant.member.update",
             resourceType: "tenant-member",
             resourceId: member.memberId,
@@ -1169,6 +1559,7 @@ export function createPlatformServer(
           ...(typeof input.audioLevel === "number" ? { audioLevel: input.audioLevel } : {}),
         });
         await telemetryPersistence?.append(sample);
+        recordRtcQualityMetrics(metrics, sample);
         statusCode = 202;
         sendJson(response, statusCode, { apiVersion: PLATFORM_API_VERSION, requestId, data: sample });
         return;
@@ -1242,6 +1633,8 @@ export function createPlatformServer(
           sendPlatformError(response, requestId, statusCode, { code: "VALIDATION_FAILED", message: "Content-Type must be application/json", retryable: false });
           return;
         }
+        const mediaScope = { tenantId: credential.tenantId, projectId: credential.projectId, environmentId };
+        if (isSipTransfer) await entitlements?.authorize(mediaScope, "sip");
         const callId = (path[7] ?? "").replace(/:(?:transfer|hangup)$/u, "");
         const body = await readJsonBody(request);
         if (typeof body !== "object" || body === null || Array.isArray(body)) throw new ContractValidationError([{ field: "$", reason: "must be a JSON object" }]);
@@ -1249,6 +1642,7 @@ export function createPlatformServer(
         const data = isSipTransfer
           ? await mediaOps.transferSipCall(environmentId, callId, body as Record<string, unknown>, idempotencyKey)
           : await mediaOps.hangupSipCall(environmentId, callId, idempotencyKey);
+        await persistAudit(store, persistence, { ...mediaScope, actorType: "service", actorId: "platform-credential", action: isSipTransfer ? "sip.call.transfer" : "sip.call.hangup", resourceType: "sip-call", resourceId: callId, requestId, result: "success", riskLevel: isSipTransfer ? "high" : "medium", occurredAt: new Date().toISOString() });
         statusCode = 200;
         sendJson(response, statusCode, { apiVersion: PLATFORM_API_VERSION, requestId, data });
         return;
@@ -1280,6 +1674,20 @@ export function createPlatformServer(
           sendPlatformError(response, requestId, statusCode, { code: "VALIDATION_FAILED", message: "Content-Type must be application/json", retryable: false });
           return;
         }
+        const mediaScope = { tenantId: credential.tenantId, projectId: credential.projectId, environmentId };
+        const feature = isIngressCreate ? "ingress" : isEgressCreate ? "egress" : "sip";
+        await entitlements?.authorize(mediaScope, feature);
+        const quota = await quotaSnapshotFor(mediaScope);
+        const quotaExceeded = isIngressCreate
+          ? quota.activeIngressJobs >= quota.policy.maxIngressJobs
+          : isEgressCreate
+            ? quota.activeEgressJobs >= quota.policy.maxEgressJobs
+            : quota.activeSipCalls >= quota.policy.maxSipConcurrentCalls;
+        if (quotaExceeded) {
+          statusCode = 429;
+          sendPlatformError(response, requestId, statusCode, { code: "QUOTA_EXCEEDED", message: `${feature} concurrent quota is exhausted`, retryable: true });
+          return;
+        }
         const body = await readJsonBody(request);
         if (typeof body !== "object" || body === null || Array.isArray(body)) throw new ContractValidationError([{ field: "$", reason: "must be a JSON object" }]);
         const idempotencyKey = requiredIdempotencyKeyFrom(request);
@@ -1288,6 +1696,8 @@ export function createPlatformServer(
           : isEgressCreate
             ? await mediaOps.createEgress(environmentId, body as Record<string, unknown>, idempotencyKey)
             : await mediaOps.requestSipCall(environmentId, body as Record<string, unknown>, idempotencyKey);
+        const resourceId = "ingressId" in data ? data.ingressId : "egressId" in data ? data.egressId : data.callId;
+        await persistAudit(store, persistence, { ...mediaScope, actorType: "service", actorId: "platform-credential", action: isIngressCreate ? "media.ingress.create" : isEgressCreate ? "media.egress.create" : "sip.call.create", resourceType: isIngressCreate ? "ingress" : isEgressCreate ? "egress" : "sip-call", resourceId, requestId, result: "success", riskLevel: isIngressCreate ? "medium" : "high", occurredAt: new Date().toISOString() });
         statusCode = 201;
         sendJson(response, statusCode, { apiVersion: PLATFORM_API_VERSION, requestId, data });
         return;
@@ -1584,6 +1994,45 @@ export function createPlatformServer(
         return;
       }
 
+      if (url.pathname === TURN_CREDENTIAL_PATH) {
+        if (method !== "POST") {
+          statusCode = 405;
+          sendPlatformError(response, requestId, statusCode, { code: "METHOD_NOT_ALLOWED", message: "This resource only accepts POST", retryable: false }, { allow: "POST" });
+          return;
+        }
+        const credential = await resolveRequestCredential(request, config, store, identityProvider);
+        if (credential === undefined) {
+          statusCode = 401;
+          sendPlatformError(response, requestId, statusCode, { code: "AUTHENTICATION_FAILED", message: "A valid platform credential is required", retryable: false });
+          return;
+        }
+        if (!credentialAllows(credential, "rtc.turn.issue")) {
+          statusCode = 403;
+          sendPlatformError(response, requestId, statusCode, { code: "PERMISSION_DENIED", message: "The credential cannot issue TURN credentials", retryable: false });
+          return;
+        }
+        if (turnCredentials === undefined) {
+          statusCode = 503;
+          sendPlatformError(response, requestId, statusCode, { code: "UPSTREAM_UNAVAILABLE", message: "TURN credential issuer is unavailable", retryable: true });
+          return;
+        }
+        if (!contentTypeIsJson(request)) throw new ContractValidationError([{ field: "Content-Type", reason: "must be application/json" }]);
+        const input = parseTurnCredentialRequest(await readJsonBody(request));
+        requestScope = { tenantId: input.tenantId, projectId: input.projectId, environmentId: input.environmentId };
+        if (!credentialHasScope(credential, requestScope)) {
+          statusCode = 403;
+          sendPlatformError(response, requestId, statusCode, { code: "AUTHORIZATION_FAILED", message: "The platform credential cannot access this environment", retryable: false });
+          return;
+        }
+        await entitlements?.authorize(requestScope, "turn");
+        const issued = await turnCredentials.issue(input);
+        await persistAudit(store, persistence, { ...requestScope, actorType: "service", actorId: "platform-credential", action: "rtc.turn-credential.issue", resourceType: "participant", resourceId: input.participantIdentity, requestId, result: "success", riskLevel: "low", occurredAt: new Date().toISOString() });
+        await persistStore();
+        statusCode = 201;
+        sendJson(response, statusCode, { apiVersion: PLATFORM_API_VERSION, requestId, data: issued });
+        return;
+      }
+
       if (url.pathname === TOKEN_PATH && method !== "POST") {
         statusCode = 405;
         sendPlatformError(
@@ -1655,18 +2104,32 @@ export function createPlatformServer(
         });
         return;
       }
+      await entitlements?.authorize(requestScope, "rtc");
       const quota = await quotaSnapshotFor(requestScope);
       releaseTokenQuota = tokenQuota === undefined
         ? store.reserveToken(requestScope)
         : await tokenQuota.reserve(requestScope, quota.policy);
       const routing = regionRouter.select();
       let node = routing.node;
-      if (capacityController !== undefined) {
-        const preferred = capacityController.decide(node.id, quota.policy);
+      let routingReason = routing.reason;
+      const capacityRequest: RtcCapacityRequestV1 = {
+        participants: 1,
+        publishers: input.permissions.canPublish ? 1 : 0,
+      };
+      if (rtcCapacity !== undefined) {
+        const candidates = [node.id, ...nodePool.nodes.map((candidate) => candidate.id).filter((id) => id !== node.id)];
+        const lease = await rtcCapacity.reserve(candidates, quota.policy, capacityRequest);
+        if (lease === undefined) throw new PlatformStoreError("QUOTA_EXCEEDED", "RTC capacity admission failed: no healthy non-draining node has capacity");
+        failedCapacityLease = lease;
+        node = nodePool.get(lease.nodeId);
+        routingReason = node.id === routing.node.id ? `${routing.reason}+capacity` : "capacity-fallback";
+      } else if (capacityController !== undefined) {
+        const preferred = capacityController.decide(node.id, quota.policy, capacityRequest);
         if (!preferred.admitted) {
-          const fallback = capacityController.choose(quota.policy);
+          const fallback = capacityController.choose(quota.policy, capacityRequest);
           if (fallback === undefined) throw new PlatformStoreError("QUOTA_EXCEEDED", `RTC capacity admission failed: ${preferred.reason}`);
           node = nodePool.get(fallback.nodeId);
+          routingReason = "capacity-fallback";
         }
       }
       const tokenIssuer = tokenIssuers.get(node.id);
@@ -1702,16 +2165,17 @@ export function createPlatformServer(
         result: "success",
         riskLevel: "low",
         occurredAt: new Date().toISOString(),
-        details: { nodeId: node.id, routingReason: routing.reason },
+        details: { nodeId: node.id, routingReason },
       });
       await releaseTokenQuota();
       releaseTokenQuota = undefined;
       await persistStore();
+      failedCapacityLease = undefined;
       statusCode = 201;
       sendJson(response, statusCode, {
         apiVersion: PLATFORM_API_VERSION,
         requestId,
-        data: { ...token, nodeId: node.id, routingReason: routing.reason },
+        data: { ...token, nodeId: node.id, routingReason },
       });
     } catch (error) {
       errorName = error instanceof Error ? error.name : "UnknownError";
@@ -1740,6 +2204,27 @@ export function createPlatformServer(
           message: error.message,
           retryable: error.code === "QUOTA_EXCEEDED",
         });
+      } else if (error instanceof EntitlementError) {
+        statusCode = error.code === "NOT_FOUND" ? 404 : error.code === "CONFLICT" ? 409 : 403;
+        sendPlatformError(response, requestId, statusCode, {
+          code: error.code === "NOT_FOUND" ? "RESOURCE_NOT_FOUND" : error.code === "CONFLICT" ? "RESOURCE_CONFLICT" : "PERMISSION_DENIED",
+          message: error.message,
+          retryable: false,
+        });
+      } else if (error instanceof SupportServiceError) {
+        statusCode = error.code === "NOT_FOUND" ? 404 : error.code === "CONFLICT" ? 409 : 403;
+        sendPlatformError(response, requestId, statusCode, {
+          code: error.code === "NOT_FOUND" ? "RESOURCE_NOT_FOUND" : error.code === "CONFLICT" ? "RESOURCE_CONFLICT" : "PERMISSION_DENIED",
+          message: error.message,
+          retryable: false,
+        });
+      } else if (error instanceof RemoteAssistanceError) {
+        statusCode = error.code === "CONFLICT" ? 409 : 403;
+        sendPlatformError(response, requestId, statusCode, {
+          code: error.code === "CONFLICT" ? "RESOURCE_CONFLICT" : "PERMISSION_DENIED",
+          message: error.message,
+          retryable: false,
+        });
       } else if (error instanceof MediaOpsUnavailableError) {
         statusCode = 503;
         sendPlatformError(response, requestId, statusCode, {
@@ -1764,6 +2249,7 @@ export function createPlatformServer(
         });
       }
     } finally {
+      await failedCapacityLease?.release();
       await releaseTokenQuota?.();
       metrics.increment("yujian_http_requests_total", {
         method,

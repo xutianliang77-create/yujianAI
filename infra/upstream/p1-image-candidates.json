@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "policy": "p1-m0-04-security-patch-candidates",
+  "platform": "linux/amd64",
+  "deploymentAllowed": false,
+  "images": [
+    {
+      "id": "redis-7.2.14-linux-amd64-candidate",
+      "reference": "redis:7.2.14-alpine@sha256:dfa18828cbc07b3ae6a95ec7343f6c214fdee2d836197b4be8e9904420762cd8",
+      "expectedLocalImageId": "sha256:b6636bae9624cba73c69fc9d21318151217a103a1db600b8012db8c460785c26",
+      "currentVersion": "7.2.7-alpine",
+      "candidateVersion": "7.2.14-alpine",
+      "compatibilityBoundary": "same Redis 7.2 patch line",
+      "license": {
+        "id": "BSD-3-Clause",
+        "path": "infra/upstream/licenses/redis-7.2.14-COPYING.txt",
+        "sha256": "sha256:97f0a15b7bbae580d2609dad2e11f1956ae167be296ab60f4691ab9c30ee9828"
+      },
+      "requiredBeforeDeployment": "bbb signed decision, immutable production registry digest/signature, Redis competition, restart and rebuild regression"
+    },
+    {
+      "id": "postgres-16.14-linux-amd64-candidate",
+      "reference": "postgres:16.14-bookworm@sha256:92620daddcd947f8d5ab5ba66e848702fe443d87fed30c4cea8e389fd78dfc55",
+      "expectedLocalImageId": "sha256:67d1da22f4037b29cdd93e03d870a4a1c4d079358367d0cbc56459e52cde205e",
+      "currentVersion": "16.4",
+      "candidateVersion": "16.14-bookworm",
+      "compatibilityBoundary": "same PostgreSQL 16 major line with base image refresh",
+      "requiredBeforeDeployment": "backup/restore, migration 001-011, transaction outbox and CAS regression"
+    },
+    {
+      "id": "postgres-16.14-alpine-linux-amd64-candidate",
+      "reference": "postgres:16.14-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777",
+      "expectedLocalImageId": "sha256:de3a4eab8fdfa507ea92aac488b916b08089e515db49b055fe71dfa271ba3a28",
+      "currentVersion": "16.4 Debian-based default image",
+      "candidateVersion": "16.14-alpine",
+      "compatibilityBoundary": "same PostgreSQL 16 major line but changes the base distribution from Debian to Alpine",
+      "requiredBeforeDeployment": "extension compatibility plus backup/restore, migration 001-011, transaction outbox and CAS regression"
+    },
+    {
+      "id": "openbao-2.5.4-linux-amd64-candidate",
+      "reference": "openbao/openbao:2.5.4@sha256:436eaf9778cad75507ff70ea26ace30dcbe15606e619ac3823495663d7f7c115",
+      "expectedLocalImageId": "sha256:5cdbfe3c85e965315cd3220d2836b8d54b55f95715c551a46e233e0e6e6c9b03",
+      "currentVersion": "2.4.1",
+      "candidateVersion": "2.5.4",
+      "compatibilityBoundary": "cross-minor candidate because no newer 2.4 release is available",
+      "requiredBeforeDeployment": "release-note review, Raft snapshot restore, TLS/HA failover and API-key rotate/revoke regression"
+    }
+  ],
+  "boundaries": [
+    "Pulling and scanning these images does not authorize a runtime switch.",
+    "Candidate evidence cannot replace current-image evidence until deployment and full regression are approved.",
+    "No vulnerability exception may be inferred from a lower candidate count."
+  ]
+}

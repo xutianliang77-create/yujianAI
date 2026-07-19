@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "taskId": "P1-M0-04-OWNER-DECISION",
+  "decisionId": "p1-m0-04-ddd-compliance-20260718",
+  "personalOwner": "ddd",
+  "role": "compliance-owner",
+  "decisionType": "china-distribution",
+  "status": "awaiting-personal-decision",
+  "decision": null,
+  "decidedAt": null,
+  "reason": null,
+  "conditions": null,
+  "expiresAt": null,
+  "evidence": [
+    {
+      "path": "repo:docs/compliance/P1_M0_04_SUPPLY_CHAIN_REVIEW.md",
+      "sha256": "sha256:bdcb63b5b2474363500e9e7218b2ecb49f82ad59bafbd436852e8837f9da8c9d"
+    },
+    {
+      "path": "remote:/data/models/yujianAI/registry/evidence/p1-m0-04-production-oci-summary-20260718T122500Z.json",
+      "sha256": "sha256:61f63898512b6444d92cdee4f1ececbc6269ef5575efb1c04c1c72a0cf33e1a3"
+    },
+    {
+      "path": "repo:infra/upstream/THIRD_PARTY_NOTICES.md",
+      "sha256": "sha256:778911ca9c3e09f6a086ef54149542c7cae6fca13fe0c95f9d3c87a950795ed5"
+    }
+  ],
+  "facts": {
+    "distributionForm": null,
+    "deploymentRegion": null,
+    "evidenceRetentionPolicyAccepted": false,
+    "certificateRenewalOwnerConfirmed": false,
+    "singleNodeRegistryRiskAccepted": false,
+    "chinaLaunchAuthorized": false
+  }
+}

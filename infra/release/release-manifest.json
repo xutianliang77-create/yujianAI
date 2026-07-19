@@ -8,8 +8,25 @@
     "sbom",
     "image-signature",
     "beelink-acceptance",
-    "backup-restore"
+    "backup-restore",
+    "billing-reconciliation",
+    "region-failover",
+    "error-budget-oncall",
+    "data-rights",
+    "private-install-upgrade",
+    "commercial-load-dr",
+    "documentation-status",
+    "owner-signoffs"
   ],
-  "forbiddenReleaseStates": ["open-critical-vulnerability", "missing-compliance-owner", "unverified-secret-scan"],
+  "forbiddenReleaseStates": [
+    "open-critical-vulnerability",
+    "open-high-vulnerability",
+    "missing-compliance-owner",
+    "unverified-secret-scan",
+    "exhausted-error-budget",
+    "open-p0-p1-incident",
+    "unsigned-artifact",
+    "incomplete-ga-owner-receipts"
+  ],
   "rollback": { "maxSchemaSkew": 1, "mustRetainPreviousImage": true }
 }

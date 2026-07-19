@@ -10,6 +10,7 @@
 | [`media-ops`](media-ops/package.json) | SIP、Ingress、Egress 的租户映射、策略、幂等、feature gate、HTTP(S) 内部服务和官方 SDK adapter |
 | [`billing`](billing/package.json) | 原子用量、价格版本、账单和 provider 对账边界 |
 | [`data-rights`](data-rights/package.json) | 数据导出、删除和证据状态机 |
+| [`owner-approval`](owner-approval/README.md) | Owner 决定模板、一次性 OpenBao 个人签名、验签、撤销和不可覆盖证据归档 |
 | `provider-runtime` | LLM、实时模型、ASR、TTS、VLM 和内容安全 adapter 的 capability/deadline/circuit；HTTPS JSON provider/failover |
 | `platform-adapters` / `license-service` | KMS、对象存储、OIDC/SAML、日志和离线 license 边界 |
 

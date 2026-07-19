@@ -2,6 +2,10 @@
 
 状态：accepted
 
+Owner：`security-owner`
+评审人：`compliance-owner`、`legal-owner`、`data-owner`
+关闭前置：当前版本威胁演练、数据权利证据和 Gate 0/Gate 7 评审记录
+
 | 分类 | 例子 | 处理 |
 | --- | --- | --- |
 | C0 | 版本、公开文档、健康状态 | 可公开；不含内部 endpoint |

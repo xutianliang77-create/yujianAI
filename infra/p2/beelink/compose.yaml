@@ -1,0 +1,112 @@
+name: yujian-p2
+
+services:
+  postgres:
+    image: ${YUJIAN_POSTGRES_IMAGE:?set a pinned PostgreSQL image digest}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${YUJIAN_POSTGRES_DB:?set the PostgreSQL database name}
+      POSTGRES_USER: ${YUJIAN_POSTGRES_USER:?set the PostgreSQL user}
+      POSTGRES_PASSWORD: ${YUJIAN_POSTGRES_PASSWORD:?set the PostgreSQL password}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "127.0.0.1:${YUJIAN_POSTGRES_HOST_PORT:-15432}:5432"
+    volumes:
+      - "${YUJIAN_DATA_ROOT:?set the Beelink data root}/p2/postgres:/var/lib/postgresql/data"
+      - "${YUJIAN_PROJECT_ROOT:?set the project root}/infra/database/migrations:/yujian-migrations:ro"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  redis:
+    image: ${YUJIAN_REDIS_IMAGE:?set a pinned Redis image digest}
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --requirepass
+      - ${YUJIAN_REDIS_PASSWORD:?set the Redis password}
+    ports:
+      - "127.0.0.1:${YUJIAN_REDIS_HOST_PORT:-16379}:6379"
+    volumes:
+      - "${YUJIAN_DATA_ROOT:?set the Beelink data root}/p2/redis:/data"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDISCLI_AUTH\" ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+    environment:
+      REDISCLI_AUTH: ${YUJIAN_REDIS_PASSWORD:?set the Redis password}
+
+  openbao-a:
+    image: ${YUJIAN_OPENBAO_IMAGE:?set a pinned OpenBao image digest}
+    restart: unless-stopped
+    command: ["server", "-config=/openbao/config.hcl"]
+    environment:
+      BAO_ADDR: https://127.0.0.1:8200
+      BAO_CACERT: /openbao/tls/ca.crt
+    ports:
+      - "127.0.0.1:${YUJIAN_OPENBAO_A_HOST_PORT:-18200}:8200"
+    volumes:
+      - "${YUJIAN_DATA_ROOT:?set the Beelink data root}/p2/openbao-a:/openbao/data"
+      - "${YUJIAN_P2_DIR:?set the P2 deployment directory}/openbao-a.hcl:/openbao/config.hcl:ro"
+      - "${YUJIAN_DATA_ROOT:?set the Beelink data root}/p2/openbao-tls/ca.crt:/openbao/tls/ca.crt:ro"
+      - "${YUJIAN_DATA_ROOT:?set the Beelink data root}/p2/openbao-tls/server.crt:/openbao/tls/server.crt:ro"
+      - "${YUJIAN_DATA_ROOT:?set the Beelink data root}/p2/openbao-tls/server.key:/openbao/tls/server.key:ro"
+    healthcheck:
+      test: ["CMD-SHELL", "BAO_ADDR=https://127.0.0.1:8200 BAO_CACERT=/openbao/tls/ca.crt bao status -format=json >/dev/null 2>&1 || test $$? -eq 2"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  openbao-b:
+    image: ${YUJIAN_OPENBAO_IMAGE:?set a pinned OpenBao image digest}
+    restart: unless-stopped
+    command: ["server", "-config=/openbao/config.hcl"]
+    environment:
+      BAO_ADDR: https://127.0.0.1:8200
+      BAO_CACERT: /openbao/tls/ca.crt
+    ports:
+      - "127.0.0.1:${YUJIAN_OPENBAO_B_HOST_PORT:-18201}:8200"
+    volumes:
+      - "${YUJIAN_DATA_ROOT:?set the Beelink data root}/p2/openbao-b:/openbao/data"
+      - "${YUJIAN_P2_DIR:?set the P2 deployment directory}/openbao-b.hcl:/openbao/config.hcl:ro"
+      - "${YUJIAN_DATA_ROOT:?set the Beelink data root}/p2/openbao-tls/ca.crt:/openbao/tls/ca.crt:ro"
+      - "${YUJIAN_DATA_ROOT:?set the Beelink data root}/p2/openbao-tls/server.crt:/openbao/tls/server.crt:ro"
+      - "${YUJIAN_DATA_ROOT:?set the Beelink data root}/p2/openbao-tls/server.key:/openbao/tls/server.key:ro"
+    healthcheck:
+      test: ["CMD-SHELL", "BAO_ADDR=https://127.0.0.1:8200 BAO_CACERT=/openbao/tls/ca.crt bao status -format=json >/dev/null 2>&1 || test $$? -eq 2"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  openbao-c:
+    image: ${YUJIAN_OPENBAO_IMAGE:?set a pinned OpenBao image digest}
+    restart: unless-stopped
+    command: ["server", "-config=/openbao/config.hcl"]
+    environment:
+      BAO_ADDR: https://127.0.0.1:8200
+      BAO_CACERT: /openbao/tls/ca.crt
+    ports:
+      - "127.0.0.1:${YUJIAN_OPENBAO_C_HOST_PORT:-18202}:8200"
+    volumes:
+      - "${YUJIAN_DATA_ROOT:?set the Beelink data root}/p2/openbao-c:/openbao/data"
+      - "${YUJIAN_P2_DIR:?set the P2 deployment directory}/openbao-c.hcl:/openbao/config.hcl:ro"
+      - "${YUJIAN_DATA_ROOT:?set the Beelink data root}/p2/openbao-tls/ca.crt:/openbao/tls/ca.crt:ro"
+      - "${YUJIAN_DATA_ROOT:?set the Beelink data root}/p2/openbao-tls/server.crt:/openbao/tls/server.crt:ro"
+      - "${YUJIAN_DATA_ROOT:?set the Beelink data root}/p2/openbao-tls/server.key:/openbao/tls/server.key:ro"
+    healthcheck:
+      test: ["CMD-SHELL", "BAO_ADDR=https://127.0.0.1:8200 BAO_CACERT=/openbao/tls/ca.crt bao status -format=json >/dev/null 2>&1 || test $$? -eq 2"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s

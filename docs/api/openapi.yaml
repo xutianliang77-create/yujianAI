@@ -127,6 +127,23 @@ paths:
         "403": { $ref: "#/components/responses/AuthorizationError" }
         "503": { $ref: "#/components/responses/DependencyUnavailable" }
 
+  /platform/v1/onboarding:
+    post:
+      tags: [control-plane]
+      operationId: onboardTenant
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OnboardTenantRequest" }
+      responses:
+        "201": { $ref: "#/components/responses/OnboardTenantCreated" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+        "503": { $ref: "#/components/responses/UpstreamUnavailableError" }
   /platform/v1/tenants:
     post:
       tags: [control-plane]
@@ -334,6 +351,36 @@ paths:
         "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/AuthenticationError" }
         "404": { $ref: "#/components/responses/NotFoundError" }
+  /platform/v1/tenants/{tenantId}/invitations:
+    post:
+      tags: [control-plane]
+      operationId: inviteMember
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/TenantId" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateMemberRequest" }
+      responses:
+        "201": { $ref: "#/components/responses/MemberCreated" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+  /platform/v1/invitations/{memberId}:accept:
+    post:
+      tags: [control-plane]
+      operationId: acceptInvitation
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/MemberId" }]
+      responses:
+        "200": { $ref: "#/components/responses/Member" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
 
   /platform/v1/environments/{environmentId}/quotas:
     get:
@@ -345,6 +392,217 @@ paths:
         "200": { $ref: "#/components/responses/QuotaSnapshot" }
         "401": { $ref: "#/components/responses/AuthenticationError" }
         "403": { $ref: "#/components/responses/AuthorizationError" }
+  /platform/v1/environments/{environmentId}/entitlement:
+    get:
+      tags: [control-plane]
+      operationId: getEnvironmentEntitlement
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/EnvironmentId" }]
+      responses:
+        "200": { $ref: "#/components/responses/EnvironmentEntitlement" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+        "503": { $ref: "#/components/responses/DependencyUnavailable" }
+  /platform/v1/admin/environments/{environmentId}/entitlement:
+    put:
+      tags: [control-plane]
+      operationId: upsertEnvironmentEntitlement
+      security: [{ adminBearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/EnvironmentId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpsertEnvironmentEntitlementRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/EnvironmentEntitlement" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+        "503": { $ref: "#/components/responses/DependencyUnavailable" }
+  /platform/v1/environments/{environmentId}/support/tickets:
+    get:
+      tags: [control-plane]
+      operationId: listSupportTickets
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/EnvironmentId" }]
+      responses:
+        "200": { $ref: "#/components/responses/SupportTicketList" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "503": { $ref: "#/components/responses/DependencyUnavailable" }
+    post:
+      tags: [control-plane]
+      operationId: createSupportTicket
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/EnvironmentId" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateSupportTicketRequest" }
+      responses:
+        "201": { $ref: "#/components/responses/SupportTicket" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+        "503": { $ref: "#/components/responses/DependencyUnavailable" }
+  /platform/v1/environments/{environmentId}/support/tickets/{ticketId}:
+    get:
+      tags: [control-plane]
+      operationId: getSupportTicket
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/EnvironmentId" }
+        - { $ref: "#/components/parameters/SupportTicketId" }
+      responses:
+        "200": { $ref: "#/components/responses/SupportTicket" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+        "503": { $ref: "#/components/responses/DependencyUnavailable" }
+  /platform/v1/admin/support/tickets/{ticketId}:
+    patch:
+      tags: [control-plane]
+      operationId: updateSupportTicket
+      security: [{ adminBearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/SupportTicketId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateSupportTicketRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/SupportTicket" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+        "409": { $ref: "#/components/responses/ConflictError" }
+        "503": { $ref: "#/components/responses/DependencyUnavailable" }
+  /platform/v1/admin/support/tickets/{ticketId}/access-grants:
+    post:
+      tags: [control-plane]
+      operationId: issueSupportAccessGrant
+      security: [{ adminBearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/SupportTicketId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/IssueSupportAccessGrantRequest" }
+      responses:
+        "201": { $ref: "#/components/responses/IssuedSupportAccessGrant" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+        "503": { $ref: "#/components/responses/DependencyUnavailable" }
+  /platform/v1/admin/support/tickets/{ticketId}/bundles:
+    post:
+      tags: [control-plane]
+      operationId: registerSupportBundle
+      security: [{ adminBearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/SupportTicketId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegisterSupportBundleRequest" }
+      responses:
+        "201": { $ref: "#/components/responses/SupportBundleArtifact" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+        "503": { $ref: "#/components/responses/DependencyUnavailable" }
+  /platform/v1/support/tickets/{ticketId}:
+    get:
+      tags: [control-plane]
+      operationId: accessSupportTicket
+      security: [{ supportAccessBearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/SupportTicketId" }]
+      responses:
+        "200": { $ref: "#/components/responses/SupportTicket" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+        "503": { $ref: "#/components/responses/DependencyUnavailable" }
+  /platform/v1/support/tickets/{ticketId}/bundles/{bundleId}:
+    get:
+      tags: [control-plane]
+      operationId: accessSupportBundle
+      security: [{ supportAccessBearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/SupportTicketId" }
+        - { $ref: "#/components/parameters/SupportBundleId" }
+      responses:
+        "200": { $ref: "#/components/responses/SupportBundleArtifact" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+        "503": { $ref: "#/components/responses/DependencyUnavailable" }
+  /platform/v1/admin/support/access-grants/{grantId}:revoke:
+    post:
+      tags: [control-plane]
+      operationId: revokeSupportAccessGrant
+      security: [{ adminBearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/SupportAccessGrantId" }]
+      responses:
+        "200": { $ref: "#/components/responses/SupportAccessGrant" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "404": { $ref: "#/components/responses/NotFoundError" }
+        "503": { $ref: "#/components/responses/DependencyUnavailable" }
+  /platform/v1/support/tickets/{ticketId}/remote-sessions:
+    post:
+      tags: [control-plane]
+      operationId: beginRemoteAssistanceSession
+      security: [{ supportAccessBearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/SupportTicketId" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/BeginRemoteAssistanceRequest" } } }
+      responses:
+        "201": { $ref: "#/components/responses/IssuedRemoteAssistanceSession" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "503": { $ref: "#/components/responses/DependencyUnavailable" }
+  /platform/v1/support/remote-sessions/{sessionId}/events:
+    post:
+      tags: [control-plane]
+      operationId: appendRemoteAssistanceAuditEvent
+      security: [{ remoteSessionBearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/RemoteSessionId" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/RemoteAssistanceEventRequest" } } }
+      responses:
+        "202": { $ref: "#/components/responses/RemoteAssistanceSession" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "503": { $ref: "#/components/responses/DependencyUnavailable" }
+  /platform/v1/support/remote-sessions/{sessionId}/end:
+    post:
+      tags: [control-plane]
+      operationId: endRemoteAssistanceSession
+      security: [{ remoteSessionBearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/RemoteSessionId" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, maxProperties: 0 } } }
+      responses:
+        "200": { $ref: "#/components/responses/RemoteAssistanceSession" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "503": { $ref: "#/components/responses/DependencyUnavailable" }
   /platform/v1/environments/{environmentId}/usage:
     get:
       tags: [control-plane]
@@ -386,6 +644,38 @@ paths:
         "401": { $ref: "#/components/responses/AuthenticationError" }
         "403": { $ref: "#/components/responses/AuthorizationError" }
         "429": { $ref: "#/components/responses/QuotaError" }
+  /platform/v1/rtc/turn-credentials:
+    post:
+      tags: [rtc]
+      operationId: issueTurnCredential
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TurnCredentialRequest" }
+      responses:
+        "201": { $ref: "#/components/responses/IssuedTurnCredential" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "403": { $ref: "#/components/responses/AuthorizationError" }
+        "503": { $ref: "#/components/responses/DependencyUnavailable" }
+  /internal/v1/rtc/capacity:
+    post:
+      tags: [rtc]
+      operationId: publishRtcCapacity
+      x-yujian-internal: true
+      security: [{ rtcCapacityBearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RtcCapacityReport" }
+      responses:
+        "202": { description: capacity report accepted }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/AuthenticationError" }
+        "503": { $ref: "#/components/responses/DependencyUnavailable" }
   /platform/v1/environments/{environmentId}/rooms:
     get:
       tags: [rtc]
@@ -742,6 +1032,9 @@ components:
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer, bearerFormat: yujian-environment-key }
     adminBearerAuth: { type: http, scheme: bearer, bearerFormat: yujian-admin-key }
+    rtcCapacityBearerAuth: { type: http, scheme: bearer, bearerFormat: yujian-rtc-capacity-internal }
+    supportAccessBearerAuth: { type: http, scheme: bearer, bearerFormat: yujian-one-time-support-access }
+    remoteSessionBearerAuth: { type: http, scheme: bearer, bearerFormat: yujian-one-time-remote-session }
   parameters:
     IdempotencyKey:
       name: Idempotency-Key
@@ -756,6 +1049,10 @@ components:
     EgressId: { name: egressId, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 128 } }
     CallId: { name: callId, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 128 } }
     MemberId: { name: memberId, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 128 } }
+    SupportTicketId: { name: ticketId, in: path, required: true, schema: { type: string, pattern: '^[A-Za-z0-9._:-]{1,128}$' } }
+    SupportBundleId: { name: bundleId, in: path, required: true, schema: { type: string, pattern: '^[A-Za-z0-9._:-]{1,128}$' } }
+    SupportAccessGrantId: { name: grantId, in: path, required: true, schema: { type: string, pattern: '^[A-Za-z0-9._:-]{1,128}$' } }
+    RemoteSessionId: { name: sessionId, in: path, required: true, schema: { type: string, pattern: '^remote-[0-9a-f-]{36}$' } }
     InvoiceId: { name: invoiceId, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 128 } }
     DataRightsRequestId: { name: requestId, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 128 } }
     OutboxEventId: { name: eventId, in: path, required: true, schema: { type: string, pattern: '^[A-Za-z0-9._:-]{1,256}$' } }
@@ -800,9 +1097,36 @@ components:
     MemberList:
       description: member list
       content: { application/json: { schema: { $ref: "#/components/schemas/MemberListEnvelope" } } }
+    OnboardTenantCreated:
+      description: tenant onboarding completed
+      content: { application/json: { schema: { $ref: "#/components/schemas/OnboardTenantEnvelope" } } }
     QuotaSnapshot:
       description: quota snapshot
       content: { application/json: { schema: { $ref: "#/components/schemas/QuotaEnvelope" } } }
+    EnvironmentEntitlement:
+      description: versioned environment entitlement
+      content: { application/json: { schema: { $ref: "#/components/schemas/EnvironmentEntitlementEnvelope" } } }
+    SupportTicket:
+      description: support ticket
+      content: { application/json: { schema: { $ref: "#/components/schemas/SupportTicketEnvelope" } } }
+    SupportTicketList:
+      description: environment support tickets
+      content: { application/json: { schema: { $ref: "#/components/schemas/SupportTicketListEnvelope" } } }
+    IssuedSupportAccessGrant:
+      description: one-time support access grant; accessToken is returned only once
+      content: { application/json: { schema: { $ref: "#/components/schemas/IssuedSupportAccessGrantEnvelope" } } }
+    SupportAccessGrant:
+      description: support access grant metadata without token
+      content: { application/json: { schema: { $ref: "#/components/schemas/SupportAccessGrantEnvelope" } } }
+    IssuedRemoteAssistanceSession:
+      description: one-time approval-bound remote assistance session
+      content: { application/json: { schema: { $ref: "#/components/schemas/IssuedRemoteAssistanceSessionEnvelope" } } }
+    RemoteAssistanceSession:
+      description: remote assistance session metadata without token
+      content: { application/json: { schema: { $ref: "#/components/schemas/RemoteAssistanceSessionEnvelope" } } }
+    SupportBundleArtifact:
+      description: registered redacted support bundle artifact
+      content: { application/json: { schema: { $ref: "#/components/schemas/SupportBundleArtifactEnvelope" } } }
     UsageList:
       description: immutable usage records
       content: { application/json: { schema: { $ref: "#/components/schemas/UsageListEnvelope" } } }
@@ -815,6 +1139,9 @@ components:
     IssuedToken:
       description: short-lived Room token
       content: { application/json: { schema: { $ref: "#/components/schemas/TokenEnvelope" } } }
+    IssuedTurnCredential:
+      description: short-lived TURN REST credential
+      content: { application/json: { schema: { $ref: "#/components/schemas/TurnCredentialEnvelope" } } }
     RoomList:
       description: Room list
       content: { application/json: { schema: { $ref: "#/components/schemas/RoomListEnvelope" } } }
@@ -936,6 +1263,188 @@ components:
         regionPolicyId: { type: string, maxLength: 64 }
         quotaPolicyId: { type: string, maxLength: 64 }
         retentionPolicyId: { type: string, maxLength: 64 }
+    PreviewFeature:
+      type: string
+      enum: [rtc, turn, telemetry, agent, ingress, egress, sip]
+    EnvironmentEntitlement:
+      type: object
+      additionalProperties: false
+      required: [entitlementId, tenantId, projectId, environmentId, planId, status, features, validFrom, validUntil, version, updatedAt]
+      properties:
+        entitlementId: { type: string, minLength: 1, maxLength: 128 }
+        tenantId: { $ref: "#/components/schemas/ResourceId" }
+        projectId: { $ref: "#/components/schemas/ResourceId" }
+        environmentId: { $ref: "#/components/schemas/ResourceId" }
+        planId: { type: string, pattern: "^[a-z][a-z0-9._-]{2,127}$" }
+        status: { type: string, enum: [active, suspended, expired] }
+        features:
+          type: array
+          minItems: 1
+          maxItems: 7
+          uniqueItems: true
+          items: { $ref: "#/components/schemas/PreviewFeature" }
+        validFrom: { type: string, format: date-time }
+        validUntil: { type: string, format: date-time }
+        version: { type: integer, minimum: 1 }
+        updatedAt: { type: string, format: date-time }
+    UpsertEnvironmentEntitlementRequest:
+      type: object
+      additionalProperties: false
+      required: [planId, status, features, validFrom, validUntil, expectedVersion]
+      properties:
+        planId: { type: string, pattern: "^[a-z][a-z0-9._-]{2,127}$" }
+        status: { type: string, enum: [active, suspended, expired] }
+        features:
+          type: array
+          minItems: 1
+          maxItems: 7
+          uniqueItems: true
+          items: { $ref: "#/components/schemas/PreviewFeature" }
+        validFrom: { type: string, format: date-time }
+        validUntil: { type: string, format: date-time }
+        expectedVersion: { type: integer, minimum: 0 }
+    SupportTicket:
+      type: object
+      additionalProperties: false
+      required: [ticketId, tenantId, projectId, environmentId, severity, category, summary, status, createdAt, updatedAt, version]
+      properties:
+        ticketId: { type: string, minLength: 1, maxLength: 128 }
+        tenantId: { $ref: "#/components/schemas/ResourceId" }
+        projectId: { $ref: "#/components/schemas/ResourceId" }
+        environmentId: { $ref: "#/components/schemas/ResourceId" }
+        severity: { type: string, enum: [p0, p1, p2, p3] }
+        category: { type: string, enum: [availability, quality, billing, security, deployment] }
+        summary: { type: string, minLength: 3, maxLength: 256 }
+        status: { type: string, enum: [open, in-progress, resolved, closed] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer, minimum: 1 }
+    CreateSupportTicketRequest:
+      type: object
+      additionalProperties: false
+      required: [severity, category, summary]
+      properties:
+        severity: { type: string, enum: [p0, p1, p2, p3] }
+        category: { type: string, enum: [availability, quality, billing, security, deployment] }
+        summary: { type: string, minLength: 3, maxLength: 256 }
+    UpdateSupportTicketRequest:
+      type: object
+      additionalProperties: false
+      required: [status, expectedVersion]
+      properties:
+        status: { type: string, enum: [open, in-progress, resolved, closed] }
+        expectedVersion: { type: integer, minimum: 1 }
+    IssueSupportAccessGrantRequest:
+      type: object
+      additionalProperties: false
+      required: [operatorSubject, permissions, ttlSeconds]
+      properties:
+        operatorSubject: { type: string, minLength: 3, maxLength: 128 }
+        permissions:
+          type: array
+          minItems: 1
+          maxItems: 1
+          uniqueItems: true
+          items: { type: string, enum: [ticket.read, bundle.download, remote.inspect, remote.execute] }
+        ttlSeconds: { type: integer, minimum: 60, maximum: 3600 }
+        approvalReceiptRef: { type: string, pattern: '^(evidence|https|s3|oss)://[^?#]+$' }
+    SupportAccessGrant:
+      type: object
+      additionalProperties: false
+      required: [grantId, ticketId, operatorSubject, permissions, expiresAt, createdAt]
+      properties:
+        grantId: { type: string, minLength: 1, maxLength: 128 }
+        ticketId: { type: string, minLength: 1, maxLength: 128 }
+        operatorSubject: { type: string, minLength: 3, maxLength: 128 }
+        permissions:
+          type: array
+          minItems: 1
+          maxItems: 1
+          uniqueItems: true
+          items: { type: string, enum: [ticket.read, bundle.download, remote.inspect, remote.execute] }
+        approvalReceiptRef: { type: string, pattern: '^(evidence|https|s3|oss)://[^?#]+$' }
+        expiresAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+        revokedAt: { type: string, format: date-time }
+    IssuedSupportAccessGrant:
+      type: object
+      additionalProperties: false
+      required: [grantId, ticketId, operatorSubject, permissions, expiresAt, createdAt, accessToken]
+      properties:
+        grantId: { type: string, minLength: 1, maxLength: 128 }
+        ticketId: { type: string, minLength: 1, maxLength: 128 }
+        operatorSubject: { type: string, minLength: 3, maxLength: 128 }
+        permissions:
+          type: array
+          minItems: 1
+          maxItems: 1
+          uniqueItems: true
+          items: { type: string, enum: [ticket.read, bundle.download, remote.inspect, remote.execute] }
+        approvalReceiptRef: { type: string, pattern: '^(evidence|https|s3|oss)://[^?#]+$' }
+        expiresAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+        revokedAt: { type: string, format: date-time }
+        accessToken: { type: string, pattern: '^yj_sup_[A-Za-z0-9_-]{43}$', readOnly: true }
+    BeginRemoteAssistanceRequest:
+      type: object
+      additionalProperties: false
+      required: [permission]
+      properties:
+        permission: { type: string, enum: [remote.inspect, remote.execute] }
+    RemoteAssistanceEventRequest:
+      type: object
+      additionalProperties: false
+      required: [commandClass, commandDigest, outcome]
+      properties:
+        commandClass: { type: string, enum: [read-only-inspection, configuration-change, service-restart] }
+        commandDigest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+        outcome: { type: string, enum: [allowed, denied, succeeded, failed] }
+    RemoteAssistanceSession:
+      type: object
+      additionalProperties: false
+      required: [sessionId, grantId, ticketId, operatorSubject, permission, approvalReceiptRef, expiresAt, startedAt]
+      properties:
+        sessionId: { type: string, pattern: '^remote-[0-9a-f-]{36}$' }
+        grantId: { type: string, minLength: 1, maxLength: 128 }
+        ticketId: { type: string, minLength: 1, maxLength: 128 }
+        operatorSubject: { type: string, minLength: 3, maxLength: 128 }
+        permission: { type: string, enum: [remote.inspect, remote.execute] }
+        approvalReceiptRef: { type: string, pattern: '^(evidence|https|s3|oss)://[^?#]+$' }
+        expiresAt: { type: string, format: date-time }
+        startedAt: { type: string, format: date-time }
+        endedAt: { type: string, format: date-time }
+    IssuedRemoteAssistanceSession:
+      allOf:
+        - { $ref: "#/components/schemas/RemoteAssistanceSession" }
+        - type: object
+          required: [sessionToken]
+          properties:
+            sessionToken: { type: string, pattern: '^yj_remote_[A-Za-z0-9_-]{43}$', readOnly: true }
+    RegisterSupportBundleRequest:
+      type: object
+      additionalProperties: false
+      required: [artifactUri, sha256, sizeBytes, redactionPolicyVersion, containsMedia, expiresAt]
+      properties:
+        artifactUri: { type: string, pattern: '^(s3|gs|https)://' }
+        sha256: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+        sizeBytes: { type: integer, minimum: 0 }
+        redactionPolicyVersion: { type: string, pattern: '^[a-z][a-z0-9._-]{2,63}$' }
+        containsMedia: { type: boolean, const: false }
+        expiresAt: { type: string, format: date-time }
+    SupportBundleArtifact:
+      type: object
+      additionalProperties: false
+      required: [bundleId, ticketId, artifactUri, sha256, sizeBytes, redactionPolicyVersion, containsMedia, expiresAt, createdAt]
+      properties:
+        bundleId: { type: string, minLength: 1, maxLength: 128 }
+        ticketId: { type: string, minLength: 1, maxLength: 128 }
+        artifactUri: { type: string, pattern: '^(s3|gs|https)://' }
+        sha256: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+        sizeBytes: { type: integer, minimum: 0 }
+        redactionPolicyVersion: { type: string, pattern: '^[a-z][a-z0-9._-]{2,63}$' }
+        containsMedia: { type: boolean, const: false }
+        expiresAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
     CreateApiKeyRequest:
       type: object
       required: [scopes]
@@ -950,6 +1459,15 @@ components:
       properties:
         subject: { type: string, minLength: 1, maxLength: 128 }
         roles: { type: array, minItems: 1, maxItems: 32, items: { type: string } }
+    OnboardTenantRequest:
+      type: object
+      required: [tenantDisplayName, projectName, projectSlug, environmentName]
+      additionalProperties: false
+      properties:
+        tenantDisplayName: { type: string, minLength: 1, maxLength: 128 }
+        projectName: { type: string, minLength: 1, maxLength: 128 }
+        projectSlug: { type: string, pattern: '^[a-z][a-z0-9-]{2,63}$' }
+        environmentName: { type: string, minLength: 1, maxLength: 128 }
     UpdateMemberRequest:
       type: object
       minProperties: 1
@@ -979,6 +1497,42 @@ components:
             canSubscribe: { type: boolean }
             canPublishData: { type: boolean }
         ttlSeconds: { type: integer, minimum: 60, maximum: 300 }
+    TurnCredentialRequest:
+      type: object
+      required: [tenantId, projectId, environmentId, participantIdentity]
+      additionalProperties: false
+      properties:
+        tenantId: { $ref: "#/components/schemas/ResourceId" }
+        projectId: { $ref: "#/components/schemas/ResourceId" }
+        environmentId: { $ref: "#/components/schemas/ResourceId" }
+        participantIdentity: { type: string, minLength: 1, maxLength: 128 }
+        ttlSeconds: { type: integer, minimum: 60, maximum: 3600, default: 600 }
+    RtcCapacityUsage:
+      type: object
+      additionalProperties: false
+      required: [activeRooms, activeParticipants, activePublishers, activeSubscriptions, activeTracks]
+      properties:
+        activeRooms: { type: integer, minimum: 0 }
+        activeParticipants: { type: integer, minimum: 0 }
+        activePublishers: { type: integer, minimum: 0 }
+        activeSubscriptions: { type: integer, minimum: 0 }
+        activeTracks: { type: integer, minimum: 0 }
+    RtcCapacityReport:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, nodeId, observedAt, expiresAt, sequence, healthy, draining, source, subscriptionAccounting, usage, limits]
+      properties:
+        schemaVersion: { const: 1 }
+        nodeId: { type: string, pattern: "^[a-z][a-z0-9-]{1,62}$" }
+        observedAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        sequence: { type: integer, minimum: 0 }
+        healthy: { type: boolean }
+        draining: { type: boolean }
+        source: { const: livekit-room-service-upper-bound }
+        subscriptionAccounting: { const: participants-times-published-tracks-upper-bound }
+        usage: { $ref: "#/components/schemas/RtcCapacityUsage" }
+        limits: { $ref: "#/components/schemas/RtcCapacityUsage" }
     ParticipantPatch:
       type: object
       additionalProperties: false
@@ -1049,7 +1603,20 @@ components:
     Tenant: { type: object, additionalProperties: true, required: [tenantId, status] }
     Project: { type: object, additionalProperties: true, required: [projectId, tenantId, status] }
     Environment: { type: object, additionalProperties: true, required: [environmentId, tenantId, projectId, status] }
-    Member: { type: object, additionalProperties: true, required: [memberId, tenantId, subject, roles, status] }
+    Member:
+      type: object
+      additionalProperties: true
+      required: [memberId, tenantId, subject, roles, status]
+      properties:
+        status: { type: string, enum: [invited, active, suspended, removed] }
+    OnboardTenantResult:
+      type: object
+      required: [tenant, member, project, environment]
+      properties:
+        tenant: { $ref: "#/components/schemas/Tenant" }
+        member: { $ref: "#/components/schemas/Member" }
+        project: { $ref: "#/components/schemas/Project" }
+        environment: { $ref: "#/components/schemas/Environment" }
     ApiKeyMetadata: { type: object, additionalProperties: true, required: [apiKeyId, tenantId, projectId, environmentId, status] }
     IssuedApiKey: { type: object, required: [metadata, secret], properties: { metadata: { $ref: "#/components/schemas/ApiKeyMetadata" }, secret: { type: string } } }
     QuotaSnapshot: { type: object, additionalProperties: true, required: [environmentId, policy, observedAt] }
@@ -1057,6 +1624,16 @@ components:
     AuditEvent: { type: object, additionalProperties: true, required: [auditEventId, action, occurredAt, result] }
     Endpoint: { type: object, additionalProperties: true, required: [id, url, protocol] }
     Token: { type: object, required: [token, url, expiresAt, nodeId], properties: { token: { type: string }, url: { type: string }, expiresAt: { type: string, format: date-time }, nodeId: { type: string }, routingReason: { type: string } } }
+    TurnCredential:
+      type: object
+      additionalProperties: false
+      required: [urls, username, credential, credentialType, expiresAt]
+      properties:
+        urls: { type: array, minItems: 1, maxItems: 16, items: { type: string, pattern: "^turns?:" } }
+        username: { type: string }
+        credential: { type: string }
+        credentialType: { const: password }
+        expiresAt: { type: string, format: date-time }
     Room: { type: object, additionalProperties: true }
     Participant: { type: object, additionalProperties: true }
     TelemetrySummary:
@@ -1079,7 +1656,7 @@ components:
     IngressJob:
       type: object
       additionalProperties: false
-      required: [ingressId, environmentId, roomName, inputType, status, idempotencyKey, createdAt, updatedAt]
+      required: [ingressId, environmentId, roomName, inputType, status, idempotencyKeyHash, createdAt, updatedAt]
       properties:
         ingressId: { type: string }
         environmentId: { $ref: "#/components/schemas/ResourceId" }
@@ -1087,13 +1664,17 @@ components:
         inputType: { type: string, enum: [rtmp, whip, url] }
         status: { type: string, enum: [requested, starting, active, draining, completed, failed, cancelled] }
         providerIngressId: { type: string, maxLength: 256 }
-        idempotencyKey: { type: string, maxLength: 128 }
+        providerName: { type: string, pattern: "^[a-z][a-z0-9_-]{1,63}$" }
+        providerSequence: { type: integer, minimum: 0 }
+        providerUpdatedAt: { type: string, format: date-time }
+        edgeAttestationDigest: { type: string, pattern: "^sha256:[a-f0-9]{64}$" }
+        idempotencyKeyHash: { type: string, pattern: "^[a-f0-9]{64}$" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
     EgressJob:
       type: object
       additionalProperties: false
-      required: [egressId, environmentId, roomName, outputType, status, idempotencyKey, createdAt, updatedAt]
+      required: [egressId, environmentId, roomName, outputType, status, idempotencyKeyHash, createdAt, updatedAt]
       properties:
         egressId: { type: string }
         environmentId: { $ref: "#/components/schemas/ResourceId" }
@@ -1101,23 +1682,42 @@ components:
         outputType: { type: string, enum: [mp4, hls, rtmp] }
         status: { type: string, enum: [requested, starting, active, draining, completed, failed, cancelled] }
         providerEgressId: { type: string, maxLength: 256 }
+        providerName: { type: string, pattern: "^[a-z][a-z0-9_-]{1,63}$" }
+        providerSequence: { type: integer, minimum: 0 }
+        providerUpdatedAt: { type: string, format: date-time }
+        edgeAttestationDigest: { type: string, pattern: "^sha256:[a-f0-9]{64}$" }
         objectUri: { type: string, maxLength: 2048 }
         retentionExpiresAt: { type: string, format: date-time }
         deletedAt: { type: string, format: date-time }
         deletionEvidenceUri: { type: string, maxLength: 2048 }
-        idempotencyKey: { type: string, maxLength: 128 }
+        idempotencyKeyHash: { type: string, pattern: "^[a-f0-9]{64}$" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
     SipCall:
       type: object
-      additionalProperties: true
-      required: [callId, environmentId, status]
+      additionalProperties: false
+      required: [callId, environmentId, direction, roomName, remoteNumberHash, status, idempotencyKeyHash, createdAt, updatedAt]
       properties:
         callId: { type: string }
         environmentId: { $ref: "#/components/schemas/ResourceId" }
         sipTrunkId: { type: string, maxLength: 128 }
         participantIdentity: { type: string, maxLength: 128 }
+        direction: { type: string, enum: [inbound, outbound] }
+        roomName: { type: string, minLength: 1, maxLength: 128 }
+        remoteNumberHash: { type: string, pattern: "^[a-f0-9]{64}$" }
+        dtmfSequenceHash: { type: string, pattern: "^[a-f0-9]{64}$" }
         status: { type: string, enum: [requested, starting, active, draining, completed, failed, cancelled] }
+        providerCallId: { type: string, maxLength: 256 }
+        providerName: { type: string, pattern: "^[a-z][a-z0-9_-]{1,63}$" }
+        answeredAt: { type: string, format: date-time }
+        endedAt: { type: string, format: date-time }
+        terminalReasonCode: { type: string, maxLength: 128 }
+        providerSequence: { type: integer, minimum: 0 }
+        providerUpdatedAt: { type: string, format: date-time }
+        edgeAttestationDigest: { type: string, pattern: "^sha256:[a-f0-9]{64}$" }
+        idempotencyKeyHash: { type: string, pattern: "^[a-f0-9]{64}$" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
     Invoice: { type: object, additionalProperties: true, required: [invoiceId, tenantId, billingPeriod, currency, status, totalFen] }
     BillingAdjustment: { type: object, additionalProperties: true, required: [adjustmentId, invoiceId, kind, amountFen, dedupeKey] }
     DataRightsRequest: { type: object, additionalProperties: true, required: [requestId, tenantId, subjectId, kind, status, createdAt] }
@@ -1161,11 +1761,21 @@ components:
     ApiKeyListEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { type: object, required: [apiKeys], properties: { apiKeys: { type: array, items: { $ref: "#/components/schemas/ApiKeyMetadata" } } } } } }
     MemberEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/Member" } } }
     MemberListEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { type: object, required: [members], properties: { members: { type: array, items: { $ref: "#/components/schemas/Member" } } } } } }
+    OnboardTenantEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/OnboardTenantResult" } } }
     QuotaEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/QuotaSnapshot" } } }
+    EnvironmentEntitlementEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/EnvironmentEntitlement" } } }
+    SupportTicketEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/SupportTicket" } } }
+    SupportTicketListEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { type: object, required: [tickets], properties: { tickets: { type: array, items: { $ref: "#/components/schemas/SupportTicket" } } } } } }
+    IssuedSupportAccessGrantEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/IssuedSupportAccessGrant" } } }
+    SupportAccessGrantEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/SupportAccessGrant" } } }
+    IssuedRemoteAssistanceSessionEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/IssuedRemoteAssistanceSession" } } }
+    RemoteAssistanceSessionEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/RemoteAssistanceSession" } } }
+    SupportBundleArtifactEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/SupportBundleArtifact" } } }
     UsageListEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { type: object, required: [records], properties: { records: { type: array, items: { $ref: "#/components/schemas/UsageRecord" } } } } } }
     AuditListEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { type: array, items: { $ref: "#/components/schemas/AuditEvent" } } } }
     EndpointListEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { type: array, items: { $ref: "#/components/schemas/Endpoint" } } } }
     TokenEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/Token" } } }
+    TurnCredentialEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/TurnCredential" } } }
     RoomListEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { type: object, required: [rooms], properties: { rooms: { type: array, items: { $ref: "#/components/schemas/Room" } } } } } }
     ParticipantListEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { type: object, required: [participants], properties: { participants: { type: array, items: { $ref: "#/components/schemas/Participant" } } } } } }
     ParticipantEnvelope: { type: object, required: [apiVersion, requestId, data], properties: { apiVersion: { type: string }, requestId: { type: string }, data: { $ref: "#/components/schemas/Participant" } } }

@@ -1,3 +1,4 @@
+{{- if eq .Values.dataServices.mode "embedded-single" }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -49,3 +50,4 @@ spec:
         accessModes: [ReadWriteOnce]
         resources:
               requests: { storage: {{ .Values.storage.redisSize }} }
+{{- end }}

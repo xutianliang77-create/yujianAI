@@ -19,7 +19,9 @@ if (control !== undefined && environmentId !== undefined) {
     process.stderr.write(`${JSON.stringify({ event: "worker.register_failed", workerId: worker.workerId, error: error instanceof Error ? error.message : "unknown" })}\n`);
   });
   heartbeatTimer = setInterval(() => {
-    void control.heartbeat(worker.workerId, worker.activeDispatchIds()).catch((error: unknown) => {
+    void control.heartbeat(worker.workerId, worker.activeDispatchIds()).then((result) => {
+      for (const dispatchId of result.cancelDispatchIds) worker.cancel(dispatchId, "control-plane-cancelled");
+    }).catch((error: unknown) => {
       process.stderr.write(`${JSON.stringify({ event: "worker.heartbeat_failed", workerId: worker.workerId, error: error instanceof Error ? error.message : "unknown" })}\n`);
     });
   }, 5_000);

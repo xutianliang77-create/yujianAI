@@ -1,60 +1,10 @@
-import { createHash, randomUUID } from "node:crypto";
-import type {
-  EgressJobV1,
-  IngressJobV1,
-  MediaProviderStatusUpdateV1,
-  MediaOperationStatusV1,
-  SipCallV1,
-} from "@yujian/platform-contracts";
+import { randomUUID } from "node:crypto";
+import type { EgressJobV1, IngressJobV1, MediaProviderStatusUpdateV1, SipCallV1 } from "@yujian/platform-contracts";
 import type { MediaOpsSnapshot } from "./persistence.js";
-
-export class MediaOpsError extends Error {
-  constructor(readonly code: "NOT_FOUND" | "CONFLICT" | "POLICY_DISABLED" | "QUOTA_EXCEEDED" | "PROVIDER_UNAVAILABLE", message: string) { super(message); }
-}
-
-export interface MediaOpsClock { now(): Date }
-
-export interface MediaOpsProvider {
-  createIngress(input: { ingressId: string; environmentId: string; roomName: string; inputType: IngressJobV1["inputType"]; sourceUrl?: string }): Promise<{ providerIngressId: string }>;
-  createEgress(input: { egressId: string; environmentId: string; roomName: string; outputType: EgressJobV1["outputType"]; outputTarget?: string }): Promise<{ providerEgressId: string; objectUri?: string; retentionExpiresAt?: string }>;
-  requestSipCall(input: { callId: string; environmentId: string; roomName: string; sipTrunkId?: string; participantIdentity?: string; dtmf?: string; direction: SipCallV1["direction"]; remoteNumber: string; idempotencyKey: string }): Promise<{ providerCallId: string; participantIdentity?: string }>;
-  transferSipCall(input: { callId: string; roomName: string; participantIdentity: string; transferTo: string; idempotencyKey: string }): Promise<void>;
-  hangupSipCall(input: { callId: string; roomName: string; participantIdentity: string; idempotencyKey: string }): Promise<void>;
-}
-
-const STATUS_TRANSITIONS: Readonly<Record<MediaOperationStatusV1, readonly MediaOperationStatusV1[]>> = {
-  requested: ["starting", "failed", "cancelled"],
-  starting: ["active", "failed", "cancelled"],
-  active: ["draining", "completed", "failed", "cancelled"],
-  draining: ["completed", "failed", "cancelled"],
-  completed: [],
-  failed: [],
-  cancelled: [],
-};
-
-function requireText(value: string, field: string): string {
-  if (value.length === 0 || value.length > 128 || value.trim() !== value || /[\u0000-\u001f\u007f]/u.test(value)) {
-    throw new MediaOpsError("CONFLICT", `${field} must be a trimmed control-free string`);
-  }
-  return value;
-}
-
-function requireTarget(value: string, field: string): string {
-  if (value.length === 0 || value.length > 2048 || value.trim() !== value || /[\u0000-\u001f\u007f]/u.test(value)) {
-    throw new MediaOpsError("CONFLICT", `${field} must be a trimmed control-free target`);
-  }
-  return value;
-}
-
-function requireDateText(value: string, field: string): string {
-  requireText(value, field);
-  if (!Number.isFinite(Date.parse(value))) throw new MediaOpsError("CONFLICT", `${field} must be an ISO date`);
-  return value;
-}
-
-function idempotencyScope(kind: string, environmentId: string, key: string): string {
-  return `${kind}:${environmentId}:${key}`;
-}
+import type { MediaOpsClock, MediaOpsProvider } from "./control-types.js";
+import { idempotencyScope, MediaOpsError, requestFingerprint, requireDateText, requireExternalHttpsUrl, requireStableUri, requireTarget, requireText, restoreMediaOpsSnapshot, sha256, STATUS_TRANSITIONS } from "./control-state.js";
+export { MediaOpsError } from "./control-state.js";
+export type { MediaOpsClock, MediaOpsProvider } from "./control-types.js";
 
 export class MediaOpsControl {
   readonly calls = new Map<string, SipCallV1>();
@@ -72,55 +22,19 @@ export class MediaOpsControl {
   snapshot(): MediaOpsSnapshot { return { calls: [...this.calls.values()], ingress: [...this.ingress.values()], egress: [...this.egress.values()], idempotency: [...this.idempotency.entries()], idempotencyFingerprints: [...this.idempotencyFingerprints.entries()], operationResults: [...this.operationResults.entries()] }; }
 
   restore(snapshot: MediaOpsSnapshot): void {
-    if (typeof snapshot !== "object" || snapshot === null) throw new Error("media-ops snapshot must be an object");
-    const readMap = <T extends object>(values: readonly T[], field: string): Map<string, T> => {
-      if (!Array.isArray(values)) throw new Error(`media-ops snapshot ${field} must be an array`);
-      const result = new Map<string, T>();
-      for (const value of values) {
-        if (typeof value !== "object" || value === null) throw new Error(`invalid media-ops snapshot ${field}`);
-        const key = (value as Record<string, unknown>)[field];
-        if (typeof key !== "string" || key.length === 0 || result.has(key)) throw new Error(`invalid media-ops snapshot ${field}`);
-        result.set(key, value);
-      }
-      return result;
-    };
-    const calls = readMap(snapshot.calls, "callId");
-    const ingress = readMap(snapshot.ingress, "ingressId");
-    const egress = readMap(snapshot.egress, "egressId");
-    for (const value of egress.values()) {
-      const job = value as EgressJobV1;
-      if (job.retentionExpiresAt !== undefined) requireDateText(job.retentionExpiresAt, "retentionExpiresAt");
-      if (job.deletedAt !== undefined) requireDateText(job.deletedAt, "deletedAt");
-      if (job.deletionEvidenceUri !== undefined) requireText(job.deletionEvidenceUri, "deletionEvidenceUri");
-      if (job.deletionEvidenceUri !== undefined && job.deletedAt === undefined) throw new Error("media-ops snapshot deletion evidence requires deletedAt");
-      if (job.deletedAt !== undefined && job.deletionEvidenceUri === undefined) throw new Error("media-ops snapshot deletedAt requires deletion evidence");
-    }
-    const readEntries = <T>(entries: readonly [string, T][], valid: (entry: readonly [string, T]) => boolean, message: string): Map<string, T> => {
-      if (!Array.isArray(entries)) throw new Error(message);
-      const result = new Map<string, T>();
-      for (const entry of entries) {
-        if (!Array.isArray(entry) || entry.length !== 2) throw new Error(message);
-        const tuple = entry as [string, T];
-        if (!valid(tuple) || result.has(tuple[0])) throw new Error(message);
-        result.set(tuple[0], tuple[1]);
-      }
-      return result;
-    };
-    const idempotency = readEntries(snapshot.idempotency, (entry) => typeof entry[0] === "string", "invalid media-ops idempotency snapshot");
-    const idempotencyFingerprints = readEntries(snapshot.idempotencyFingerprints, (entry) => typeof entry[0] === "string" && typeof entry[1] === "string", "invalid media-ops fingerprint snapshot");
-    const operationResults = readEntries(snapshot.operationResults, (entry) => typeof entry[0] === "string", "invalid media-ops operation snapshot");
+    const restored = restoreMediaOpsSnapshot(snapshot);
     this.calls.clear();
     this.ingress.clear();
     this.egress.clear();
     this.idempotency.clear();
     this.idempotencyFingerprints.clear();
     this.operationResults.clear();
-    for (const [key, value] of calls) this.calls.set(key, value);
-    for (const [key, value] of ingress) this.ingress.set(key, value);
-    for (const [key, value] of egress) this.egress.set(key, value);
-    for (const [key, value] of idempotency) this.idempotency.set(key, value);
-    for (const [key, value] of idempotencyFingerprints) this.idempotencyFingerprints.set(key, value);
-    for (const [key, value] of operationResults) this.operationResults.set(key, value);
+    for (const [key, value] of restored.calls) this.calls.set(key, value);
+    for (const [key, value] of restored.ingress) this.ingress.set(key, value);
+    for (const [key, value] of restored.egress) this.egress.set(key, value);
+    for (const [key, value] of restored.idempotency) this.idempotency.set(key, value);
+    for (const [key, value] of restored.idempotencyFingerprints) this.idempotencyFingerprints.set(key, value);
+    for (const [key, value] of restored.operationResults) this.operationResults.set(key, value);
   }
 
   requestSipCall(input: { environmentId: string; roomName: string; sipTrunkId?: string; participantIdentity?: string; dtmf?: string; direction: "inbound" | "outbound"; remoteNumber: string; idempotencyKey: string }): SipCallV1 {
@@ -136,13 +50,13 @@ export class MediaOpsControl {
       throw new MediaOpsError("CONFLICT", "unsupported SIP call direction");
     }
     const scope = idempotencyScope("sip", input.environmentId, input.idempotencyKey);
-    const fingerprint = JSON.stringify({
+    const fingerprint = requestFingerprint({
       roomName: input.roomName,
       sipTrunkId: input.sipTrunkId ?? null,
       participantIdentity: input.participantIdentity ?? null,
       dtmf: input.dtmf ?? null,
       direction: input.direction,
-      remoteNumberHash: createHash("sha256").update(input.remoteNumber).digest("hex"),
+      remoteNumberHash: sha256(input.remoteNumber),
     });
     const cached = this.idempotency.get(scope);
     if (cached !== undefined) {
@@ -157,9 +71,10 @@ export class MediaOpsControl {
       ...(input.participantIdentity === undefined ? {} : { participantIdentity: input.participantIdentity }),
       direction: input.direction,
       roomName: input.roomName,
-      remoteNumberHash: createHash("sha256").update(input.remoteNumber).digest("hex"),
+      remoteNumberHash: sha256(input.remoteNumber),
+      ...(input.dtmf === undefined ? {} : { dtmfSequenceHash: sha256(input.dtmf) }),
       status: "requested",
-      idempotencyKey: input.idempotencyKey,
+      idempotencyKeyHash: sha256(input.idempotencyKey),
       createdAt: now,
       updatedAt: now,
     };
@@ -174,13 +89,13 @@ export class MediaOpsControl {
     requireText(input.environmentId, "environmentId");
     requireText(input.roomName, "roomName");
     requireText(input.idempotencyKey, "idempotencyKey");
-    if (input.sourceUrl !== undefined) requireTarget(input.sourceUrl, "sourceUrl");
+    if (input.sourceUrl !== undefined) requireExternalHttpsUrl(input.sourceUrl);
     if (input.inputType === "url" && input.sourceUrl === undefined) throw new MediaOpsError("CONFLICT", "sourceUrl is required for URL ingress");
     if (!(input.inputType === "rtmp" || input.inputType === "whip" || input.inputType === "url")) {
       throw new MediaOpsError("CONFLICT", "unsupported ingress input type");
     }
     const scope = idempotencyScope("ingress", input.environmentId, input.idempotencyKey);
-    const fingerprint = JSON.stringify({ roomName: input.roomName, inputType: input.inputType, sourceUrl: input.sourceUrl ?? null });
+    const fingerprint = requestFingerprint({ roomName: input.roomName, inputType: input.inputType, sourceUrl: input.sourceUrl ?? null });
     const cached = this.idempotency.get(scope);
     if (cached !== undefined) {
       if (this.idempotencyFingerprints.get(scope) !== fingerprint) throw new MediaOpsError("CONFLICT", "idempotency key was reused with a different ingress request");
@@ -188,8 +103,7 @@ export class MediaOpsControl {
     }
     this.enforceActiveLimit(this.ingress, this.options.maxActiveIngress, "ingress");
     const now = this.clock.now().toISOString();
-    const { sourceUrl: _sourceUrl, ...jobInput } = input;
-    const job: IngressJobV1 = { ingressId: `ingress-${randomUUID()}`, ...jobInput, status: "requested", createdAt: now, updatedAt: now };
+    const job: IngressJobV1 = { ingressId: `ingress-${randomUUID()}`, environmentId: input.environmentId, roomName: input.roomName, inputType: input.inputType, idempotencyKeyHash: sha256(input.idempotencyKey), status: "requested", createdAt: now, updatedAt: now };
     this.ingress.set(job.ingressId, job);
     this.idempotency.set(scope, job);
     this.idempotencyFingerprints.set(scope, fingerprint);
@@ -210,7 +124,7 @@ export class MediaOpsControl {
       throw new MediaOpsError("CONFLICT", "unsupported egress output type");
     }
     const scope = idempotencyScope("egress", input.environmentId, input.idempotencyKey);
-    const fingerprint = JSON.stringify({ roomName: input.roomName, outputType: input.outputType, outputTarget: input.outputTarget ?? null });
+    const fingerprint = requestFingerprint({ roomName: input.roomName, outputType: input.outputType, outputTarget: input.outputTarget ?? null });
     const cached = this.idempotency.get(scope);
     if (cached !== undefined) {
       if (this.idempotencyFingerprints.get(scope) !== fingerprint) throw new MediaOpsError("CONFLICT", "idempotency key was reused with a different egress request");
@@ -218,8 +132,7 @@ export class MediaOpsControl {
     }
     this.enforceActiveLimit(this.egress, this.options.maxActiveEgress, "egress");
     const now = this.clock.now().toISOString();
-    const { outputTarget: _outputTarget, ...jobInput } = input;
-    const job: EgressJobV1 = { egressId: `egress-${randomUUID()}`, ...jobInput, status: "requested", createdAt: now, updatedAt: now };
+    const job: EgressJobV1 = { egressId: `egress-${randomUUID()}`, environmentId: input.environmentId, roomName: input.roomName, outputType: input.outputType, idempotencyKeyHash: sha256(input.idempotencyKey), status: "requested", createdAt: now, updatedAt: now };
     this.egress.set(job.egressId, job);
     this.idempotency.set(scope, job);
     this.idempotencyFingerprints.set(scope, fingerprint);
@@ -268,14 +181,14 @@ export class MediaOpsControl {
     requireText(environmentId, "environmentId");
     requireText(callId, "callId");
     requireText(idempotencyKey, "idempotencyKey");
-    return this.operationResults.get(`${operation}:${environmentId}:${callId}:${idempotencyKey}`);
+    return this.operationResults.get(idempotencyScope(`${operation}:${callId}`, environmentId, idempotencyKey));
   }
 
   saveOperationResult(operation: "transfer" | "hangup", environmentId: string, callId: string, idempotencyKey: string, result: SipCallV1): void {
     requireText(environmentId, "environmentId");
     requireText(callId, "callId");
     requireText(idempotencyKey, "idempotencyKey");
-    this.operationResults.set(`${operation}:${environmentId}:${callId}:${idempotencyKey}`, result);
+    this.operationResults.set(idempotencyScope(`${operation}:${callId}`, environmentId, idempotencyKey), result);
   }
 
   activateIngress(ingressId: string, providerIngressId: string): IngressJobV1 {
@@ -290,7 +203,7 @@ export class MediaOpsControl {
 
   activateEgress(egressId: string, provider: { providerEgressId: string; objectUri?: string; retentionExpiresAt?: string }): EgressJobV1 {
     requireText(provider.providerEgressId, "providerEgressId");
-    if (provider.objectUri !== undefined) requireTarget(provider.objectUri, "objectUri");
+    if (provider.objectUri !== undefined) requireStableUri(provider.objectUri, "objectUri");
     if (provider.retentionExpiresAt !== undefined) requireDateText(provider.retentionExpiresAt, "retentionExpiresAt");
     const current = this.getEgress(egressId);
     if (current.status !== "requested") throw new MediaOpsError("CONFLICT", "egress is not awaiting provider activation");
@@ -305,7 +218,7 @@ export class MediaOpsControl {
     const current = this.getSipCall(callId);
     if (current.status !== "requested") throw new MediaOpsError("CONFLICT", "SIP call is not awaiting provider activation");
     const starting = { ...current, status: "starting" as const, providerCallId, updatedAt: this.clock.now().toISOString() };
-    const active = { ...starting, status: "active" as const, updatedAt: this.clock.now().toISOString() };
+    const active = { ...starting, status: "active" as const, answeredAt: this.clock.now().toISOString(), updatedAt: this.clock.now().toISOString() };
     this.calls.set(callId, active);
     return active;
   }
@@ -318,24 +231,39 @@ export class MediaOpsControl {
     return updated;
   }
 
+  setSipTrunkId(callId: string, sipTrunkId: string): SipCallV1 {
+    requireText(sipTrunkId, "sipTrunkId");
+    const current = this.getSipCall(callId);
+    if (current.sipTrunkId !== undefined && current.sipTrunkId !== sipTrunkId) throw new MediaOpsError("CONFLICT", "SIP trunk cannot change after request creation");
+    const updated = { ...current, sipTrunkId, updatedAt: this.clock.now().toISOString() };
+    this.calls.set(callId, updated);
+    return updated;
+  }
+
   completeSipCall(callId: string): SipCallV1 {
     const current = this.getSipCall(callId);
     if (current.status === "completed") return current;
-    return this.transition("call", callId, "completed");
+    const completed = this.transition<SipCallV1>("call", callId, "completed");
+    const updated = { ...completed, endedAt: this.clock.now().toISOString(), terminalReasonCode: "local_hangup" };
+    this.calls.set(callId, updated);
+    return updated;
   }
 
   fail(kind: "ingress" | "egress" | "call", resourceId: string): void {
-    this.transition(kind, resourceId, "failed");
+    const failed = this.transition(kind, resourceId, "failed");
+    if (kind === "call") this.calls.set(resourceId, { ...(failed as SipCallV1), endedAt: this.clock.now().toISOString(), terminalReasonCode: "provider_activation_failed" });
   }
 
-  applyProviderStatus(
-    kind: "ingress" | "egress" | "call",
-    resourceId: string,
-    update: MediaProviderStatusUpdateV1,
-  ): SipCallV1 | IngressJobV1 | EgressJobV1 {
+  applyProviderStatus(kind: "ingress" | "egress" | "call", resourceId: string, update: MediaProviderStatusUpdateV1): SipCallV1 | IngressJobV1 | EgressJobV1 {
     if (update.providerId !== undefined) requireText(update.providerId, "providerId");
-    if (update.objectUri !== undefined) requireText(update.objectUri, "objectUri");
+    if (update.objectUri !== undefined) requireStableUri(update.objectUri, "objectUri");
     if (update.retentionExpiresAt !== undefined) requireDateText(update.retentionExpiresAt, "retentionExpiresAt");
+    if (update.reasonCode !== undefined) requireText(update.reasonCode, "reasonCode");
+    if (update.participantIdentity !== undefined) requireText(update.participantIdentity, "participantIdentity");
+    if (update.providerName !== undefined && !/^[a-z][a-z0-9_-]{1,63}$/u.test(update.providerName)) throw new MediaOpsError("CONFLICT", "providerName is invalid");
+    if (update.providerSequence !== undefined && (!Number.isSafeInteger(update.providerSequence) || update.providerSequence < 0)) throw new MediaOpsError("CONFLICT", "providerSequence must be a non-negative safe integer");
+    if (update.occurredAt !== undefined) requireDateText(update.occurredAt, "occurredAt");
+    if (update.attestationDigest !== undefined && !/^sha256:[0-9a-f]{64}$/u.test(update.attestationDigest)) throw new MediaOpsError("CONFLICT", "attestationDigest is invalid");
     const current = kind === "call"
       ? this.getSipCall(resourceId)
       : kind === "ingress"
@@ -349,11 +277,19 @@ export class MediaOpsControl {
     if ((update.status === "starting" || update.status === "active") && update.providerId === undefined && currentProviderId === undefined) {
       throw new MediaOpsError("CONFLICT", "providerId is required when activating a media resource");
     }
+    const currentSequence = current.providerSequence;
+    if (currentSequence !== undefined && update.providerSequence !== undefined && update.providerSequence <= currentSequence) return current;
+    if (kind === "call" && (current as SipCallV1).direction === "inbound" && current.status === "requested" && (update.status === "starting" || update.status === "active") && update.attestationDigest === undefined) {
+      throw new MediaOpsError("CONFLICT", "inbound SIP adoption requires a verified edge attestation");
+    }
     const transitioned = current.status === update.status
       ? current
-      : this.transition(kind, resourceId, update.status);
+      : current.status === "requested" && update.status === "active"
+        ? (this.transition(kind, resourceId, "starting"), this.transition(kind, resourceId, "active"))
+        : this.transition(kind, resourceId, update.status);
+    const callTerminal = ["completed", "failed", "cancelled"].includes(update.status);
     const enriched = kind === "call"
-      ? { ...transitioned, ...(update.providerId === undefined ? {} : { providerCallId: update.providerId }) }
+      ? { ...transitioned, ...(update.providerId === undefined ? {} : { providerCallId: update.providerId }), ...(update.participantIdentity === undefined ? {} : { participantIdentity: update.participantIdentity }), ...(update.status === "active" && (transitioned as SipCallV1).answeredAt === undefined ? { answeredAt: this.clock.now().toISOString() } : {}), ...(callTerminal ? { endedAt: this.clock.now().toISOString(), terminalReasonCode: update.reasonCode ?? update.status } : {}) }
       : kind === "ingress"
         ? { ...transitioned, ...(update.providerId === undefined ? {} : { providerIngressId: update.providerId }) }
         : {
@@ -362,19 +298,22 @@ export class MediaOpsControl {
             ...(update.objectUri === undefined ? {} : { objectUri: update.objectUri }),
             ...(update.retentionExpiresAt === undefined ? {} : { retentionExpiresAt: update.retentionExpiresAt }),
           };
-    if (kind === "call") this.calls.set(resourceId, enriched as SipCallV1);
-    else if (kind === "ingress") this.ingress.set(resourceId, enriched as IngressJobV1);
-    else this.egress.set(resourceId, enriched as EgressJobV1);
-    return enriched as SipCallV1 | IngressJobV1 | EgressJobV1;
+    const withReceipt = {
+      ...enriched,
+      ...(update.providerSequence === undefined ? {} : { providerSequence: update.providerSequence }),
+      ...(update.occurredAt === undefined ? {} : { providerUpdatedAt: update.occurredAt }),
+      ...(update.attestationDigest === undefined ? {} : { edgeAttestationDigest: update.attestationDigest }),
+      ...(update.providerName === undefined ? {} : { providerName: update.providerName }),
+    };
+    if (kind === "call") this.calls.set(resourceId, withReceipt as SipCallV1);
+    else if (kind === "ingress") this.ingress.set(resourceId, withReceipt as IngressJobV1);
+    else this.egress.set(resourceId, withReceipt as EgressJobV1);
+    return withReceipt as SipCallV1 | IngressJobV1 | EgressJobV1;
   }
 
-  listIngress(environmentId: string): IngressJobV1[] {
-    return [...this.ingress.values()].filter((job) => job.environmentId === environmentId);
-  }
+  listIngress(environmentId: string): IngressJobV1[] { return [...this.ingress.values()].filter((job) => job.environmentId === environmentId); }
 
-  listEgress(environmentId: string): EgressJobV1[] {
-    return [...this.egress.values()].filter((job) => job.environmentId === environmentId);
-  }
+  listEgress(environmentId: string): EgressJobV1[] { return [...this.egress.values()].filter((job) => job.environmentId === environmentId); }
 
   listExpiredEgress(now = this.clock.now()): EgressJobV1[] {
     const nowMs = now.getTime();
@@ -389,7 +328,7 @@ export class MediaOpsControl {
   }
 
   markEgressDeleted(egressId: string, evidenceUri: string): EgressJobV1 {
-    requireText(evidenceUri, "deletionEvidenceUri");
+    requireStableUri(evidenceUri, "deletionEvidenceUri");
     const current = this.getEgress(egressId);
     if (current.objectUri === undefined) throw new MediaOpsError("CONFLICT", "egress has no object to delete");
     if (current.deletedAt !== undefined) return current;
@@ -400,9 +339,7 @@ export class MediaOpsControl {
     return updated;
   }
 
-  listSipCalls(environmentId: string): SipCallV1[] {
-    return [...this.calls.values()].filter((call) => call.environmentId === environmentId);
-  }
+  listSipCalls(environmentId: string): SipCallV1[] { return [...this.calls.values()].filter((call) => call.environmentId === environmentId); }
 
   private enforceActiveLimit<T extends { status: string }>(map: Map<string, T>, limit: number | undefined, kind: string) {
     if (limit === undefined) return;

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "commit": "0000000",
+  "generatedAt": "2026-07-17T00:00:00Z",
+  "targets": {
+    "beelinkServer": { "status": "deferred" },
+    "webClient": { "status": "deferred" },
+    "flutterWeb": { "status": "deferred" },
+    "ios": { "status": "deferred" },
+    "android": { "status": "deferred" },
+    "python": { "status": "deferred" },
+    "turnWeakNetwork": { "status": "deferred" },
+    "webhook": { "status": "deferred" },
+    "supplyChain": { "status": "deferred" },
+    "nightlySandbox": { "status": "deferred" }
+  }
+}

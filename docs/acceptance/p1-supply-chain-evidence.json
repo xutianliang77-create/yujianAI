@@ -1,0 +1,244 @@
+{
+  "schemaVersion": 1,
+  "taskId": "P1-M0-04",
+  "runId": "p1-m0-04-20260718T074700Z",
+  "generatedAt": "2026-07-18T07:46:31Z",
+  "status": "failed-technical",
+  "environment": {
+    "server": "beelink",
+    "platform": "linux/amd64",
+    "dataRoot": "/data/models/yujianAI",
+    "evidenceRoot": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-20260718T074700Z",
+    "reportFiles": 28,
+    "reportMode": "0600"
+  },
+  "scope": {
+    "policy": "current-pinned-yujian-images",
+    "manifest": "infra/upstream/p1-image-scope.json",
+    "manifestSha256": "sha256:01ae7fdcdae5b9690f5dc850d07ba10d8a6db28827b4ddc0e22096804bf29768",
+    "runner": "tools/supply-chain/run-image-evidence.sh",
+    "runnerSha256": "sha256:9a5d693e6060f4e1bb8f2e673e9f217d6a78ae5225620739395de1c1a604c02f",
+    "excluded": [
+      "ai-phone containers and images are outside the yujianAI repository scope",
+      "livekit-qkxy containers were not modified; their current local image content is represented by the pinned LiveKit v1.13.3 image",
+      "Yujian service images are not claimed because platform-api was accepted from source and no release image is currently deployed"
+    ]
+  },
+  "tools": [
+    {
+      "name": "syft",
+      "version": "1.48.0",
+      "sha256": "sha256:fd260522b9695350ee23483c88b803e96ffe9f8f3954106a7bcad7940a1ade89",
+      "source": "https://github.com/anchore/syft/releases/tag/v1.48.0",
+      "checksumVerified": true
+    },
+    {
+      "name": "grype",
+      "version": "0.116.0",
+      "sha256": "sha256:766fec22cd9eb84aa5efc854a8bd569305c7d96da4e1dbd7e2940b556c4d21ff",
+      "source": "https://github.com/anchore/grype/releases/tag/v0.116.0",
+      "checksumVerified": true
+    },
+    {
+      "name": "cosign",
+      "version": "v3.1.2",
+      "sha256": "sha256:f7622ed3cf22e55e1ae6377c080979ff77a22da9981c11df222a2e444991e7cf",
+      "source": "https://github.com/sigstore/cosign/releases/tag/v3.1.2",
+      "checksumVerified": true
+    }
+  ],
+  "vulnerabilityPolicy": {
+    "maximumUnwaivedCritical": 0,
+    "highSeverity": "report-and-owner-review",
+    "exceptions": [],
+    "database": {
+      "schemaVersion": "v6.1.9",
+      "builtAt": "2026-07-18T06:48:35Z",
+      "checksum": "sha256:5df41e43b3ea4ca0f405b12484f9f4ef6ee55c5d5f672fdf4346d206c4d72b73",
+      "valid": true
+    }
+  },
+  "images": [
+    {
+      "id": "livekit-server-linux-amd64",
+      "reference": "livekit/livekit-server:v1.13.3@sha256:8ef3ee244ded8477d5b40d9dff4b084e1809a9fa0e4d9ed8d29943b3c6322998",
+      "registryDigest": "sha256:8ef3ee244ded8477d5b40d9dff4b084e1809a9fa0e4d9ed8d29943b3c6322998",
+      "localImageId": "sha256:66be6ead8451a76456025a7d47bcce1a767a4c33d2cd359afde5c1e7e2086d21",
+      "platform": "linux/amd64",
+      "sbom": {
+        "format": "spdx-json",
+        "spdxVersion": "SPDX-2.3",
+        "packages": 137,
+        "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-20260718T074700Z/images/livekit-server-linux-amd64/sbom.spdx.json",
+        "sha256": "sha256:24d83f7a73717e79a7af364d603cccb034bc8e53d3a0e152432c38bd233de7cf"
+      },
+      "vulnerabilityScan": {
+        "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-20260718T074700Z/images/livekit-server-linux-amd64/vulnerabilities.grype.json",
+        "sha256": "sha256:ffebcd3a4670d46df78755ff35b236d742ffbd727278effb907f4f5e14590662",
+        "counts": { "negligible": 0, "low": 0, "medium": 4, "high": 1, "critical": 0, "unknown": 1 },
+        "unwaivedCritical": 0,
+        "gate": "passed"
+      }
+    },
+    {
+      "id": "redis-linux-amd64",
+      "reference": "redis:7.2.7-alpine@sha256:1de7ca6a3f63a083036fa1d95dddbd6bdfcdf5865bb692c1e412d4bdf9cb1e37",
+      "registryDigest": "sha256:1de7ca6a3f63a083036fa1d95dddbd6bdfcdf5865bb692c1e412d4bdf9cb1e37",
+      "localImageId": "sha256:04bec005426e7e601aa34c3125553c6ac19f9dce12b1dc145e3ee3a6a241bedc",
+      "platform": "linux/amd64",
+      "sbom": {
+        "format": "spdx-json",
+        "spdxVersion": "SPDX-2.3",
+        "packages": 23,
+        "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-20260718T074700Z/images/redis-linux-amd64/sbom.spdx.json",
+        "sha256": "sha256:df6266878816641988833289e0cc907ae6e1d031ba565e1cbe69d18d94331df0"
+      },
+      "vulnerabilityScan": {
+        "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-20260718T074700Z/images/redis-linux-amd64/vulnerabilities.grype.json",
+        "sha256": "sha256:5a4f3b65c35faf49bc1f8995e8413756b4bae93d4dc034d2d84e1223a641b7b3",
+        "counts": { "negligible": 0, "low": 12, "medium": 64, "high": 82, "critical": 11, "unknown": 0 },
+        "unwaivedCritical": 11,
+        "gate": "blocked"
+      }
+    },
+    {
+      "id": "postgres-linux-amd64",
+      "reference": "postgres:16.4@sha256:9a70e4d1c03a5066080292db2dd95ee3965d3651316e21989fa0935afb8ce8ca",
+      "registryDigest": "sha256:9a70e4d1c03a5066080292db2dd95ee3965d3651316e21989fa0935afb8ce8ca",
+      "localImageId": "sha256:6b14e73a48cf2518aeb37e8b758a907473bcc72727297a7353a665afa069ef10",
+      "platform": "linux/amd64",
+      "sbom": {
+        "format": "spdx-json",
+        "spdxVersion": "SPDX-2.3",
+        "packages": 149,
+        "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-20260718T074700Z/images/postgres-linux-amd64/sbom.spdx.json",
+        "sha256": "sha256:b183dcfb57c08d5361482ce2a7541553c6bca0aa7fe6909cb2406aa036683440"
+      },
+      "vulnerabilityScan": {
+        "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-20260718T074700Z/images/postgres-linux-amd64/vulnerabilities.grype.json",
+        "sha256": "sha256:5f64bea851f4780d8afccece36f9769044c04239ed9cda75c12e344b302a059c",
+        "counts": { "negligible": 120, "low": 32, "medium": 202, "high": 210, "critical": 42, "unknown": 16 },
+        "unwaivedCritical": 42,
+        "gate": "blocked"
+      }
+    },
+    {
+      "id": "openbao-linux-amd64",
+      "reference": "openbao/openbao:2.4.1@sha256:06a26f632cd0bdd0fd6e25034f55d68bc28b62590adc8efea3b8dacade11579a",
+      "registryDigest": "sha256:06a26f632cd0bdd0fd6e25034f55d68bc28b62590adc8efea3b8dacade11579a",
+      "localImageId": "sha256:bb9de737e0cac0a6b420830b069bc32335d359c7d7c1144763f8cbf966e61afb",
+      "platform": "linux/amd64",
+      "sbom": {
+        "format": "spdx-json",
+        "spdxVersion": "SPDX-2.3",
+        "packages": 338,
+        "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-20260718T074700Z/images/openbao-linux-amd64/sbom.spdx.json",
+        "sha256": "sha256:1756819280bad20780d9845efbeaffa5a9f7d6e7b8b5c3e82eece56373501229"
+      },
+      "vulnerabilityScan": {
+        "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-20260718T074700Z/images/openbao-linux-amd64/vulnerabilities.grype.json",
+        "sha256": "sha256:5f039e63cb829bcda8ef3a64211a0e2239bf1386faada1f1979a2b1561275683",
+        "counts": { "negligible": 0, "low": 23, "medium": 84, "high": 87, "critical": 23, "unknown": 1 },
+        "unwaivedCritical": 23,
+        "gate": "blocked"
+      }
+    }
+  ],
+  "findingSummary": {
+    "unwaivedCriticalMatches": 76,
+    "criticalUniqueAdvisoriesByImage": {
+      "livekit-server-linux-amd64": 0,
+      "redis-linux-amd64": 9,
+      "postgres-linux-amd64": 21,
+      "openbao-linux-amd64": 20
+    },
+    "criticalFixStatesByImage": {
+      "redis-linux-amd64": { "fixed": 11 },
+      "postgres-linux-amd64": { "fixed": 16, "not-fixed": 12, "wont-fix": 14 },
+      "openbao-linux-amd64": { "fixed": 23 }
+    },
+    "exceptionsAccepted": 0
+  },
+  "signature": {
+    "mode": "cosign-sign-blob",
+    "keyClass": "engineering-evidence-non-production",
+    "statementPath": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-20260718T074700Z/signing-statement.json",
+    "statementSha256": "sha256:f0582da7b0a3214d6778e2ccd0499b820aef1f9d035f43e73441bcb9b119db99",
+    "bundlePath": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-20260718T074700Z/signing-statement.sigstore.json",
+    "bundleSha256": "sha256:d7dd846d72882161f15d7639bf3d679e54f6acc893638ce112ecc010954a21bc",
+    "publicKeyPath": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-20260718T074700Z/signing-public.pem",
+    "publicKeySha256": "sha256:f77dcfc2978a199e4ec6a770eeafe52c01f23e0eac1dcceec533804e6f777e6c",
+    "verificationLog": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-20260718T074700Z/signature-verify.log",
+    "verified": true,
+    "transparencyLog": "not-used-private-engineering-key"
+  },
+  "licenseInventory": {
+    "packages": 647,
+    "packagesWithNoAssertion": 465,
+    "notice": "infra/upstream/THIRD_PARTY_NOTICES.md",
+    "status": "blocked-incomplete-license-assertions"
+  },
+  "owners": [
+    {
+      "role": "compliance-owner",
+      "personalOwner": "ddd",
+      "appointedBy": "eee",
+      "appointedAt": "2026-07-18",
+      "contact": null,
+      "backupOwner": null,
+      "status": "assigned-pending-signoff",
+      "requiredAction": "review China distribution and data compliance implications"
+    },
+    {
+      "role": "legal-owner",
+      "personalOwner": "ccc",
+      "appointedBy": "eee",
+      "appointedAt": "2026-07-18",
+      "contact": null,
+      "backupOwner": null,
+      "status": "assigned-pending-signoff",
+      "requiredAction": "close NOASSERTION packages and approve LICENSE, NOTICE and trademark wording"
+    },
+    {
+      "role": "release-owner",
+      "personalOwner": "bbb",
+      "appointedBy": "eee",
+      "appointedAt": "2026-07-18",
+      "contact": null,
+      "backupOwner": null,
+      "status": "assigned-pending-signoff",
+      "requiredAction": "approve release identity, registry signing and evidence retention"
+    },
+    {
+      "role": "security-owner",
+      "personalOwner": "aaa",
+      "appointedBy": "eee",
+      "appointedAt": "2026-07-18",
+      "contact": null,
+      "backupOwner": null,
+      "status": "assigned-pending-signoff",
+      "requiredAction": "remediate or time-bound every Critical finding and review High findings"
+    }
+  ],
+  "legalReview": {
+    "licenseInventory": "infra/upstream/THIRD_PARTY_NOTICES.md",
+    "policy": "infra/upstream/LICENSE_REVIEW.md",
+    "trademarkBoundary": "Yujian must not imply ownership of LiveKit trademarks",
+    "status": "pending-personal-owner-signoff"
+  },
+  "boundaries": [
+    "The signed statement covers exact image digests, SBOM hashes, scan hashes and tool hashes; it does not attach an OCI registry signature.",
+    "The encrypted private key is an engineering evidence key stored outside the evidence root, not an authorized production release identity.",
+    "No vulnerability exception was created and the zero-Critical policy was not weakened.",
+    "No container was restarted, recreated or reconfigured during evidence collection.",
+    "Personal legal, compliance, release and security owners are assigned but their professional decisions and signatures remain pending."
+  ],
+  "gate": {
+    "technicalEvidence": "blocked",
+    "p1M004SupplyChainEvidence": "blocked-critical-findings-and-license-gaps",
+    "p1M004OwnerApproval": "assigned-pending-signoff",
+    "formalGate0": "not-passed",
+    "formalGate1": "not-passed",
+    "productionRelease": "blocked"
+  }
+}

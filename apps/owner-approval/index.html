@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>语见 Owner 审批台</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+    <main class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">语</span>
+          <div>
+            <p class="eyebrow">YUJIAN GOVERNANCE</p>
+            <h1>Owner 审批台</h1>
+          </div>
+        </div>
+        <div class="gate-chip"><span></span>生产 Gate 保持阻断</div>
+      </header>
+
+      <section class="hero">
+        <div>
+          <p class="kicker">P1-M0-04 · 供应链专业签字</p>
+          <h2>审阅证据，留下明确决定。</h2>
+          <p class="lead">每次提交由 Owner 专属 OpenBao key 签名。审批台不会保存 token，也不会自动放行生产。</p>
+        </div>
+        <div class="trust-list" aria-label="安全边界">
+          <span>一次性凭据</span>
+          <span>Owner 隔离</span>
+          <span>签后即撤销</span>
+        </div>
+      </section>
+
+      <section class="notice" role="note">
+        <strong>审批前准备</strong>
+        <span>先由管理员在本人在线时生成 5 分钟 wrapped token。请勿把 token 复制到聊天、邮件或 Git。</span>
+      </section>
+
+      <nav class="owner-tabs" aria-label="按 Owner 筛选">
+        <button type="button" data-owner="" class="active">全部任务</button>
+        <button type="button" data-owner="aaa">aaa · 安全</button>
+        <button type="button" data-owner="bbb">bbb · 发布</button>
+        <button type="button" data-owner="ccc">ccc · 法律</button>
+        <button type="button" data-owner="ddd">ddd · 合规</button>
+      </nav>
+
+      <section class="workspace">
+        <div>
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">DECISION QUEUE</p>
+              <h2>待办任务</h2>
+            </div>
+            <button id="refresh" type="button" class="ghost">刷新状态</button>
+          </div>
+          <div id="tasks" class="task-list" aria-live="polite"></div>
+        </div>
+
+        <aside id="detail" class="detail empty">
+          <div id="empty-state" class="empty-state">
+            <span class="empty-icon" aria-hidden="true">↗</span>
+            <h2>选择一项审批任务</h2>
+            <p>右侧将展示事实、证据、允许的决定以及签名提交表单。</p>
+          </div>
+
+          <div id="task-detail" hidden>
+            <div class="detail-heading">
+              <div>
+                <p id="detail-role" class="eyebrow"></p>
+                <h2 id="detail-title"></h2>
+              </div>
+              <span id="detail-status" class="status-pill"></span>
+            </div>
+            <p id="detail-summary" class="detail-summary"></p>
+
+            <section class="evidence-section">
+              <h3>事实摘要</h3>
+              <dl id="facts" class="facts"></dl>
+            </section>
+
+            <section class="evidence-section">
+              <h3>证据清单</h3>
+              <ol id="evidence" class="evidence-list"></ol>
+            </section>
+
+            <section id="receipt" class="receipt" hidden aria-live="polite"></section>
+
+            <form id="decision-form" novalidate>
+              <div class="form-divider"><span id="form-title">本人决定</span></div>
+              <section id="supersession-context" class="supersession-context" hidden>
+                <strong>追加替代，不覆盖原记录</strong>
+                <p>当前有效 receipt：<code id="current-receipt-hash"></code></p>
+                <p>新签名将绑定该哈希并写入新的序号目录；原始 decision、signature 和 result 不变。</p>
+              </section>
+              <label>决定
+                <select id="decision" required></select>
+              </label>
+              <label>决定理由
+                <textarea id="reason" minlength="20" maxlength="2000" rows="4" placeholder="说明审阅结论、主要依据和残余风险（至少 20 字符）" required></textarea>
+              </label>
+              <label id="conditions-label" hidden>附加条件
+                <textarea id="conditions" minlength="20" maxlength="2000" rows="3" placeholder="写明责任人、完成条件和验证方式"></textarea>
+              </label>
+              <label id="expires-label" hidden>例外到期时间
+                <input id="expires-at" type="datetime-local">
+              </label>
+              <label id="supersession-reason-label" hidden>替代原因
+                <textarea id="supersession-reason" minlength="20" maxlength="2000" rows="3" placeholder="说明从上一份决定到本次决定发生了什么变化"></textarea>
+              </label>
+              <label>5 分钟 wrapped token
+                <input id="wrapped-token" type="password" autocomplete="off" spellcheck="false" placeholder="仅在本次提交的内存中使用" required>
+              </label>
+              <label class="confirm">
+                <input id="confirm" type="checkbox" required>
+                <span>我确认已审阅上述证据，并理解签名只记录本人决定，不会自动授权生产发布。</span>
+              </label>
+              <label id="confirm-original-label" class="confirm" hidden>
+                <input id="confirm-original" type="checkbox">
+                <span>我确认新决定只能追加，不得覆盖、删除或改写任何原始证据。</span>
+              </label>
+              <button id="submit" type="submit" class="primary">签名并提交决定</button>
+              <p id="form-note" class="form-note">提交成功后 token 立即撤销，此任务不可在审批台内覆盖。</p>
+            </form>
+          </div>
+        </aside>
+      </section>
+
+      <footer>
+        <span>语见AI · Owner Approval Console</span>
+        <span id="service-state">正在连接审批服务</span>
+      </footer>
+    </main>
+    <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

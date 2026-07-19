@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "runId": "p2-closure-20260718051008-653ebfee",
+  "supersedesInterruptedRun": "p2-closure-20260717104540-c0c4ba0e",
+  "environment": {
+    "server": "beelink",
+    "client": "local-mac",
+    "dataRoot": "/data/models/yujianAI",
+    "worktreeCommit": "0c430fa441bda6d9344d7dfae83b1b8cf2b377d0"
+  },
+  "generatedAt": "2026-07-18T05:10:29.684Z",
+  "status": "passed-scope",
+  "checks": {
+    "p2_04": {
+      "status": "passed",
+      "registration": "OIDC-verified",
+      "invitation": "accepted",
+      "onboarding": "tenant-project-environment",
+      "firstRoom": "real-participant-connected",
+      "persistedRbac": "restart-survived-token-claims-ignored",
+      "crossTenantIdor": "denied",
+      "audit": "durable",
+      "auditCount": 11
+    },
+    "p2_05": {
+      "status": "passed",
+      "hmac": "verified",
+      "retry": "per-destination",
+      "claimHeartbeatRenewals": 5,
+      "dlq": "terminal-after-five-attempts",
+      "requeue": "recovered",
+      "restart": "acknowledged-target-not-duplicated",
+      "deliveryLedgerRows": 6,
+      "secretPersistence": "reference-only"
+    },
+    "p2_06": {
+      "status": "passed",
+      "dataRights": "export-delete-and-crash-recovery-passed",
+      "remainingSubjectRecords": 0,
+      "evidence": "mode-0600-subject-digested",
+      "backupFormat": "pg_dump-custom",
+      "isolatedRestore": true,
+      "migrations": 11,
+      "snapshotTimestampMatched": true,
+      "rpo": "captured-snapshot-zero-loss",
+      "rtoMs": 896,
+      "redisRebuild": "passed-from-postgres-tenant-members"
+    }
+  },
+  "artifacts": {
+    "report": "remote:/data/models/yujianAI/p2/reports/p2-closure-acceptance.json",
+    "reportMode": "0600",
+    "backup": "remote:/data/models/yujianAI/p2/backups/p2-closure-20260718051008-653ebfee.dump",
+    "backupMode": "0600",
+    "backupSizeBytes": 79104,
+    "backupSha256": "f10c0582d9bb2b08ef162aab55027e56877dc5d49a4bfba93dc371f96fdea6f6",
+    "backupSha256Verified": true
+  },
+  "cleanup": {
+    "status": "complete",
+    "scopedDatabaseCounts": [0, 0, 0, 0],
+    "kmsMetadataHttpStatus": 404,
+    "redisRebuildKeyExists": 0,
+    "temporaryRestoreDatabases": 0,
+    "temporaryRtcProbeFiles": 0
+  },
+  "isolation": {
+    "protectedRestartCountsUnchangedDuringRun": true,
+    "protectedContainers": [
+      "ai-phone-staging-agent",
+      "ai-phone-staging-api",
+      "ai-phone-staging-gateway",
+      "livekit-qkxy-livekit-1",
+      "livekit-qkxy-redis-1"
+    ]
+  },
+  "gate": {
+    "p2_04": "passed",
+    "p2_05": "passed",
+    "p2_06": "passed",
+    "m2TechnicalAcceptance": "passed",
+    "formalGate2": "pending-gate0-gate1-and-owner-signoff"
+  }
+}

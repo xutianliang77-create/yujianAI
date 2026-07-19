@@ -1,0 +1,120 @@
+# Replace every placeholder with a real immutable digest or environment value.
+image:
+  platformApi: <registry>/yujian/platform-api@sha256:<digest>
+  rtc: <registry>/livekit/server@sha256:<digest>
+  rtcCapacityExporter: <registry>/yujian/rtc-capacity-exporter@sha256:<digest>
+  turn: <registry>/coturn/coturn@sha256:<digest>
+  mediaOps: <registry>/yujian/media-ops@sha256:<digest>
+  agentControl: <registry>/yujian/agent-control@sha256:<digest>
+  agentWorker: <registry>/yujian/agent-worker@sha256:<digest>
+
+features:
+  rtcEnabled: true
+  rtcCapacityEnabled: true
+  turnEnabled: true
+  mediaOpsEnabled: true
+  ingressEnabled: true
+  egressEnabled: false
+  sipEnabled: false
+  agentControlEnabled: true
+  agentWorkerEnabled: true
+
+dataServices:
+  mode: external-ha
+  externalEgressCidrs: ["10.20.0.0/16"]
+  postgresPort: 5432
+  redisPort: 6379
+  enforceProductionTopology: true
+  postgresTls: true
+  redisTls: true
+  postgresZones: 3
+  redisZones: 3
+  topologyEvidenceRef: evidence://private-deployment/ha-topology.json
+
+gateway:
+  enabled: true
+  ingressClassName: <production-ingress-class>
+  host: api.example.cn
+  tlsSecret: yujian-platform-api-tls
+  annotations:
+    <provider-waf-annotation>: <waf-policy-id>
+    <provider-body-limit-annotation>: "16k"
+  controllerNamespaceSelector:
+    kubernetes.io/metadata.name: <ingress-controller-namespace>
+  controllerPodSelector:
+    app.kubernetes.io/name: <ingress-controller-name>
+  wafPolicyRef: evidence://gateway/waf-policy.json
+  ddosPolicyRef: evidence://gateway/ddos-policy.json
+  certificateRolloverPlanRef: evidence://gateway/certificate-rollover-plan.json
+
+observability:
+  rtcTelemetryRetentionDays: 7
+
+platformRuntime:
+  modulePath: /app/runtime/production-runtime.mjs
+  postgresUrlSecretKey: YUJIAN_DATABASE_URL
+  redisUrlSecretKey: YUJIAN_REDIS_URL
+  kmsEgressCidrs: ["10.30.0.0/24"]
+  kmsPort: 8200
+  externalHttpsEgressCidrs: ["10.40.0.0/24"]
+
+mediaOps:
+  baseUrl: https://<media-ops-service>:8095
+  persistenceModulePath: /app/runtime/media-ops-runtime.mjs
+  providerEnabled: false
+  defaultSipTrunkId: ""
+  externalHttpsEgressCidrs: ["10.45.0.0/24"]
+  workloadIdentity:
+    enabled: true
+    serviceAccountName: <media-workload-service-account>
+    audience: yujian-media-runtime
+    expirationSeconds: 600
+  tls:
+    enabled: true
+    existingSecret: yujian-media-ops-tls
+    certKey: tls.crt
+    keyKey: tls.key
+
+agent:
+  environmentId: <environment-id>
+  handlerModulePath: /app/runtime/handler.mjs
+  nodeSelector: { yujian.ai/gpu: rtx-5090 }
+  gpuResource: nvidia.com/gpu
+  gpuCount: 1
+  providerEgressCidrs: ["10.50.0.0/24"]
+  workloadIdentity:
+    enabled: true
+    serviceAccountName: <agent-workload-service-account>
+    audience: yujian-runtime
+    expirationSeconds: 600
+
+agentControl:
+  baseUrl: https://<agent-control-service>:8096
+  persistenceModulePath: /app/runtime/agent-control-runtime.mjs
+  artifactVerifierModulePath: /app/runtime/agent-control-runtime.mjs
+  dispatchQuotaModulePath: /app/runtime/agent-control-runtime.mjs
+  externalHttpsEgressCidrs: ["10.60.0.0/24"]
+  tls:
+    enabled: true
+    existingSecret: yujian-agent-control-tls
+    certKey: tls.crt
+    keyKey: tls.key
+
+rtc:
+  primaryWsUrl: wss://rtc-a.example.cn
+  secondaryWsUrl: wss://rtc-b.example.cn
+
+turn:
+  replicas: 2
+  configSecret: yujian-turn-config
+  configKey: turnserver.conf
+  tlsSecret: yujian-turn-tls
+  serviceType: LoadBalancer
+  externalTrafficPolicy: Local
+  relayPortMin: 49160
+  relayPortMax: 49200
+  publicUrls:
+    - turn:turn.example.cn:3478?transport=udp
+    - turn:turn.example.cn:3478?transport=tcp
+    - turns:turn.example.cn:5349?transport=tcp
+  secretRef: yujian/turn/rest-auth

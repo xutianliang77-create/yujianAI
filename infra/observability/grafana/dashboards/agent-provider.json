@@ -1,0 +1,35 @@
+{
+  "title": "Yujian Agent Provider",
+  "uid": "yujian-agent-provider",
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Provider calls by outcome",
+      "targets": [{ "expr": "sum by (provider, capability, outcome) (rate(yujian_provider_invocations_total[5m]))" }]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Provider P95 latency ms",
+      "targets": [{ "expr": "histogram_quantile(0.95, sum by (le, provider, capability) (rate(yujian_provider_duration_ms_bucket[5m])))" }]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Attributed provider cost micros",
+      "targets": [{ "expr": "sum by (provider, capability, currency) (rate(yujian_provider_cost_micros_total[5m]))" }]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Text units",
+      "targets": [
+        { "expr": "sum by (provider, capability) (rate(yujian_provider_input_text_units_total[5m]))", "legendFormat": "{{provider}} {{capability}} input" },
+        { "expr": "sum by (provider, capability) (rate(yujian_provider_output_text_units_total[5m]))", "legendFormat": "{{provider}} {{capability}} output" }
+      ]
+    }
+  ]
+}

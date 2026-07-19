@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "语见AI 国内云/KMS/对象存储/身份与日志 adapter 合同",
+  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
   "files": ["dist"],
   "scripts": {
     "build": "tsc -p tsconfig.json",

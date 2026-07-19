@@ -1,0 +1,32 @@
+groups:
+  - name: yujian-rtc-quality
+    interval: 30s
+    rules:
+      - record: yujian:rtc_client_rtt_ms:p50_5m
+        expr: histogram_quantile(0.50, sum by (le) (rate(yujian_rtc_client_rtt_ms_bucket[5m])))
+      - record: yujian:rtc_client_rtt_ms:p95_5m
+        expr: histogram_quantile(0.95, sum by (le) (rate(yujian_rtc_client_rtt_ms_bucket[5m])))
+      - record: yujian:rtc_client_rtt_ms:p99_5m
+        expr: histogram_quantile(0.99, sum by (le) (rate(yujian_rtc_client_rtt_ms_bucket[5m])))
+      - record: yujian:rtc_client_jitter_ms:p95_5m
+        expr: histogram_quantile(0.95, sum by (le) (rate(yujian_rtc_client_jitter_ms_bucket[5m])))
+      - record: yujian:rtc_client_jitter_ms:p50_5m
+        expr: histogram_quantile(0.50, sum by (le) (rate(yujian_rtc_client_jitter_ms_bucket[5m])))
+      - record: yujian:rtc_client_jitter_ms:p99_5m
+        expr: histogram_quantile(0.99, sum by (le) (rate(yujian_rtc_client_jitter_ms_bucket[5m])))
+      - record: yujian:rtc_client_packet_loss_ratio:avg_5m
+        expr: sum(rate(yujian_rtc_client_packet_loss_ratio_sum[5m])) / clamp_min(sum(rate(yujian_rtc_client_packet_loss_ratio_count[5m])), 1e-9)
+      - record: yujian:rtc_client_bitrate_kbps:p50_5m
+        expr: histogram_quantile(0.50, sum by (le) (rate(yujian_rtc_client_bitrate_kbps_bucket[5m])))
+      - alert: YujianRtcClientRttHigh
+        expr: yujian:rtc_client_rtt_ms:p95_5m > 300
+        for: 10m
+        labels: { severity: warning, owner: rtc-owner }
+        annotations:
+          summary: RTC client P95 RTT exceeds 300 ms
+      - alert: YujianRtcClientPacketLossHigh
+        expr: yujian:rtc_client_packet_loss_ratio:avg_5m > 0.05
+        for: 10m
+        labels: { severity: warning, owner: rtc-owner }
+        annotations:
+          summary: RTC client average packet loss exceeds 5 percent

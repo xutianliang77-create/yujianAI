@@ -1,0 +1,26 @@
+{{- if .Values.features.turnEnabled }}
+{{- $min := int .Values.turn.relayPortMin }}
+{{- $max := int .Values.turn.relayPortMax }}
+{{- if or (lt $min 1024) (gt $max 65535) (lt $max $min) (gt (sub $max $min) 100) }}
+{{ fail "TURN relay range must contain at most 101 ports within 1024-65535" }}
+{{- end }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "yujian-platform.fullname" . }}-turn
+  annotations:
+    {{ toYaml .Values.turn.annotations | nindent 4 }}
+spec:
+  type: {{ .Values.turn.serviceType }}
+  externalTrafficPolicy: {{ .Values.turn.externalTrafficPolicy }}
+  sessionAffinity: ClientIP
+  selector:
+    app.kubernetes.io/component: turn
+  ports:
+    - { name: turn-udp, port: 3478, targetPort: turn-udp, protocol: UDP }
+    - { name: turn-tcp, port: 3478, targetPort: turn-tcp, protocol: TCP }
+    - { name: turn-tls, port: 5349, targetPort: turn-tls, protocol: TCP }
+    {{- range $port := untilStep $min (add1 $max | int) 1 }}
+    - { name: relay-{{ $port }}, port: {{ $port }}, targetPort: {{ $port }}, protocol: UDP }
+    {{- end }}
+{{- end }}

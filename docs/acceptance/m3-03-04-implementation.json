@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "evidenceType": "m3-03-04-implementation-status",
+  "generatedAt": "2026-07-19T00:00:00+08:00",
+  "scope": ["M3-03", "M3-04"],
+  "implementationStatus": "completed",
+  "runtimeStatus": "not-executed",
+  "testStatus": "not-executed-by-user-direction",
+  "edgeSecurity": {
+    "publicPaths": ["/platform/*", "/healthz"],
+    "forbiddenPublicPaths": ["/internal/*", "/metrics", "/readyz"],
+    "exactIngressControllerSelectorsRequired": true,
+    "wafEvidenceReferenceRequired": true,
+    "ddosEvidenceReferenceRequired": true,
+    "originBypassPreventionRequired": true,
+    "providerPolicyConfigured": false
+  },
+  "certificateRollover": {
+    "fingerprintBinding": true,
+    "sanCoverage": true,
+    "validityAndOverlap": true,
+    "rollbackWindow": true,
+    "privateKeyRead": false,
+    "actualRolloverExecuted": false
+  },
+  "rtcQuality": {
+    "identityLabelsInPrometheus": false,
+    "histograms": ["rtt", "jitter", "packet-loss-ratio", "bitrate", "audio-level"],
+    "percentiles": ["p50", "p95", "p99"],
+    "grafanaProvisioning": true,
+    "privateRemoteWriteExample": true,
+    "rawPostgresRetentionDaysRange": [1, 90],
+    "productionRequiresDurableTelemetryPersistence": true
+  },
+  "evidence": [
+    "infra/gateway/edge-security-contract.json",
+    "infra/gateway/certificate-rollover-plan.example.json",
+    "tools/gateway/verify-certificate-rollover.mjs",
+    "infra/helm/yujian-platform/templates/platform-api-ingress.yaml",
+    "infra/observability/rules/rtc-quality.yml",
+    "infra/observability/grafana/dashboards/yujian-rtc-quality.json",
+    "infra/observability/prometheus-production.example.yml",
+    "services/platform-api/src/rtc-quality-metrics.ts",
+    "services/platform-api/src/telemetry-retention-worker.ts"
+  ],
+  "notExecuted": [
+    "typescript-build",
+    "unit-tests",
+    "helm-schema-template-lint",
+    "managed-waf-attachment",
+    "network-ddos-policy-attachment",
+    "origin-bypass-scan",
+    "certificate-rollover-and-rollback",
+    "prometheus-rule-evaluation",
+    "grafana-provisioning",
+    "remote-write",
+    "telemetry-retention-worker",
+    "client-sdk-quality-matrix"
+  ],
+  "gate": {
+    "gateId": "Gate 3",
+    "status": "not-passed",
+    "productionReleaseAuthorized": false
+  },
+  "ownerDecisionBoundary": {
+    "bbbRegistryKms": "reject-sequence-1-remains-effective",
+    "cccLegal": "reject-sequence-1-remains-effective",
+    "supersededByThisImplementation": false
+  }
+}

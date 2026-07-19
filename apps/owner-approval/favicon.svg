@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="语见">
+  <defs>
+    <linearGradient id="g" x1="8" y1="6" x2="55" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#67e7a8"/>
+      <stop offset="1" stop-color="#249c67"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="#07100e"/>
+  <rect x="5" y="5" width="54" height="54" rx="15" fill="url(#g)"/>
+  <text x="32" y="43" text-anchor="middle" font-family="PingFang SC,Microsoft YaHei,sans-serif" font-size="32" font-weight="800" fill="#06110c">语</text>
+</svg>

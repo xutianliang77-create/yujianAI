@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "taskId": "P1-M0-04-REGISTRY-KMS-FREEZE-IMPLEMENTATION",
+  "generatedAt": "2026-07-19T00:00:00Z",
+  "status": "implementation-complete-runtime-not-executed",
+  "policyPath": "infra/registry/beelink/freeze-policy.json",
+  "policySha256": "sha256:e1c26fcdfff6ac626d0999b476179c892c166c2a32505b9226e54fd986222cb7",
+  "controls": {
+    "freezePolicy": "implemented",
+    "appendOnlyPlan": "implemented",
+    "registryBackup": "implemented",
+    "registryIsolatedRestore": "implemented",
+    "kmsRaftSnapshot": "implemented",
+    "kmsIsolatedRestore": "implemented",
+    "kmsRotation": "implemented",
+    "irreversibleRetirementGuard": "implemented",
+    "rollbackVerification": "implemented"
+  },
+  "runtimeEvidence": {
+    "registryBackup": "not-executed",
+    "registryRestore": "not-executed",
+    "kmsSnapshot": "not-executed",
+    "kmsRestore": "not-executed",
+    "kmsRotation": "not-executed",
+    "rollback": "not-executed"
+  },
+  "tests": {
+    "execution": "skipped-by-user",
+    "passed": null
+  },
+  "ownerDecision": {
+    "owner": "bbb",
+    "sequence": 1,
+    "decision": "reject",
+    "supersedingDecisionRequired": true
+  },
+  "productionRestoreAuthorized": false,
+  "productionReleaseAuthorized": false
+}

@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "taskId": "P1-M0-04-OWNER-KEY-REGISTRY",
+  "generatedAt": "2026-07-18T13:16:09Z",
+  "status": "keys-provisioned-no-personal-credentials-issued",
+  "environment": {
+    "server": "beelink",
+    "openbaoAddress": "https://127.0.0.1:18200",
+    "provisionRunId": "owner-key-provision-20260718T131608Z",
+    "resultPath": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-signers/owner-key-provision-20260718T131608Z/result.json",
+    "resultSha256": "sha256:f4ff6c560c533615797867f28911bd25810b046d55950e68b6804f84d840d11d",
+    "policyValidationRunId": "owner-policy-validation-20260718T131609Z",
+    "policyValidationPath": "remote:/data/models/yujianAI/evidence/p1-m0-04/owner-signers/owner-policy-validation-20260718T131609Z/result.json",
+    "policyValidationSha256": "sha256:58de37c8ebb1538f7a72dc6ccca09a4f1e2b2ffd51b05cb1aba53e6523076edb"
+  },
+  "owners": [
+    {
+      "personalOwner": "aaa",
+      "role": "security-owner",
+      "keyUri": "openbao://yujian-owner-aaa",
+      "policy": "yujian-owner-aaa-signer",
+      "policyCapabilities": ["read-own-key", "sign-own-key", "verify-own-key", "revoke-self"],
+      "keyType": "ecdsa-p256",
+      "latestVersion": 1,
+      "exportable": false,
+      "allowPlaintextBackup": false,
+      "publicKeySha256": "sha256:26ab8856cc581784863f88334dab24c43169c498679b049a2f685cdaa0a6f854",
+      "policySha256": "sha256:8d1bf09bf46c081309b16a3da8eadca7c1752442934b6e3df5e21fcdc2fc5103",
+      "personalCredentialIssued": false,
+      "status": "key-provisioned-awaiting-personal-credential"
+    },
+    {
+      "personalOwner": "bbb",
+      "role": "release-owner",
+      "keyUri": "openbao://yujian-owner-bbb",
+      "policy": "yujian-owner-bbb-signer",
+      "policyCapabilities": ["read-own-key", "sign-own-key", "verify-own-key", "revoke-self"],
+      "keyType": "ecdsa-p256",
+      "latestVersion": 1,
+      "exportable": false,
+      "allowPlaintextBackup": false,
+      "publicKeySha256": "sha256:94ba7186ffb1147e064a3dc74787fa73e12c277409aaec2dfe55282ccc46bde9",
+      "policySha256": "sha256:6f1ba89aa24de56893cc5eea46f88a611f68a5624b836d3bb62a8c54f45c43cb",
+      "personalCredentialIssued": false,
+      "status": "key-provisioned-awaiting-personal-credential"
+    },
+    {
+      "personalOwner": "ccc",
+      "role": "legal-owner",
+      "keyUri": "openbao://yujian-owner-ccc",
+      "policy": "yujian-owner-ccc-signer",
+      "policyCapabilities": ["read-own-key", "sign-own-key", "verify-own-key", "revoke-self"],
+      "keyType": "ecdsa-p256",
+      "latestVersion": 1,
+      "exportable": false,
+      "allowPlaintextBackup": false,
+      "publicKeySha256": "sha256:d3d7f25fadd6479ded3ae4d4317f23d81e4f2895dd74d434acf1c775f524e1ee",
+      "policySha256": "sha256:5149c7f466a96a10b846ad94f7a6cefcd21c31fefefcf2122ab9071da1432bd1",
+      "personalCredentialIssued": false,
+      "status": "key-provisioned-awaiting-personal-credential"
+    },
+    {
+      "personalOwner": "ddd",
+      "role": "compliance-owner",
+      "keyUri": "openbao://yujian-owner-ddd",
+      "policy": "yujian-owner-ddd-signer",
+      "policyCapabilities": ["read-own-key", "sign-own-key", "verify-own-key", "revoke-self"],
+      "keyType": "ecdsa-p256",
+      "latestVersion": 1,
+      "exportable": false,
+      "allowPlaintextBackup": false,
+      "publicKeySha256": "sha256:50acd840208f8c4a9e7e083bde9bef3591e505767d0a5d3e4c40a21ef0153641",
+      "policySha256": "sha256:fd9ae221e331395e236ee9002a884860bcf331f6eb32ec3c4407aa4b8498afb5",
+      "personalCredentialIssued": false,
+      "status": "key-provisioned-awaiting-personal-credential"
+    }
+  ],
+  "responseWrapTtlSeconds": 300,
+  "personalSigningTokenTtlSeconds": 900,
+  "tokensCreatedInAdvance": false,
+  "technicalSelfTestTokensRevoked": true,
+  "allPersonalDecisionsPending": true,
+  "protectedRuntime": {
+    "unchanged": true,
+    "allHealthy": true,
+    "restartCount": 0
+  },
+  "productionReleaseAuthorized": false
+}

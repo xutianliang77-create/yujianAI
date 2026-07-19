@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type {
   AuditEventV1,
   EnvironmentV1,
@@ -219,6 +220,8 @@ class SqlPersistenceTransaction implements PlatformPersistenceTransaction {
 }
 
 export class PostgresPlatformPersistence implements PlatformPersistenceAdapter {
+  private readonly outboxClaims = new Map<string, string>();
+
   constructor(private readonly pool: SqlPool) {}
 
   async getEnvironment(environmentId: string): Promise<EnvironmentV1 | undefined> {
@@ -296,13 +299,19 @@ export class PostgresPlatformPersistence implements PlatformPersistenceAdapter {
         `SELECT * FROM outbox_events
          WHERE published_at IS NULL AND dead_lettered_at IS NULL
            AND (next_attempt_at IS NULL OR next_attempt_at <= now())
+           AND (claimed_until IS NULL OR claimed_until <= now())
          ORDER BY occurred_at LIMIT $1 FOR UPDATE SKIP LOCKED`,
         [limit],
       );
       const ids = result.rows.map((row) => String(row.event_id));
-      if (ids.length > 0) await connection.query("UPDATE outbox_events SET attempt_count = attempt_count + 1 WHERE event_id = ANY($1::text[])", [ids]);
+      const claimToken = randomUUID();
+      if (ids.length > 0) await connection.query(
+        "UPDATE outbox_events SET attempt_count = attempt_count + 1, claimed_until = now() + interval '60 seconds', claim_token = $2, claim_renewal_count = 0 WHERE event_id = ANY($1::text[])",
+        [ids, claimToken],
+      );
       await connection.query("COMMIT");
       await connection.release();
+      for (const eventId of ids) this.outboxClaims.set(eventId, claimToken);
       return result.rows.map(outboxFrom);
     } catch (error) {
       try { await connection.query("ROLLBACK"); } finally { await connection.release(); }
@@ -310,27 +319,76 @@ export class PostgresPlatformPersistence implements PlatformPersistenceAdapter {
     }
   }
 
+  async renewOutboxClaim(eventId: string): Promise<void> {
+    const claimToken = this.outboxClaim(eventId);
+    const result = await this.pool.query<{ event_id: string }>(
+      `UPDATE outbox_events
+       SET claimed_until = now() + interval '60 seconds', claim_renewal_count = claim_renewal_count + 1
+       WHERE event_id = $1 AND claim_token = $2 AND published_at IS NULL AND dead_lettered_at IS NULL
+       RETURNING event_id`,
+      [eventId, claimToken],
+    );
+    if (result.rows.length !== 1) {
+      this.outboxClaims.delete(eventId);
+      throw new Error("outbox claim ownership was lost");
+    }
+  }
+
   async markOutboxPublished(eventId: string, publishedAt: string): Promise<void> {
-    await this.pool.query("UPDATE outbox_events SET published_at = $2 WHERE event_id = $1 AND published_at IS NULL", [eventId, publishedAt]);
+    const claimToken = this.outboxClaim(eventId);
+    const result = await this.pool.query<{ event_id: string }>(
+      "UPDATE outbox_events SET published_at = $2, claimed_until = NULL, claim_token = NULL WHERE event_id = $1 AND claim_token = $3 AND published_at IS NULL RETURNING event_id",
+      [eventId, publishedAt, claimToken],
+    );
+    this.outboxClaims.delete(eventId);
+    if (result.rows.length !== 1) throw new Error("outbox publish claim ownership was lost");
   }
 
   async markOutboxFailed(eventId: string, error: string, nextAttemptAt?: string, deadLetteredAt?: string): Promise<void> {
-    await this.pool.query(
+    const claimToken = this.outboxClaim(eventId);
+    const result = await this.pool.query<{ event_id: string }>(
       `UPDATE outbox_events
-       SET last_error = $2, next_attempt_at = $3, dead_lettered_at = $4
-       WHERE event_id = $1 AND published_at IS NULL`,
-      [eventId, error.slice(0, 2048), nextAttemptAt ?? null, deadLetteredAt ?? null],
+       SET last_error = $2, next_attempt_at = $3, dead_lettered_at = $4, claimed_until = NULL, claim_token = NULL
+       WHERE event_id = $1 AND claim_token = $5 AND published_at IS NULL RETURNING event_id`,
+      [eventId, error.slice(0, 2048), nextAttemptAt ?? null, deadLetteredAt ?? null, claimToken],
     );
+    this.outboxClaims.delete(eventId);
+    if (result.rows.length !== 1) throw new Error("outbox failure claim ownership was lost");
   }
 
   async requeueOutbox(eventId: string): Promise<void> {
     const result = await this.pool.query(
       `UPDATE outbox_events
-       SET next_attempt_at = now(), last_error = NULL, dead_lettered_at = NULL
+       SET next_attempt_at = now(), last_error = NULL, dead_lettered_at = NULL, claimed_until = NULL, claim_token = NULL, claim_renewal_count = 0
        WHERE event_id = $1 AND published_at IS NULL AND dead_lettered_at IS NOT NULL
        RETURNING event_id`,
       [eventId],
     );
+    this.outboxClaims.delete(eventId);
     if (result.rows.length === 0) throw new Error("outbox event is not a dead letter or was already published");
+  }
+
+  async isWebhookDelivered(eventId: string, destinationId: string): Promise<boolean> {
+    const result = await this.pool.query(
+      "SELECT 1 FROM webhook_deliveries WHERE event_id = $1 AND destination_id = $2 AND delivered_at IS NOT NULL",
+      [eventId, destinationId],
+    );
+    return result.rows.length > 0;
+  }
+
+  async markWebhookDelivered(eventId: string, destinationId: string, deliveredAt: string): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO webhook_deliveries (event_id, destination_id, delivered_at, updated_at)
+       VALUES ($1,$2,$3,now())
+       ON CONFLICT (event_id, destination_id) DO UPDATE
+       SET delivered_at = COALESCE(webhook_deliveries.delivered_at, EXCLUDED.delivered_at), updated_at = now()`,
+      [eventId, destinationId, deliveredAt],
+    );
+  }
+
+  private outboxClaim(eventId: string): string {
+    const claimToken = this.outboxClaims.get(eventId);
+    if (claimToken === undefined) throw new Error("outbox event is not claimed by this persistence instance");
+    return claimToken;
   }
 }

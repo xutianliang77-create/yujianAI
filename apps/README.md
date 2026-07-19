@@ -3,6 +3,7 @@
 | 目录 | 目标 |
 | --- | --- |
 | `console/` | 开发者与企业管理控制台 |
+| [`owner-approval/`](owner-approval/README.md) | P1-M0-04 Owner 证据审阅、决定与一次性 OpenBao 签名界面；2026-07-18 真实功能验收通过 |
 | `examples/` | Web、Flutter、iOS、Android 等兼容示例 |
 | `operations/` | 私有化巡检和支持工具界面，按需要建设 |
 

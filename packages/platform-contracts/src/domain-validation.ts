@@ -2,6 +2,7 @@ import type {
   CreateApiKeyRequestV1,
   CreateEnvironmentRequestV1,
   CreateTenantMemberRequestV1,
+  OnboardTenantRequestV1,
   CreateProjectRequestV1,
   CreateTenantRequestV1,
   EnvironmentTypeV1,
@@ -256,6 +257,26 @@ export function parseCreateTenantMemberRequest(input: unknown): CreateTenantMemb
   throwIfInvalid(issues);
   if (subject === undefined || roles === undefined) throw new Error("member fields unavailable after validation");
   return { subject, roles };
+}
+
+export function parseOnboardTenantRequest(input: unknown): OnboardTenantRequestV1 {
+  if (!isRecord(input)) {
+    throw new ContractValidationError([{ field: "$", reason: "must be a JSON object" }]);
+  }
+  const issues: ContractValidationIssue[] = [];
+  rejectUnknown(input, ["tenantDisplayName", "projectName", "projectSlug", "environmentName"], issues);
+  const tenantDisplayName = requiredName(input.tenantDisplayName, "tenantDisplayName", issues);
+  const projectName = requiredName(input.projectName, "projectName", issues);
+  const projectSlug = typeof input.projectSlug === "string" && SLUG_PATTERN.test(input.projectSlug)
+    ? input.projectSlug
+    : undefined;
+  if (projectSlug === undefined) issues.push({ field: "projectSlug", reason: "must be a lowercase slug" });
+  const environmentName = requiredName(input.environmentName, "environmentName", issues);
+  throwIfInvalid(issues);
+  if (tenantDisplayName === undefined || projectName === undefined || projectSlug === undefined || environmentName === undefined) {
+    throw new Error("onboarding fields unavailable after validation");
+  }
+  return { tenantDisplayName, projectName, projectSlug, environmentName };
 }
 
 export function parseUpdateTenantMemberRequest(input: unknown): UpdateTenantMemberRequestV1 {

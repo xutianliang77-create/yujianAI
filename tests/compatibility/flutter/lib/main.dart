@@ -34,6 +34,9 @@ class _YujianRtcCompatAppState extends State<YujianRtcCompatApp> {
   }
 
   Future<void> _connect() async {
+    const dataTopic = 'yujian.flutter.compatibility';
+    const rpcMethod = 'yujian.flutter.echo';
+    var rpcRegistered = false;
     setState(() {
       _running = true;
       _status = '正在连接语见 RTC…';
@@ -50,6 +53,40 @@ class _YujianRtcCompatAppState extends State<YujianRtcCompatApp> {
       _pair = pair;
       final listener = pair.secondary.createListener();
       _secondaryListener = listener;
+
+      final dataReceived = listener.waitFor<DataReceivedEvent>(
+        duration: const Duration(seconds: 15),
+        filter: (event) =>
+            event.participant?.identity == 'flutter-primary' &&
+            event.topic == dataTopic,
+      );
+      await pair.primary.localParticipant!.publishData(
+        utf8.encode('yujian-flutter-data'),
+        reliable: true,
+        topic: dataTopic,
+      );
+      final dataEvent = await dataReceived;
+      if (utf8.decode(dataEvent.data) != 'yujian-flutter-data') {
+        throw StateError('Flutter Data payload mismatch');
+      }
+
+      pair.secondary.registerRpcMethod(
+        rpcMethod,
+        (data) async => 'flutter:${data.payload}',
+      );
+      rpcRegistered = true;
+      final rpcResponse = await pair.primary.localParticipant!.performRpc(
+        PerformRpcParams(
+          destinationIdentity: 'flutter-secondary',
+          method: rpcMethod,
+          payload: 'ready',
+          responseTimeoutMs: const Duration(seconds: 8),
+        ),
+      );
+      if (rpcResponse != 'flutter:ready') {
+        throw StateError('Flutter RPC response mismatch');
+      }
+
       final subscribed = listener.waitFor<TrackSubscribedEvent>(
         duration: const Duration(seconds: 15),
         filter: (event) =>
@@ -58,7 +95,7 @@ class _YujianRtcCompatAppState extends State<YujianRtcCompatApp> {
       );
       final localTrack = await LocalAudioTrack.create();
       _localAudioTrack = localTrack;
-      await pair.primary.localParticipant!.publishAudioTrack(localTrack);
+      final publication = await pair.primary.localParticipant!.publishAudioTrack(localTrack);
       final event = await subscribed;
       if (event.track is! RemoteAudioTrack) {
         throw StateError('Flutter remote Track was not an audio Track');
@@ -74,14 +111,48 @@ class _YujianRtcCompatAppState extends State<YujianRtcCompatApp> {
       if (bytesReceived <= 0) {
         throw StateError('Flutter remote audio Track received no RTP bytes');
       }
-      debugPrint('YUJIAN_FLUTTER_COMPAT_PASSED bytes=$bytesReceived');
+
+      final muted = listener.waitFor<TrackMutedEvent>(
+        duration: const Duration(seconds: 15),
+        filter: (event) =>
+            event.participant.identity == 'flutter-primary' &&
+            event.publication.source == TrackSource.microphone,
+      );
+      await publication.mute(stopOnMute: false);
+      await muted;
+      final unmuted = listener.waitFor<TrackUnmutedEvent>(
+        duration: const Duration(seconds: 15),
+        filter: (event) =>
+            event.participant.identity == 'flutter-primary' &&
+            event.publication.source == TrackSource.microphone,
+      );
+      await publication.unmute(stopOnMute: false);
+      await unmuted;
+      final unpublished = listener.waitFor<TrackUnpublishedEvent>(
+        duration: const Duration(seconds: 15),
+        filter: (event) =>
+            event.participant.identity == 'flutter-primary' &&
+            event.publication.source == TrackSource.microphone,
+      );
+      await pair.primary.localParticipant!.removePublishedTrack(publication.sid);
+      await unpublished;
+
+      debugPrint(
+        'YUJIAN_FLUTTER_COMPAT_PASSED data_rpc=passed mute_unpublish=passed bytes=$bytesReceived',
+      );
       if (!mounted) return;
-      setState(() => _status = '通过：双节点 Flutter 音频 Track（$bytesReceived bytes）');
+      setState(
+        () => _status =
+            '通过：双节点 Flutter Data/RPC/音频 Track（$bytesReceived bytes）',
+      );
     } catch (error) {
       debugPrint('YUJIAN_FLUTTER_COMPAT_FAILED: $error');
       if (!mounted) return;
       setState(() => _status = '失败：$error');
     } finally {
+      if (rpcRegistered) {
+        _pair?.secondary.unregisterRpcMethod(rpcMethod);
+      }
       await _localAudioTrack?.stop();
       await _secondaryListener?.dispose();
       await _pair?.disconnect();

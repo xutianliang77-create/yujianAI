@@ -12,6 +12,7 @@ export interface YujianRtcNodeConfig extends LiveKitConnectionConfig {
   id: string;
   regionId?: string;
   residencyTags?: readonly string[];
+  failureDomain?: string;
   capacityScore?: number;
 }
 
@@ -39,6 +40,7 @@ function validateNode(node: YujianRtcNodeConfig): YujianRtcNodeConfig {
     );
   }
   if (node.regionId !== undefined && !REGION_TAG_PATTERN.test(node.regionId)) throw new TypeError("YUJIAN RTC region id is invalid");
+  if (node.failureDomain !== undefined && !REGION_TAG_PATTERN.test(node.failureDomain)) throw new TypeError("YUJIAN RTC failure domain is invalid");
   const residencyTags = node.residencyTags === undefined ? undefined : [...new Set(node.residencyTags)];
   if (residencyTags?.some((tag) => !REGION_TAG_PATTERN.test(tag))) throw new TypeError("YUJIAN RTC residency tag is invalid");
   const capacityScore = node.capacityScore ?? 1;
@@ -50,6 +52,7 @@ function validateNode(node: YujianRtcNodeConfig): YujianRtcNodeConfig {
     ...validateLiveKitConnectionConfig(node),
     ...(node.regionId === undefined ? {} : { regionId: node.regionId }),
     ...(residencyTags === undefined ? {} : { residencyTags }),
+    ...(node.failureDomain === undefined ? {} : { failureDomain: node.failureDomain }),
     capacityScore,
   };
 }

@@ -107,16 +107,18 @@ compose=(docker compose \
 
 "${compose[@]}" config --quiet
 "${compose[@]}" ps
-curl --fail --silent http://127.0.0.1:7880/
-curl --fail --silent http://127.0.0.1:7980/
+primary_port="${YUJIAN_RTC_PRIMARY_PORT:-7880}"
+secondary_port="${YUJIAN_RTC_SECONDARY_PORT:-7980}"
+curl --fail --silent "http://127.0.0.1:${primary_port}/"
+curl --fail --silent "http://127.0.0.1:${secondary_port}/"
 "${compose[@]}" logs --no-color --tail=300 yujian-rtc-a yujian-rtc-b redis
 ```
 
 只重跑 Node/双节点音频：
 
 ```bash
-export YUJIAN_RTC_PRIMARY_URL="ws://${YUJIAN_RTC_NODE_IP}:7880"
-export YUJIAN_RTC_SECONDARY_URL="ws://${YUJIAN_RTC_NODE_IP}:7980"
+export YUJIAN_RTC_PRIMARY_URL="ws://${YUJIAN_RTC_NODE_IP}:${YUJIAN_RTC_PRIMARY_PORT:-7880}"
+export YUJIAN_RTC_SECONDARY_URL="ws://${YUJIAN_RTC_NODE_IP}:${YUJIAN_RTC_SECONDARY_PORT:-7980}"
 npm run test:integration:rtc
 ```
 
@@ -151,6 +153,24 @@ until curl --fail --silent http://127.0.0.1:7980/ >/dev/null; do sleep 1; done
 ```
 
 记录：故障发生时间、恢复时间、两个节点状态、已有 Room/participant 行为和是否发生数据丢失。当前实现只承诺全节点就绪门禁，不承诺已有 Room 的无缝迁移；这项结果必须单独归档。
+
+### 5.1 Linux 弱网/UDP 禁用实验
+
+在独立 Beelink/Linux runner 上使用 `tools/compatibility/run-netem.sh` 包裹 Node 或浏览器
+验收。脚本只作用于显式网卡，退出时删除 netem qdisc；Mac 不执行该脚本。
+
+```bash
+sudo env \
+  YUJIAN_NETEM_INTERFACE=eth0 \
+  YUJIAN_NETEM_LOSS=3% \
+  YUJIAN_NETEM_DELAY=100ms \
+  YUJIAN_NETEM_JITTER=20ms \
+  tools/compatibility/run-netem.sh -- npm run test:integration:rtc
+```
+
+TCP/TLS fallback 必须使用单独的 LiveKit listener/ICE 配置和报告；不能把 `tc netem` 的
+合成丢包结果写成 TURN 已通过。每个实验记录 interface、loss、delay、jitter、UDP/TCP/TLS
+候选、reconnect start/end、RTP bytes、packets lost 和恢复后是否继续收到 Track。
 
 ## 6. RTX 5090 Agent Gate（D）
 
@@ -202,7 +222,142 @@ npm run db:migrate
 - Egress 到期后 retention worker 调用对象删除 adapter，写入 `deletedAt` 和 `deletionEvidenceUri`；删除失败不能标记完成，重复 worker 执行不产生第二次账本结果。
 - webhook retry/DLQ、data-rights evidence、KMS secret resolver 均不把明文 secret 写入数据库或日志。
 
+### 7.1 P2-01/02/03 production acceptance（2026-07-17）
+
+Beelink 已执行真实 production platform-api 验收脚本：
+
+```bash
+cd /home/beelink/yujianAI
+./tools/p2/run-production-acceptance.sh
+```
+
+通过证据包括 PostgreSQL 事务 outbox/CAS、生产 API 启动与重启、双 Redis client 限流/Token
+quota 竞争、Redis 容器删除重建、API key rotate grace/revoke 传播、三节点 OpenBao HTTPS/Raft
+健康与 leader stop 后 resolver 读回。脱敏报告为
+`/data/models/yujianAI/p2/reports/production-acceptance.json`，run id
+`p2-20260717095831-116ef52a`。三节点位于同一 Beelink，仅证明单主机 process/container quorum；
+跨主机/AZ HA、auto-unseal、Webhook 真实投递、备份恢复和 data-rights executor 仍未通过。
+
+### 7.2 P2-04/05/06 closure acceptance（2026-07-18）
+
+Beelink 的 P2 数据已迁移到 `/data/models/yujianAI/p2`，验收代码使用
+`/data/models/yujianAI/worktrees/p2-acceptance` clean worktree。本机 Mac 执行：
+
+```bash
+YUJIAN_BEELINK_PROJECT_ROOT=/data/models/yujianAI/worktrees/p2-acceptance \
+YUJIAN_BEELINK_DATA_ROOT=/data/models/yujianAI \
+./tools/p2/run-closure-with-client.sh
+```
+
+run `p2-closure-20260718051008-653ebfee` 完整通过：真实 RTC participant 连接、P2-04
+身份与 RBAC、P2-05 Webhook 生命周期、P2-06 data-rights 与 crash recovery、11 migrations、
+隔离 custom-format `pg_dump` restore、Redis 从 PostgreSQL 重建和 protected restart count
+前后一致。报告为 `/data/models/yujianAI/p2/reports/p2-closure-acceptance.json`，备份
+SHA-256 与报告一致，报告和备份 mode 均为 0600，restore RTO 896 ms。独立复核确认临时
+restore DB/probe/Redis key 为 0，验收租户相关数据库记录为 0，KMS metadata 返回 404。
+
+该结果关闭 P2-01–06/M2 技术验收范围；不替代 Gate 0/1、跨主机 HA、auto-unseal、
+生产 KMS 合规评审或 owner 签字。
+
 ## 8. 报告和最终判定
+
+P1 汇总报告使用 `docs/acceptance/p1-evidence.example.json` 的结构，由
+`npm run p1:evidence:verify` 校验。只有在 CI/Beelink 运行环境设置 `P1_REQUIRE_PASS=true`
+且所有 target 都有脱敏 report 时，才允许写入 P1 closed；默认校验只检查合同，不把
+`deferred` 自动升级为通过。
+
+clean upstream replay 必须在工作区外 bare mirror 上运行，并保存独立报告：
+
+```bash
+YUJIAN_UPSTREAM_MIRROR_ROOT="$HOME/.cache/yujian/upstream" npm run upstream:mirror:sync
+YUJIAN_UPSTREAM_MIRROR_ROOT="$HOME/.cache/yujian/upstream" \
+YUJIAN_UPSTREAM_REPLAY_REPORT="outputs/p1/upstream-replay.json" \
+  npm run upstream:patch:replay
+```
+
+报告必须为 `status=passed`，component commit 与 manifest 一致，且包含 manifest/queue
+SHA-256 和 base/result tree。测试中的预期冲突报告只能证明 fail-closed guard，不能替代真实
+LiveKit mirror 或 clean build 证据。
+
+2026-07-18 已在 Beelink `/data/models/yujianAI` 完成 run
+`p1-upstream-20260718135102`：10 个 bare mirror 的 fsck、11 component 真实 replay
+和冻结 clean build/核心包静态测试均通过，可生成产物重复后 SHA-256 一致。
+Flutter 根包使用匹配冻结 lockfile 的 3.44.0，`lib/test` analyze 无问题，260 项
+通过、1 项跳过；未提交 lockfile 的 `example/` 不属于该冻结范围。原始 replay/
+build/Flutter 报告 mode 均为 0600，脱敏索引为
+`docs/acceptance/p1-upstream-evidence.json`。该结果关闭 P1-M0-03 的运行证据缺口，
+不替代 fork/通知权限、owner 审批、语见发行版对照或完整 Gate 0/1。
+
+### P1-M0-04 当前镜像供应链结果（2026-07-18）
+
+Beelink run `p1-m0-04-20260718T074700Z` 已覆盖 LiveKit Server v1.13.3、Redis 7.2.7、
+PostgreSQL 16.4 和 OpenBao 2.4.1 的固定 Linux AMD64 digest。4 份 SPDX 2.3 和 Grype
+报告、同一漏洞数据库快照、Cosign v3 bundle、公钥和两次验签日志均保存在
+`/data/models/yujianAI/evidence/p1-m0-04/`，全部文件 mode 为 `0600`。
+
+本次结果为 `failed-technical`：未豁免 Critical 匹配 76 个，其中 LiveKit 0、Redis 11、
+PostgreSQL 42、OpenBao 23；647 个包中 465 个 license 为 `NOASSERTION`。没有创建例外，
+未重启或修改任何现有容器。后续候选已完成技术签名和五项 Owner 决定，但当前镜像漏洞、
+许可证和两项当前驳回仍使 P1-M0-04、Gate 0/1 和生产发布保持阻断。机器可读索引为
+`docs/acceptance/p1-supply-chain-evidence.json`。
+
+### P1-M0-04 Owner 审批台功能验收（2026-07-18）
+
+用户已确认审批台真实功能验收通过。Beelink/OpenBao 与本机绕行入口完成五项任务读取、
+Owner 隔离、approve/reject、supersede、一次性凭据、签名/验签/撤销、不可覆盖哈希链和
+fail-closed 验证。bbb Registry/KMS 与 ccc 法律 reject 是故意执行的负向路径证据；它们使
+功能验收通过，但仍保持专业 receipt 为 reject，不能据此关闭 P1-M0-04 或生产 Gate。
+
+### P1-M0-04 候选补丁镜像扫描（2026-07-18）
+
+Beelink run `p1-m0-04-candidates-20260718T084500Z` 只拉取和扫描了候选镜像，
+没有启动候选容器、修改 Compose 或切换当前运行服务。同一 Grype DB 快照下，
+Redis 7.2.14-alpine 为 0 Critical；PostgreSQL 16.14-bookworm
+为 27，PostgreSQL 16.14-alpine 为 1，OpenBao 2.5.4 为 13，三个选项均阻断。
+
+经用户授权，Redis 候选的隔离回归 run
+`p1-m0-04-redis-regression-20260718T101047Z` 已在 loopback-only 随机端口和独立
+`/data/models/yujianAI/p1-m0-04/redis-candidate/` 数据目录执行。初始、容器重启、容器删除
+重建三个阶段均完成 100 次限流竞争（恰好 20 次允许）、30 次 Token quota 竞争（恰好
+3 次成功）、租约单 owner 竞争；AOF marker 在重启和重建后均恢复，最终 DB size 为 0。
+候选容器已删除，当前 `yujian-p2-redis-1` 的容器 ID、固定 digest 和 `restartCount=0`
+前后保持一致。原始报告位于
+`/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-redis-regression-20260718T101047Z/`，
+report SHA-256 为 `b52848641e435b69302275e0d042f5ce4779226855d8c6d46c7ea4067dfd66bd`。
+
+扫描与回归证据文件均限制为 mode `0600`，仓库 verifier 通过。Redis 回归后来获得 bbb
+签名批准，但 Registry/KMS freeze sequence 1 仍为签名驳回且回滚接受未关闭，仍不授权修改固定 digest
+或运行容器；
+原始 PostgreSQL/OpenBao 候选仍禁止部署测试。机器可读索引为
+`docs/acceptance/p1-supply-chain-candidate-evidence.json`。
+
+### P1-M0-04 PostgreSQL/OpenBao 安全重建（2026-07-18）
+
+Beelink 最终 build run `p1-m0-04-remediated-build-20260718T115740Z` 与 scan run
+`p1-m0-04-remediated-scan-20260718T120238Z` 使用 `/data` 隔离构建目录完成。PostgreSQL
+16.14 Alpine + gosu/Go 1.25.12 与 OpenBao 2.5.4 + x/crypto 0.52.0 + x/net 0.55.0 +
+OpenSSL 3.5.7 均为 Critical 0、High 0。镜像内已验证 PostgreSQL、gosu、OpenBao MPL-2.0
+及 OpenBao dependency notice 的 `/licenses/` 文件 hash。
+
+技术扫描通过不等于部署通过。原始 335 条 `licenseDeclared=NOASSERTION` 已由
+`p1-m0-04-license-remediation-20260718T165733Z` 在不覆盖原 SBOM 的前提下逐项分类；两个
+结论层 SPDX 的 `licenseConcluded=NOASSERTION` 为 0，实际 OpenBao 源码归档、NOTICE、
+许可证、构建配方、SHA256SUMS 和工程签名均在同一 `/data` 证据根且验签通过。
+`reedsolomon v1.0.0` 仍有 1 个显式法律待判项，ccc 当前 reject 未被改变。隔离生产回归
+`p1-m0-04-remediated-regression-20260718T162844Z` 已在 Beelink `/data` 通过 PostgreSQL
+11 条迁移、事务 outbox/CAS、`pg_dump` 恢复（722 ms）、删除重建，以及 OpenBao 2.4.1→
+2.5.4 三节点滚动升级、Raft 快照恢复、TLS、Transit、leader failover 和 API key
+create/rotate/revoke/recovery；当前 P2 容器 ID、镜像和 restart count 未变化。Beelink 私有 Registry
+与 `openbao://yujian-oci-release` 已配置，
+Redis/PostgreSQL/OpenBao/Registry 四个 digest 的签名、SPDX attestation 和本机外部逐 blob
+校验均通过；bbb 已批准 Redis，Registry/KMS freeze 已追加 sequence 1 reject；aaa 与 ddd
+已由原始 reject 追加为 sequence 1 approve，ccc 法律已追加 sequence 1 reject。
+当前五个 P2 容器 ID 未变、全部 healthy、restart count 为 0。机器索引为
+`docs/acceptance/p1-remediated-candidate-evidence.json`、
+`docs/acceptance/p1-license-remediation-evidence.json`、
+`docs/acceptance/p1-production-oci-evidence.json`、`docs/acceptance/p1-m0-04-owner-signoffs.json`
+和 `docs/acceptance/p1-redis-release-decision.json`。acceptance v2 只保留理由长度/SHA-256，
+verifier 强制检查四位 Owner、五项 receipt/history、audit 覆盖和 Gate fail-closed。
 
 每次运行至少保存：
 

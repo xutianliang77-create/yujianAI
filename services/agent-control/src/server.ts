@@ -1,8 +1,11 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { createServer as createHttpsServer } from "node:https";
-import { AgentControlError, AgentControlPlane, type AgentControlOptions, type AgentWorkerRegistrationV1 } from "./controller.js";
+import { AgentControlError, AgentControlPlane, type AgentControlOptions } from "./controller.js";
+import type { AgentWorkerRegistrationV1 } from "./control-types.js";
 import type { AgentControlPersistence } from "./persistence.js";
+import type { AgentDispatchQuotaCoordinator } from "./dispatch-quota.js";
+import type { AgentDispatchV1 } from "@yujian/platform-contracts";
 
 function validToken(supplied: string | undefined, expected: string): boolean {
   if (supplied === undefined) return false;
@@ -52,15 +55,37 @@ function createHandler(
   control: AgentControlPlane,
   adminCredential = internalCredential,
   persistence?: AgentControlPersistence,
+  dispatchQuota?: AgentDispatchQuotaCoordinator,
 ) {
   const restored = persistence === undefined
     ? Promise.resolve()
     : persistence.load().then((snapshot) => {
       if (snapshot !== undefined) control.restore(snapshot);
+      return dispatchQuota?.reconcile(control.snapshot().dispatches);
     });
   const sendMutation = async (response: ServerResponse, status: number, data: unknown): Promise<void> => {
     if (persistence !== undefined) await persistence.save(control.snapshot());
     send(response, status, data);
+  };
+  const sendAdmittedMutation = async (response: ServerResponse, status: number, dispatch: AgentDispatchV1): Promise<void> => {
+    let admission: Awaited<ReturnType<AgentDispatchQuotaCoordinator["admit"]>> = "acquired";
+    try { if (dispatchQuota !== undefined) admission = await dispatchQuota.admit(dispatch); }
+    catch {
+      control.cancelDispatch(dispatch.dispatchId);
+      if (persistence !== undefined) await persistence.save(control.snapshot());
+      throw new AgentControlError("QUOTA_EXCEEDED", "distributed dispatch quota is unavailable");
+    }
+    if (admission === "quota_exceeded") {
+      control.cancelDispatch(dispatch.dispatchId);
+      if (persistence !== undefined) await persistence.save(control.snapshot());
+      throw new AgentControlError("QUOTA_EXCEEDED", "distributed dispatch quota exceeded");
+    }
+    await sendMutation(response, status, { data: dispatch });
+  };
+  const sendTerminalMutation = async (response: ServerResponse, dispatch: AgentDispatchV1): Promise<void> => {
+    if (persistence !== undefined) await persistence.save(control.snapshot());
+    try { await dispatchQuota?.release(dispatch); } catch { /* Deadline-bound lease remains fail-closed until expiry. */ }
+    send(response, 200, { data: dispatch });
   };
   return async (request: IncomingMessage, response: ServerResponse) => {
     try {
@@ -98,7 +123,13 @@ function createHandler(
       }
       if (path === "/internal/v1/agent-workers/heartbeat") {
         const ids = Array.isArray(body.activeDispatchIds) ? body.activeDispatchIds.filter((value): value is string => typeof value === "string") : [];
-        await sendMutation(response, 200, { data: control.heartbeatWorker(requiredText(body, "workerId"), ids) });
+        const workerId = requiredText(body, "workerId");
+        const cancelDispatchIds = ids.filter((id) => {
+          const dispatch = control.dispatches.get(id);
+          return dispatch !== undefined && ["completed", "failed", "cancelled"].includes(dispatch.status);
+        });
+        const activeIds = ids.filter((id) => !cancelDispatchIds.includes(id));
+        await sendMutation(response, 200, { data: control.heartbeatWorker(workerId, activeIds), cancelDispatchIds });
         return;
       }
       if (path === "/internal/v1/agent-workers/claim") {
@@ -118,16 +149,16 @@ function createHandler(
       }
       if (path === "/internal/v1/agent/triggers") {
         const deadlineAt = typeof body.deadlineAt === "string" ? body.deadlineAt : undefined;
-        await sendMutation(response, 201, { data: control.triggerDispatch(
+        await sendAdmittedMutation(response, 201, control.triggerDispatch(
           requiredText(body, "environmentId"),
           body.trigger as "room_joined" | "track_published" | "data_received" | "scheduled",
           requiredText(body, "roomName"),
           deadlineAt,
-        ) });
+        ));
         return;
       }
       if (path === "/internal/v1/agent-workers/complete") {
-        await sendMutation(response, 200, { data: control.completeDispatch(requiredText(body, "workerId"), requiredText(body, "dispatchId")) });
+        await sendTerminalMutation(response, control.completeDispatch(requiredText(body, "workerId"), requiredText(body, "dispatchId")));
         return;
       }
       if (path === "/internal/v1/agent-workers/start") {
@@ -135,15 +166,15 @@ function createHandler(
         return;
       }
       if (path === "/internal/v1/agent-workers/fail") {
-        await sendMutation(response, 200, { data: control.failDispatch(requiredText(body, "workerId"), requiredText(body, "dispatchId"), requiredText(body, "reason")) });
+        await sendTerminalMutation(response, control.failDispatch(requiredText(body, "workerId"), requiredText(body, "dispatchId"), requiredText(body, "reason")));
         return;
       }
       if (path === "/internal/v1/agent-workers/cancel") {
-        await sendMutation(response, 200, { data: control.cancelDispatch(requiredText(body, "dispatchId"), requiredText(body, "workerId")) });
+        await sendTerminalMutation(response, control.cancelDispatch(requiredText(body, "dispatchId"), requiredText(body, "workerId")));
         return;
       }
       if (path === "/internal/v1/agent/artifacts") {
-        const artifact = control.registerArtifact({
+        const artifact = await control.registerArtifact({
           tenantId: requiredText(body, "tenantId"),
           projectId: requiredText(body, "projectId"),
           image: requiredText(body, "image"),
@@ -168,7 +199,7 @@ function createHandler(
       }
       if (path === "/internal/v1/agent/dispatches") {
         const dispatch = control.dispatch(requiredText(body, "environmentId"), requiredText(body, "deploymentId"), requiredText(body, "roomName"), requiredText(body, "deadlineAt"));
-        await sendMutation(response, 201, { data: dispatch });
+        await sendAdmittedMutation(response, 201, dispatch);
         return;
       }
       const deploymentMutation = path.match(/^\/internal\/v1\/agent\/deployments\/([^/]+):(rollback|reconcile)$/u);
@@ -182,7 +213,7 @@ function createHandler(
       }
       const dispatchCancel = path.match(/^\/internal\/v1\/agent\/dispatches\/([^/]+):cancel$/u);
       if (dispatchCancel !== null) {
-        await sendMutation(response, 200, { data: control.cancelDispatch(dispatchCancel[1] ?? "") });
+        await sendTerminalMutation(response, control.cancelDispatch(dispatchCancel[1] ?? ""));
         return;
       }
       send(response, 404, { error: "resource_not_found" });
@@ -190,7 +221,7 @@ function createHandler(
       const status = error instanceof AgentControlError
         ? error.code === "NOT_FOUND" ? 404 : error.code === "POLICY_DENIED" ? 403 : error.code === "QUOTA_EXCEEDED" ? 429 : 409
         : 400;
-      send(response, status, { error: error instanceof Error ? error.message : "request_failed" });
+      send(response, status, { error: error instanceof AgentControlError ? error.message : "request_failed" });
     }
   };
 }
@@ -202,6 +233,8 @@ export interface AgentControlServerOptions {
   persistence?: AgentControlPersistence;
   /** Optional deployment-owned signature/SBOM verifier; production should fail closed when absent. */
   artifactVerifier?: AgentControlOptions["verifyArtifact"];
+  /** Required in production to enforce queue and concurrency limits across replicas. */
+  dispatchQuota?: AgentDispatchQuotaCoordinator;
 }
 
 export function createAgentControlServer(
@@ -210,7 +243,7 @@ export function createAgentControlServer(
   options: AgentControlServerOptions = {},
 ) {
   const resolvedControl = control ?? new AgentControlPlane(undefined, options.artifactVerifier === undefined ? {} : { verifyArtifact: options.artifactVerifier });
-  return createServer(createHandler(internalCredential, resolvedControl, options.adminCredential, options.persistence));
+  return createServer(createHandler(internalCredential, resolvedControl, options.adminCredential, options.persistence, options.dispatchQuota));
 }
 
 export function createAgentControlHttpsServer(
@@ -220,5 +253,5 @@ export function createAgentControlHttpsServer(
   options: AgentControlServerOptions = {},
 ) {
   const resolvedControl = control ?? new AgentControlPlane(undefined, options.artifactVerifier === undefined ? {} : { verifyArtifact: options.artifactVerifier });
-  return createHttpsServer(tls, createHandler(internalCredential, resolvedControl, options.adminCredential, options.persistence));
+  return createHttpsServer(tls, createHandler(internalCredential, resolvedControl, options.adminCredential, options.persistence, options.dispatchQuota));
 }

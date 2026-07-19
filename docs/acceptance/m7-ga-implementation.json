@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "milestone": "M7",
+  "sourceSchema": "001-016",
+  "developmentStatus": "implemented-not-run",
+  "tasks": {
+    "M7-01": "implemented-not-run",
+    "M7-02": "implemented-not-run",
+    "M7-03": "implemented-not-run",
+    "M7-04": "implemented-not-run",
+    "M7-05": "implemented-not-run",
+    "M7-06": "implemented-not-run",
+    "M7-07": "implemented-not-run",
+    "M7-08": "implemented-not-run",
+    "M7-09": "implemented-not-run",
+    "M7-10": "implemented-not-run"
+  },
+  "execution": {
+    "build": "not-executed",
+    "tests": "not-executed",
+    "migration016": "not-executed",
+    "billing": "not-executed",
+    "regionFailover": "not-executed",
+    "securityAudit": "not-executed",
+    "loadAndDisasterRecovery": "not-executed",
+    "releaseCandidate": "not-created",
+    "gaDecision": "not-created"
+  },
+  "gates": {
+    "gate6": "not-passed",
+    "gate7": "blocked",
+    "gate9": "not-passed",
+    "gate10": "not-passed",
+    "productionReleaseAuthorized": false
+  }
+}

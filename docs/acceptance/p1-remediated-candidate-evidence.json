@@ -1,0 +1,188 @@
+{
+  "schemaVersion": 1,
+  "taskId": "P1-M0-04-REMEDIATED-CANDIDATES",
+  "generatedAt": "2026-07-18T16:30:11Z",
+  "status": "scan-and-runtime-regression-passed-owner-blocked",
+  "deploymentAllowed": false,
+  "environment": {
+    "server": "beelink",
+    "platform": "linux/amd64",
+    "dataRoot": "/data/models/yujianAI",
+    "buildRunId": "p1-m0-04-remediated-build-20260718T115740Z",
+    "buildResult": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-remediated-build-20260718T115740Z/build-result.json",
+    "scanRunId": "p1-m0-04-remediated-scan-20260718T120238Z",
+    "scanRoot": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-remediated-scan-20260718T120238Z"
+  },
+  "source": {
+    "buildResultSha256": "sha256:f0b92fdfda278f2ccd7ebb10c2bb667d844df7bb2b4752f579f3dcddad6198ca",
+    "postgresDockerfileSha256": "sha256:71238010f195c6ccc6066df23305abe7fe3d818f7b639495a7cc4673d3b8d9fc",
+    "openbaoDockerfileSha256": "sha256:8ed27f373c1ceb80ecea6b2f95f693c70b329aadca5298db21c6471c6e9752f1",
+    "postgresqlLicenseSha256": "sha256:3d6af92ff8a4c2cdf69afb1cf44edea727922f5cd0cf8b5f72b11cdecac8fdfd",
+    "scanRunnerSha256": "sha256:14833564e6cfbd1090d441b4a2dbce08ab4799f8508f17736af06e2fb83dfc68"
+  },
+  "images": [
+    {
+      "id": "postgres-16.14-alpine-gosu-go1.25.12",
+      "artifactClass": "local-pre-registry",
+      "localTag": "yujian/p1-postgres:16.14-alpine-gosu-go1.25.12",
+      "localImageId": "sha256:290eff57f950a0d306b7f699ea0fa3d7507401749de2d83c006c792104d05d9b",
+      "sbom": {
+        "spdxVersion": "SPDX-2.3",
+        "packages": 51,
+        "licensesNoAssertion": 6,
+        "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-remediated-scan-20260718T120238Z/images/postgres-16.14-alpine-gosu-go1.25.12/sbom.spdx.json",
+        "sha256": "sha256:23e0ad127b6d850ccfef20c9260c409861721cfb94fdf6a37a2559547f7c0dc4"
+      },
+      "vulnerabilityScan": {
+        "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-remediated-scan-20260718T120238Z/images/postgres-16.14-alpine-gosu-go1.25.12/vulnerabilities.grype.json",
+        "sha256": "sha256:5284b67eee914035cee6d084754848c69969ef130d26b54a4130417646839e8e",
+        "counts": { "negligible": 0, "low": 1, "medium": 3, "high": 0, "critical": 0, "unknown": 0 }
+      },
+      "highFindings": [],
+      "licensePayloads": [
+        { "path": "/licenses/postgresql-COPYRIGHT.txt", "sha256": "sha256:3d6af92ff8a4c2cdf69afb1cf44edea727922f5cd0cf8b5f72b11cdecac8fdfd" },
+        { "path": "/licenses/gosu-Apache-2.0.txt", "sha256": "sha256:cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30" }
+      ],
+      "requiredRegression": "backup/restore, migrations 001-011, transaction outbox and CAS conflict"
+    },
+    {
+      "id": "openbao-2.5.4-crypto0.52-net0.55-openssl3.5.7-go1.25.12",
+      "artifactClass": "local-pre-registry",
+      "localTag": "yujian/p1-openbao:2.5.4-crypto0.52-net0.55-openssl3.5.7-go1.25.12",
+      "localImageId": "sha256:5aa72789deee20508c8a4f3ecef56b92f7cfc5f71dc99df3caecb7029a1d66e4",
+      "sbom": {
+        "spdxVersion": "SPDX-2.3",
+        "packages": 354,
+        "licensesNoAssertion": 329,
+        "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-remediated-scan-20260718T120238Z/images/openbao-2.5.4-crypto0.52-net0.55-openssl3.5.7-go1.25.12/sbom.spdx.json",
+        "sha256": "sha256:73a4205a6a1849e27103b718e2fd0057006f1c197653cea09f2527642c6a3395"
+      },
+      "vulnerabilityScan": {
+        "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-remediated-scan-20260718T120238Z/images/openbao-2.5.4-crypto0.52-net0.55-openssl3.5.7-go1.25.12/vulnerabilities.grype.json",
+        "sha256": "sha256:ecd1b0aa6926530e6fa011c073c0a6a4db9a10d73fd19a916e1914485fffb46a",
+        "counts": { "negligible": 0, "low": 1, "medium": 4, "high": 0, "critical": 0, "unknown": 1 }
+      },
+      "highFindings": [],
+      "licensePayloads": [
+        { "path": "/licenses/openbao-MPL-2.0.txt", "sha256": "sha256:d6b1a865f1c8c697d343bd4e0ce61025f91898486a1f00d727f32e8644af77d3" },
+        { "path": "/licenses/openbao-dependencies.md", "sha256": "sha256:f4293107047228ac15cdf62b2054ff04ba55a22887406fbcc6b6aa564e469bd9" }
+      ],
+      "requiredRegression": "2.4-to-2.5 Raft snapshot, TLS/HA, API key rotate/revoke propagation and recovery"
+    }
+  ],
+  "summary": {
+    "images": 2,
+    "unwaivedCritical": 0,
+    "highFindings": 0,
+    "licensesNoAssertion": 335,
+    "licensesConcludedNoAssertion": 0,
+    "securityReviewRequired": true,
+    "legalReviewRequired": true
+  },
+  "licenseRemediation": {
+    "evidence": "docs/acceptance/p1-license-remediation-evidence.json",
+    "runId": "p1-m0-04-license-remediation-20260718T165733Z",
+    "status": "engineering-remediation-complete-legal-owner-blocked",
+    "reportPath": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-license-remediation-20260718T165733Z/report.json",
+    "reportSha256": "sha256:85ed50b65b2d87f3f8818920966c589b28945748d4bc3c57c54cfe1c6bc788c7",
+    "inventorySha256": "sha256:60c45e17f381a36fc6c22b430c5a714d37e22de59bbe72f8c0f452dc3bf353aa",
+    "declaredNoAssertion": 335,
+    "concludedNoAssertion": 0,
+    "legalOwnerReviewRequired": 1,
+    "sourceOffer": "actual-source-bundled-awaiting-legal-owner"
+  },
+  "signature": {
+    "mode": "cosign-sign-blob",
+    "keyClass": "engineering-evidence-non-production",
+    "statementPath": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-remediated-scan-20260718T120238Z/signing-statement.json",
+    "statementSha256": "sha256:a7f9d159d2a27dd2727afd523ccd1204f46d4cf8a1d53354539b46348e1417ea",
+    "bundlePath": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-remediated-scan-20260718T120238Z/signing-statement.sigstore.json",
+    "bundleSha256": "sha256:3ab64698f8e039bbaf8e8a5068e69f3e30f2720b323465279fd0b799d7195e6c",
+    "publicKeySha256": "sha256:f77dcfc2978a199e4ec6a770eeafe52c01f23e0eac1dcceec533804e6f777e6c",
+    "verified": true,
+    "productionOciSignature": "verified-see-p1-production-oci-evidence",
+    "productionOciEvidence": "docs/acceptance/p1-production-oci-evidence.json"
+  },
+  "owners": [
+    { "role": "security-owner", "personalOwner": "aaa", "status": "current-approved-sequence-1" },
+    { "role": "release-owner", "personalOwner": "bbb", "status": "registry-kms-current-rejected-sequence-1" },
+    { "role": "legal-owner", "personalOwner": "ccc", "status": "current-rejected-sequence-1" },
+    { "role": "compliance-owner", "personalOwner": "ddd", "status": "current-approved-sequence-1" }
+  ],
+  "runtimeRegression": {
+    "runId": "p1-m0-04-remediated-regression-20260718T162844Z",
+    "generatedAt": "2026-07-18T16:30:11Z",
+    "status": "passed",
+    "reportPath": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-remediated-regression-20260718T162844Z/report.json",
+    "reportSha256": "sha256:b3592a9863a002e0480f1af70b85985481e6ae1909b3394b9b05e88cc2345169",
+    "runnerSha256": "sha256:8f20f319a1554abd3a30ec2cbc51989d674834ab725c5e5fef52b1e45cacf242",
+    "platformAcceptanceSha256": "sha256:d59da85d79bc18130f4b4cdc2d1cdb279dee715fa2aa763cc8588ffe6f9373bc",
+    "postgres": {
+      "localImageId": "sha256:290eff57f950a0d306b7f699ea0fa3d7507401749de2d83c006c792104d05d9b",
+      "migrations": 11,
+      "transaction": "committed",
+      "outbox": "visible",
+      "cas": "stale-writer-rejected",
+      "backup": {
+        "format": "pg_dump-custom",
+        "sha256": "sha256:d35a304cd7febcf3367ca56af33fbf5e22879168a047e37b0081ac485b8a5d05",
+        "isolatedRestore": true,
+        "rtoMs": 722,
+        "restoredMigrations": 11,
+        "restoredOutbox": true,
+        "restoredAudit": true,
+        "restoredUsage": true,
+        "restoredRevokedApiKey": true
+      },
+      "containerDeleteRecreate": true
+    },
+    "openbao": {
+      "localImageId": "sha256:5aa72789deee20508c8a4f3ecef56b92f7cfc5f71dc99df3caecb7029a1d66e4",
+      "rollingUpgrade": "2.4.1-to-2.5.4-yujian.2",
+      "versions": ["2.5.4-yujian.2", "2.5.4-yujian.2", "2.5.4-yujian.2"],
+      "tlsVerified": true,
+      "loopbackOnly": true,
+      "raft": {
+        "before": { "peers": 3, "voters": 3 },
+        "afterUpgrade": { "peers": 3, "voters": 3 },
+        "afterRestore": { "peers": 3, "voters": 3 },
+        "snapshotSha256": "sha256:743102310bf0b3af22e87e93cb9f314b63eafeaa8cce25dfcdace6b77778fd8c",
+        "restoreVerified": true
+      },
+      "transitSignatureVerified": true,
+      "failover": "leader-stopped-read-from-survivor",
+      "secretBoundary": "runtime-token-read-only",
+      "apiKey": {
+        "create": "one-time-secret",
+        "rotate": "old-and-new-grace-accepted",
+        "revoke": "old-and-new-rejected",
+        "secretPersistence": "absent"
+      }
+    },
+    "isolation": {
+      "currentRuntimeSwitched": false,
+      "candidateContainersRemoved": true,
+      "protectedRuntimeUnchanged": true,
+      "protectedRuntimeAllHealthy": true
+    }
+  },
+  "protectedRuntime": {
+    "unchanged": true,
+    "allHealthy": true,
+    "restartCount": 0
+  },
+  "gate": {
+    "criticalThreshold": "passed",
+    "securityHighReview": "not-required-high-zero",
+    "securityOwnerSignoff": "approved-aaa-sequence-1",
+    "licenseNoticeReview": "rejected-ccc-sequence-1-compliance-approved-ddd-sequence-1",
+    "runtimeRegression": "passed",
+    "registryPromotion": "not-authorized",
+    "productionOciSignature": "passed",
+    "runtimeSwitch": "not-authorized",
+    "formalGate0": "not-passed",
+    "formalGate1": "not-passed",
+    "formalGate7": "not-passed",
+    "productionRelease": "blocked"
+  }
+}

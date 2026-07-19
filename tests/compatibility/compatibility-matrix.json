@@ -1,12 +1,61 @@
 {
   "schemaVersion": 1,
   "requiredFlows": ["token", "join", "audio_publish", "audio_subscribe", "data_rpc", "reconnect"],
+  "evidence": {
+    "server": {
+      "runId": "20260717T075738Z",
+      "status": "passed",
+      "report": "remote:/home/beelink/yujianAI/outputs/beelink/20260717T075738Z"
+    },
+    "client": {
+      "runId": "20260717T080332Z",
+      "status": "passed",
+      "report": "outputs/client/20260717T080332Z/summary.txt"
+    }
+  },
   "targets": {
-    "web": { "sdk": "livekit-client@2.20.1", "status": "deferred-beelink" },
-    "flutter": { "sdk": "livekit_client@2.8.1", "status": "deferred-beelink" },
-    "node": { "sdk": "@livekit/rtc-node@0.13.31", "status": "deferred-beelink" },
+    "web": {
+      "sdk": "livekit-client@2.20.1",
+      "status": "passed-baseline",
+      "verifiedFlows": ["token", "join", "audio_publish", "audio_subscribe", "data_rpc"],
+      "implementedDeferredFlows": [
+        "camera_publish",
+        "camera_subscribe",
+        "screen_share_publish",
+        "screen_share_subscribe",
+        "audio_mute",
+        "audio_unpublish",
+        "receiver_quality_sample",
+        "synthetic_reconnect"
+      ],
+      "evidenceRef": "client"
+    },
+    "flutter": {
+      "sdk": "livekit_client@2.8.1",
+      "status": "passed-baseline",
+      "verifiedFlows": ["token", "join", "audio_publish", "audio_subscribe"],
+      "implementedDeferredFlows": ["data_rpc", "audio_mute", "audio_unpublish"],
+      "evidenceRef": "client"
+    },
+    "node": {
+      "sdk": "@livekit/rtc-node@0.13.31",
+      "status": "passed-baseline",
+      "verifiedFlows": ["token", "join", "audio_publish", "audio_subscribe", "data_rpc"],
+      "implementedDeferredFlows": [
+        "camera_publish",
+        "camera_subscribe",
+        "screen_share_publish",
+        "screen_share_subscribe",
+        "synthetic_reconnect"
+      ],
+      "evidenceRef": "server"
+    },
     "ios": { "sdk": "official-pinned", "status": "planned" },
     "android": { "sdk": "official-pinned", "status": "planned" },
-    "python": { "sdk": "livekit-agents@1.6.5", "status": "deferred-beelink" }
+    "python": {
+      "sdk": "livekit-agents@1.6.5",
+      "status": "deferred-runtime",
+      "implementedDeferredFlows": ["room_join", "room_leave"]
+    }
   }
 }

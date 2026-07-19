@@ -1,4 +1,7 @@
 {{ if .Values.features.rtcEnabled }}
+{{ if and .Values.features.rtcCapacityEnabled (not (regexMatch "@sha256:[0-9a-f]{64}$" .Values.image.rtcCapacityExporter)) }}
+{{ fail "rtcCapacityEnabled requires image.rtcCapacityExporter pinned by sha256 digest" }}
+{{ end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -13,7 +16,7 @@ spec:
       labels:
         app.kubernetes.io/component: rtc
     spec:
-      terminationGracePeriodSeconds: 45
+      terminationGracePeriodSeconds: 90
       securityContext:
         runAsNonRoot: true
         seccompProfile: { type: RuntimeDefault }
@@ -21,6 +24,13 @@ spec:
       imagePullSecrets:
         {{ toYaml . | nindent 8 }}
       {{ end }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: rtc
       containers:
         - name: rtc
           image: {{ .Values.image.rtc | quote }}
@@ -58,4 +68,36 @@ spec:
             periodSeconds: 20
             timeoutSeconds: 3
             failureThreshold: 3
+        {{ if .Values.features.rtcCapacityEnabled }}
+        - name: rtc-capacity-exporter
+          image: {{ .Values.image.rtcCapacityExporter | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+            readOnlyRootFilesystem: true
+          env:
+            - name: YUJIAN_RTC_NODE_ID
+              valueFrom:
+                fieldRef: { fieldPath: metadata.name }
+            - name: YUJIAN_RTC_LOCAL_URL
+              value: "http://127.0.0.1:{{ .Values.service.rtcHttpPort }}"
+            - name: YUJIAN_RTC_CAPACITY_PLATFORM_URL
+              value: "http://{{ include "yujian-platform.fullname" . }}-platform-api:{{ .Values.service.platformApiPort }}"
+            - name: YUJIAN_RTC_API_KEY
+              valueFrom: { secretKeyRef: { name: {{ .Values.secrets.existingSecret }}, key: {{ .Values.secrets.rtcApiKey }} } }
+            - name: YUJIAN_RTC_API_SECRET
+              valueFrom: { secretKeyRef: { name: {{ .Values.secrets.existingSecret }}, key: {{ .Values.secrets.rtcApiSecret }} } }
+            - name: YUJIAN_RTC_CAPACITY_CREDENTIAL
+              valueFrom: { secretKeyRef: { name: {{ .Values.secrets.existingSecret }}, key: {{ .Values.secrets.rtcCapacityCredential }} } }
+            - { name: YUJIAN_RTC_CAPACITY_INTERVAL_MS, value: {{ .Values.rtc.capacity.intervalMs | quote }} }
+            - { name: YUJIAN_RTC_CAPACITY_TTL_MS, value: {{ .Values.rtc.capacity.ttlMs | quote }} }
+            - { name: YUJIAN_RTC_MAX_ROOMS, value: {{ .Values.rtc.capacity.maxRooms | quote }} }
+            - { name: YUJIAN_RTC_MAX_PARTICIPANTS, value: {{ .Values.rtc.capacity.maxParticipants | quote }} }
+            - { name: YUJIAN_RTC_MAX_PUBLISHERS, value: {{ .Values.rtc.capacity.maxPublishers | quote }} }
+            - { name: YUJIAN_RTC_MAX_SUBSCRIPTIONS, value: {{ .Values.rtc.capacity.maxSubscriptions | quote }} }
+            - { name: YUJIAN_RTC_MAX_TRACKS, value: {{ .Values.rtc.capacity.maxTracks | quote }} }
+          resources:
+            {{ toYaml .Values.resources.rtcCapacityExporter | nindent 12 }}
+        {{ end }}
 {{ end }}

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "taskId": "P1-M0-04-OWNER-DECISION",
+  "decisionId": "p1-m0-04-aaa-security-20260718",
+  "personalOwner": "aaa",
+  "role": "security-owner",
+  "decisionType": "security-evidence",
+  "status": "awaiting-personal-decision",
+  "decision": null,
+  "decidedAt": null,
+  "reason": null,
+  "conditions": null,
+  "expiresAt": null,
+  "evidence": [
+    {
+      "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-remediated-scan-20260718T120238Z/signing-statement.json",
+      "sha256": "sha256:a7f9d159d2a27dd2727afd523ccd1204f46d4cf8a1d53354539b46348e1417ea"
+    },
+    {
+      "path": "remote:/data/models/yujianAI/registry/evidence/p1-m0-04-production-oci-summary-20260718T122500Z.json",
+      "sha256": "sha256:61f63898512b6444d92cdee4f1ececbc6269ef5575efb1c04c1c72a0cf33e1a3"
+    },
+    {
+      "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-remediated-scan-20260718T120238Z/images/postgres-16.14-alpine-gosu-go1.25.12/vulnerabilities.grype.json",
+      "sha256": "sha256:5284b67eee914035cee6d084754848c69969ef130d26b54a4130417646839e8e"
+    },
+    {
+      "path": "remote:/data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-remediated-scan-20260718T120238Z/images/openbao-2.5.4-crypto0.52-net0.55-openssl3.5.7-go1.25.12/vulnerabilities.grype.json",
+      "sha256": "sha256:ecd1b0aa6926530e6fa011c073c0a6a4db9a10d73fd19a916e1914485fffb46a"
+    }
+  ],
+  "facts": {
+    "unwaivedCritical": 0,
+    "high": 0,
+    "postgresMedium": 3,
+    "openbaoMedium": 4,
+    "openbaoUnknown": 1,
+    "productionRuntimeSwitchAuthorized": false
+  }
+}

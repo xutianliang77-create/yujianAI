@@ -1,0 +1,16 @@
+apiVersion: platform.yujian.ai/v1alpha1
+kind: YujianPlatform
+metadata:
+  name: yujian-production
+spec:
+  releaseName: yujian
+  chartRef: oci://registry.example.cn/yujian/charts/yujian-platform
+  chartVersion: 0.1.0
+  chartDigest: sha256:<chart-digest>
+  valuesSecretRef: yujian-production-values
+  targetSchemaVersion: 16
+  currentSchemaVersion: 15
+  previousImageDigest: sha256:<previous-image-digest>
+  executorImage: registry.example.cn/yujian/deployment-executor@sha256:<executor-image-digest>
+  timeoutSeconds: 900
+  suspended: true

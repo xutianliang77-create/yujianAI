@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "taskId": "P1-M0-04-OWNER-DECISION",
+  "decisionId": "p1-m0-04-ccc-legal-20260718",
+  "personalOwner": "ccc",
+  "role": "legal-owner",
+  "decisionType": "license-notice-source-offer",
+  "status": "awaiting-personal-decision",
+  "decision": null,
+  "decidedAt": null,
+  "reason": null,
+  "conditions": null,
+  "expiresAt": null,
+  "evidence": [
+    {
+      "path": "repo:infra/upstream/THIRD_PARTY_NOTICES.md",
+      "sha256": "sha256:778911ca9c3e09f6a086ef54149542c7cae6fca13fe0c95f9d3c87a950795ed5"
+    },
+    {
+      "path": "repo:infra/upstream/OPENBAO_SOURCE_OFFER.md",
+      "sha256": "sha256:921d6e2e60260dffeb5bcc13bce6ba535f3a9b1e691a8d6098c3649898da0187"
+    },
+    {
+      "path": "repo:infra/upstream/licenses/postgresql-16.14-COPYRIGHT.txt",
+      "sha256": "sha256:3d6af92ff8a4c2cdf69afb1cf44edea727922f5cd0cf8b5f72b11cdecac8fdfd"
+    },
+    {
+      "path": "repo:infra/upstream/licenses/redis-7.2.14-COPYING.txt",
+      "sha256": "sha256:97f0a15b7bbae580d2609dad2e11f1956ae167be296ab60f4691ab9c30ee9828"
+    }
+  ],
+  "facts": {
+    "openbaoLicense": "MPL-2.0",
+    "postgresLicense": "PostgreSQL",
+    "redisLicensePayloadPresent": true,
+    "licensesNoAssertion": 335,
+    "trademarkReviewRequired": true,
+    "legalOpinionRecorded": false
+  }
+}

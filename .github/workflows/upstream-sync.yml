@@ -21,3 +21,14 @@ jobs:
         run: |
           npm run verify:upstream
           YUJIAN_UPSTREAM_MIRROR_ROOT="$RUNNER_TEMP/yujian-upstream" npm run upstream:mirror:sync
+          YUJIAN_UPSTREAM_MIRROR_ROOT="$RUNNER_TEMP/yujian-upstream" \
+          YUJIAN_UPSTREAM_REPLAY_REPORT="$RUNNER_TEMP/upstream-replay-report.json" \
+            npm run upstream:patch:replay
+      - name: Archive replay evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: upstream-replay-${{ github.run_id }}
+          path: ${{ runner.temp }}/upstream-replay-report.json
+          if-no-files-found: warn
+          retention-days: 30

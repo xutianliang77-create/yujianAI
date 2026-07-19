@@ -73,3 +73,13 @@ export {
 export type { HttpAdapterOptions } from "./http-adapters.js";
 export { OidcIdentityAdapter, OidcPlatformIdentityBridge } from "./oidc-identity.js";
 export type { OidcIdentityOptions, OidcPlatformScope, OidcPlatformScopeResolver } from "./oidc-identity.js";
+export { PostgresOidcPlatformScopeResolver } from "./postgres-oidc-scope.js";
+export type { OidcScopeSqlPool, OidcScopeSqlResult } from "./postgres-oidc-scope.js";
+export { SamlGatewayIdentityAdapter } from "./saml-identity.js";
+export type { SamlGatewayIdentityOptions } from "./saml-identity.js";
+export { ScimDirectorySyncAdapter } from "./scim-directory.js";
+export type { ScimDirectoryOptions, ScimMember, ScimMemberSink } from "./scim-directory.js";
+export { ObjectStorageAuditExportAdapter } from "./object-audit-export.js";
+export type { AuditExportRecord, AuditExportSource } from "./object-audit-export.js";
+export { OpenBaoTransitKmsAdapter } from "./openbao-transit-kms.js";
+export type { OpenBaoCredentialLease, OpenBaoTransitKmsOptions } from "./openbao-transit-kms.js";

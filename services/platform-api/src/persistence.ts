@@ -20,9 +20,12 @@ export interface PlatformPersistenceAdapter {
   listAudit?(scope: { tenantId: string; projectId: string; environmentId: string }): Promise<readonly AuditEventV1[]>;
   begin(): Promise<PlatformPersistenceTransaction>;
   claimOutbox(limit: number): Promise<OutboxEventV1[]>;
+  renewOutboxClaim(eventId: string): Promise<void>;
   markOutboxPublished(eventId: string, publishedAt: string): Promise<void>;
   markOutboxFailed?(eventId: string, error: string, nextAttemptAt?: string, deadLetteredAt?: string): Promise<void>;
   requeueOutbox?(eventId: string): Promise<void>;
+  isWebhookDelivered?(eventId: string, destinationId: string): Promise<boolean>;
+  markWebhookDelivered?(eventId: string, destinationId: string, deliveredAt: string): Promise<void>;
 }
 
 /** Production adapter contract; PlatformStore remains the no-I/O development implementation. */
