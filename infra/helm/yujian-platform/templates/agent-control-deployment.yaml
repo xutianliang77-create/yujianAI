@@ -8,6 +8,12 @@
 {{ if not .Values.agentControl.artifactVerifierModulePath }}
 {{ fail "agentControl.artifactVerifierModulePath must be set when agentControlEnabled" }}
 {{ end }}
+{{ if not .Values.agentControl.persistenceModulePath }}
+{{ fail "agentControl.persistenceModulePath must be set when agentControlEnabled" }}
+{{ end }}
+{{ if and .Values.agent.workloadIdentity.enabled (not .Values.agent.workloadIdentity.serviceAccountName) }}
+{{ fail "agent.workloadIdentity.serviceAccountName must be set when workload identity is enabled" }}
+{{ end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -22,6 +28,10 @@ spec:
       labels:
         app.kubernetes.io/component: agent-control
     spec:
+      automountServiceAccountToken: false
+      {{ if .Values.agent.workloadIdentity.enabled }}
+      serviceAccountName: {{ .Values.agent.workloadIdentity.serviceAccountName | quote }}
+      {{ end }}
       securityContext:
         runAsNonRoot: true
         runAsUser: {{ .Values.security.runAsUser }}
@@ -60,12 +70,20 @@ spec:
             - name: YUJIAN_AGENT_CONTROL_PERSISTENCE_MODULE
               value: {{ .Values.agentControl.persistenceModulePath | quote }}
             {{ end }}
+            {{ if .Values.agentControl.dispatchQuotaModulePath }}
+            - name: YUJIAN_AGENT_DISPATCH_QUOTA_MODULE
+              value: {{ .Values.agentControl.dispatchQuotaModulePath | quote }}
+            {{ end }}
             - name: YUJIAN_AGENT_ARTIFACT_VERIFIER_MODULE
               value: {{ .Values.agentControl.artifactVerifierModulePath | quote }}
             - name: AGENT_CONTROL_TLS_CERT_FILE
               value: /var/run/yujian-tls/tls.crt
             - name: AGENT_CONTROL_TLS_KEY_FILE
               value: /var/run/yujian-tls/tls.key
+            {{ if .Values.agent.workloadIdentity.enabled }}
+            - name: YUJIAN_WORKLOAD_IDENTITY_TOKEN_FILE
+              value: /var/run/secrets/yujian-workload-identity/token
+            {{ end }}
           ports:
             - name: https
               containerPort: {{ .Values.service.agentControlPort }}
@@ -73,6 +91,11 @@ spec:
             - name: tls
               mountPath: /var/run/yujian-tls
               readOnly: true
+            {{ if .Values.agent.workloadIdentity.enabled }}
+            - name: workload-identity
+              mountPath: /var/run/secrets/yujian-workload-identity
+              readOnly: true
+            {{ end }}
           resources:
             {{ toYaml .Values.resources.agentControl | nindent 12 }}
           readinessProbe:
@@ -94,4 +117,14 @@ spec:
                 path: tls.crt
               - key: {{ .Values.agentControl.tls.keyKey }}
                 path: tls.key
+        {{ if .Values.agent.workloadIdentity.enabled }}
+        - name: workload-identity
+          projected:
+            defaultMode: 0400
+            sources:
+              - serviceAccountToken:
+                  audience: {{ .Values.agent.workloadIdentity.audience | quote }}
+                  expirationSeconds: {{ .Values.agent.workloadIdentity.expirationSeconds }}
+                  path: token
+        {{ end }}
 {{ end }}

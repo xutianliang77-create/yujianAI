@@ -38,6 +38,8 @@ export type {
   RtcCapacityRequestV1,
   RtcCapacityUsageV1,
 } from "./capacity-controller.js";
+export { parseRtcCapacityReport } from "./capacity-report.js";
+export type { RtcCapacityReportV1 } from "./capacity-report.js";
 export type {
   YujianRtcNodeConfig,
   YujianRtcNodeStatus,
@@ -47,8 +49,11 @@ export type {
 export { YujianRoomServiceAdapter } from "./room-service.js";
 export { YujianRegionRouter } from "./region-router.js";
 export type { YujianRegionDecision } from "./region-router.js";
+export { YujianRegionHealthRegistry, YujianRegionHealthRouter } from "./region-health.js";
+export type { YujianHealthRegionDecision, YujianHealthRoutingPolicy, YujianRegionHealthObservation, YujianRegionHealthState } from "./region-health.js";
 export { YujianMediaServiceAdapter } from "./media-services.js";
 export { YujianWebhookReplayError, YujianWebhookVerifier } from "./webhook.js";
+export { TurnCredentialIssuer } from "./turn-credentials.js";
 
 // Public Yujian names for the adapter. LiveKit names remain exported above
 // because they describe the official upstream compatibility boundary.

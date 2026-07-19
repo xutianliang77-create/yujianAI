@@ -59,5 +59,26 @@ export async function loadPlatformRuntime(
   if (telemetryPersistence !== undefined && (typeof telemetryPersistence !== "object" || telemetryPersistence === null || typeof telemetryPersistence.append !== "function" || typeof telemetryPersistence.summarize !== "function")) {
     throw new Error("platform runtime module returned invalid telemetry persistence");
   }
+  const rtcCapacity = dependencies.rtcCapacity;
+  if (rtcCapacity !== undefined && (typeof rtcCapacity !== "object" || rtcCapacity === null
+    || typeof rtcCapacity.publish !== "function" || typeof rtcCapacity.reserve !== "function")) {
+    throw new Error("platform runtime module returned invalid RTC capacity provider");
+  }
+  const turnCredentials = dependencies.turnCredentials;
+  if (turnCredentials !== undefined && (typeof turnCredentials !== "object" || turnCredentials === null || typeof turnCredentials.issue !== "function")) {
+    throw new Error("platform runtime module returned invalid TURN credential issuer");
+  }
+  const entitlements = dependencies.entitlements;
+  if (entitlements !== undefined && (typeof entitlements !== "object" || entitlements === null || typeof entitlements.get !== "function" || typeof entitlements.upsert !== "function" || typeof entitlements.authorize !== "function")) {
+    throw new Error("platform runtime module returned invalid entitlement service");
+  }
+  const support = dependencies.support;
+  if (support !== undefined && (typeof support !== "object" || support === null || typeof support.create !== "function" || typeof support.list !== "function" || typeof support.get !== "function" || typeof support.getById !== "function" || typeof support.update !== "function" || typeof support.registerBundle !== "function" || typeof support.getBundle !== "function" || typeof support.issueAccess !== "function" || typeof support.consumeAccess !== "function" || typeof support.revokeAccess !== "function")) {
+    throw new Error("platform runtime module returned invalid support service");
+  }
+  const remoteAssistance = dependencies.remoteAssistance;
+  if (remoteAssistance !== undefined && (typeof remoteAssistance !== "object" || remoteAssistance === null || typeof remoteAssistance.begin !== "function" || typeof remoteAssistance.record !== "function" || typeof remoteAssistance.end !== "function")) {
+    throw new Error("platform runtime module returned invalid remote assistance service");
+  }
   return dependencies;
 }

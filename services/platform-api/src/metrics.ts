@@ -9,14 +9,26 @@ export class PlatformMetrics {
     this.counters.set(key, (this.counters.get(key) ?? 0) + value);
   }
 
-  observe(name: string, value: number, labels: Readonly<Record<string, string>> = {}): void {
+  observe(
+    name: string,
+    value: number,
+    labels: Readonly<Record<string, string>> = {},
+    buckets: readonly number[] = [5, 10, 25, 50, 100, 250, 500, 1_000, 2_500, 5_000, 10_000],
+  ): void {
     if (!Number.isFinite(value) || value < 0) throw new TypeError("metric observation must be finite and non-negative");
+    if (buckets.length === 0 || buckets.some((bucket, index) => !Number.isFinite(bucket) || bucket <= 0 || (index > 0 && bucket <= buckets[index - 1]!))) {
+      throw new TypeError("metric histogram buckets must be strictly increasing positive numbers");
+    }
     const labelText = this.labelText(labels);
     const key = `${name}\u0000${labelText}`;
-    const current = this.histograms.get(key) ?? {
+    const existing = this.histograms.get(key);
+    if (existing !== undefined && (existing.buckets.length !== buckets.length || existing.buckets.some((bucket, index) => bucket !== buckets[index]))) {
+      throw new TypeError("metric histogram buckets cannot change after first observation");
+    }
+    const current = existing ?? {
       labels: labelText,
-      buckets: [5, 10, 25, 50, 100, 250, 500, 1_000, 2_500, 5_000, 10_000],
-      counts: Array(11).fill(0) as number[],
+      buckets: [...buckets],
+      counts: Array(buckets.length).fill(0) as number[],
       sum: 0,
       count: 0,
     };

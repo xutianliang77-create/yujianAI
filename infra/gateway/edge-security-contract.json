@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "contractId": "yujian-production-edge-v1",
+  "publicHttpPaths": [
+    "/platform/*",
+    "/healthz"
+  ],
+  "forbiddenPublicPaths": [
+    "/internal/*",
+    "/metrics",
+    "/readyz"
+  ],
+  "tls": {
+    "minimumVersion": "1.2",
+    "hstsRequired": true,
+    "certificateRolloverEvidenceRequired": true,
+    "privateKeyInRepositoryAllowed": false
+  },
+  "http": {
+    "maximumRequestBodyBytes": 16384,
+    "perClientRateLimitRequired": true,
+    "connectionLimitRequired": true,
+    "trustedProxyHeaderRewriteRequired": true,
+    "authorizationHeaderLoggingAllowed": false,
+    "requestBodyLoggingAllowed": false
+  },
+  "protection": {
+    "managedWafPolicyEvidenceRequired": true,
+    "networkDdosPolicyEvidenceRequired": true,
+    "originBypassPreventionRequired": true,
+    "providerSpecificPolicyBundled": false
+  },
+  "turn": {
+    "separateFromHttpGateway": true,
+    "udpTcpTlsProtectionRequired": true,
+    "sharedCredentialWithControlPlaneAllowed": false
+  }
+}

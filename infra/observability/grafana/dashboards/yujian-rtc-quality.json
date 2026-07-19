@@ -1,0 +1,55 @@
+{
+  "annotations": { "list": [] },
+  "editable": false,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "id": 1,
+      "title": "RTC client RTT P95/P99",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "yujian:rtc_client_rtt_ms:p50_5m", "legendFormat": "P50" },
+        { "expr": "yujian:rtc_client_rtt_ms:p95_5m", "legendFormat": "P95" },
+        { "expr": "yujian:rtc_client_rtt_ms:p99_5m", "legendFormat": "P99" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2,
+      "title": "RTC client jitter P95",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "yujian:rtc_client_jitter_ms:p50_5m", "legendFormat": "P50" },
+        { "expr": "yujian:rtc_client_jitter_ms:p95_5m", "legendFormat": "P95" },
+        { "expr": "yujian:rtc_client_jitter_ms:p99_5m", "legendFormat": "P99" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 }
+    },
+    {
+      "id": 3,
+      "title": "RTC client packet loss",
+      "type": "timeseries",
+      "targets": [{ "expr": "yujian:rtc_client_packet_loss_ratio:avg_5m", "legendFormat": "5m average" }],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 }
+    },
+    {
+      "id": 4,
+      "title": "RTC client bitrate P50",
+      "type": "timeseries",
+      "targets": [{ "expr": "yujian:rtc_client_bitrate_kbps:p50_5m", "legendFormat": "P50" }],
+      "fieldConfig": { "defaults": { "unit": "Kbits" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 }
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["yujian", "rtc", "quality", "low-cardinality"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timezone": "browser",
+  "title": "语见 RTC 质量",
+  "uid": "yujian-rtc-quality",
+  "version": 1
+}

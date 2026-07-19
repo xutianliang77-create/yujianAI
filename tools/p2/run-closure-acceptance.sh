@@ -95,7 +95,7 @@ RESTORED_RECEIPTS=$(compose exec -T postgres psql -U "$YUJIAN_POSTGRES_USER" -d 
 SELECT count(*) FROM data_rights_evidence_receipts WHERE request_id IN (:'delete_id', :'recovery_id');
 SQL
 )
-[[ "$MIGRATIONS" == 11 && "$RESTORED_TENANT" == 1 && "$RESTORED_RIGHTS" == 3 && "$RESTORED_RECEIPTS" == 2 && "$SOURCE_SNAPSHOT" == "$RESTORED_SNAPSHOT" ]] || { echo "isolated PostgreSQL restore verification failed" >&2; exit 1; }
+[[ "$MIGRATIONS" == 15 && "$RESTORED_TENANT" == 1 && "$RESTORED_RIGHTS" == 3 && "$RESTORED_RECEIPTS" == 2 && "$SOURCE_SNAPSHOT" == "$RESTORED_SNAPSHOT" ]] || { echo "isolated PostgreSQL restore verification failed" >&2; exit 1; }
 
 MEMBER_COUNT=$(compose exec -T postgres psql -U "$YUJIAN_POSTGRES_USER" -d "$YUJIAN_POSTGRES_DB" -v tenant_id="$TENANT_ID" -Atq <<'SQL'
 SELECT count(*) FROM tenant_members WHERE tenant_id = :'tenant_id' AND status='active';
@@ -113,7 +113,7 @@ PROTECTED_AFTER=$(docker inspect -f '{{.Name}}={{.RestartCount}}' ai-phone-stagi
 
 TMP_REPORT="${REPORT}.tmp"
 jq --arg backup "$BACKUP" --arg sha "$BACKUP_SHA" --argjson rtoMs "$RESTORE_MS" --argjson memberCount "$MEMBER_COUNT" \
-  '.results.p2_06.backupRestore = {format:"pg_dump-custom",isolatedRestore:true,migrations:11,snapshotTimestampMatched:true,rpo:"captured-snapshot-zero-loss",rtoMs:$rtoMs,sha256:$sha,backupPath:$backup} | .results.p2_06.redisRebuild = {source:"postgres-tenant-members",activeMembers:$memberCount,status:"passed"} | .protectedContainers = {restartCountsUnchanged:true}' \
+  '.results.p2_06.backupRestore = {format:"pg_dump-custom",isolatedRestore:true,migrations:15,snapshotTimestampMatched:true,rpo:"captured-snapshot-zero-loss",rtoMs:$rtoMs,sha256:$sha,backupPath:$backup} | .results.p2_06.redisRebuild = {source:"postgres-tenant-members",activeMembers:$memberCount,status:"passed"} | .protectedContainers = {restartCountsUnchanged:true}' \
   "$REPORT" >"$TMP_REPORT"
 mv "$TMP_REPORT" "$REPORT"
 chmod 600 "$REPORT"

@@ -1,6 +1,7 @@
 image:
   platformApi: ghcr.io/xutianliang77-create/yujian-platform-api:0.1.0
   rtc: livekit/livekit-server:v1.13.3
+  rtcCapacityExporter: ""
   mediaOps: ghcr.io/xutianliang77-create/yujian-media-ops:0.1.0
   agentControl: ghcr.io/xutianliang77-create/yujian-agent-control:0.1.0
   agentWorker: ghcr.io/xutianliang77-create/yujian-agent-worker:0.1.0
@@ -28,6 +29,7 @@ storage:
   redisSize: 8Gi
 features:
   rtcEnabled: true
+  rtcCapacityEnabled: false
   mediaOpsEnabled: false
   agentControlEnabled: false
   agentWorkerEnabled: false
@@ -42,6 +44,51 @@ rtc:
   configSecretKey: LIVEKIT_CONFIG
   nodeIp: ""
   redisAddress: ""
+  capacity:
+    intervalMs: 5000
+    ttlMs: 15000
+    maxRooms: 1000
+    maxParticipants: 10000
+    maxPublishers: 5000
+    maxSubscriptions: 100000
+    maxTracks: 20000
+turn:
+  replicas: 2
+  configSecret: yujian-turn-config
+  configKey: turnserver.conf
+  tlsSecret: yujian-turn-tls
+  serviceType: LoadBalancer
+  externalTrafficPolicy: Local
+  relayPortMin: 49160
+  relayPortMax: 49200
+  annotations: {}
+  publicUrls: []
+  secretRef: ""
+dataServices:
+  # Production default: PostgreSQL and Redis are external HA services.
+  mode: external-ha
+  externalEgressCidrs: []
+  postgresPort: 5432
+  redisPort: 6379
+  enforceProductionTopology: false
+  postgresTls: false
+  redisTls: false
+  postgresZones: 1
+  redisZones: 1
+  topologyEvidenceRef: ""
+gateway:
+  enabled: false
+  ingressClassName: ""
+  host: ""
+  tlsSecret: ""
+  annotations: {}
+  controllerNamespaceSelector: {}
+  controllerPodSelector: {}
+  wafPolicyRef: ""
+  ddosPolicyRef: ""
+  certificateRolloverPlanRef: ""
+observability:
+  rtcTelemetryRetentionDays: 7
 platformRuntime:
   # Optional deployment-owned ESM module that returns PostgreSQL/Redis/KMS,
   # billing and data-rights adapters to platform-api. The module is shipped in
@@ -49,16 +96,27 @@ platformRuntime:
   modulePath: ""
   postgresUrlSecretKey: ""
   redisUrlSecretKey: ""
+  kmsEgressCidrs: []
+  kmsPort: 8200
+  externalHttpsEgressCidrs: []
 agent:
   environmentId: ""
   handlerModulePath: ""
   nodeSelector: {}
   gpuResource: nvidia.com/gpu
   gpuCount: 1
+  providerEgressCidrs: []
+  workloadIdentity:
+    enabled: false
+    serviceAccountName: ""
+    audience: yujian-runtime
+    expirationSeconds: 600
 agentControl:
   baseUrl: ""
   persistenceModulePath: ""
+  dispatchQuotaModulePath: ""
   artifactVerifierModulePath: ""
+  externalHttpsEgressCidrs: []
   tls:
     enabled: false
     existingSecret: yujian-agent-control-tls
@@ -75,6 +133,12 @@ mediaOps:
   rtcPrimaryUrl: ""
   rtcSecondaryUrl: ""
   defaultSipTrunkId: ""
+  externalHttpsEgressCidrs: []
+  workloadIdentity:
+    enabled: false
+    serviceAccountName: ""
+    audience: yujian-media-runtime
+    expirationSeconds: 600
   tls:
     enabled: false
     existingSecret: yujian-media-ops-tls
@@ -92,6 +156,12 @@ resources:
   rtc:
     requests: { cpu: 500m, memory: 512Mi }
     limits: { cpu: 2, memory: 2Gi }
+  rtcCapacityExporter:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { cpu: 250m, memory: 256Mi }
+  turn:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { cpu: 1, memory: 1Gi }
   mediaOps:
     requests: { cpu: 100m, memory: 128Mi }
     limits: { cpu: 500m, memory: 512Mi }
@@ -109,8 +179,10 @@ secrets:
   rtcApiKey: LIVEKIT_API_KEY
   rtcApiSecret: LIVEKIT_API_SECRET
   rtcConfig: LIVEKIT_CONFIG
+  rtcCapacityCredential: YUJIAN_RTC_CAPACITY_CREDENTIAL
   adminCredential: YUJIAN_PLATFORM_ADMIN_CREDENTIAL
   mediaOpsCredential: YUJIAN_MEDIA_INTERNAL_CREDENTIAL
+  mediaOpsProviderCallbackCredential: YUJIAN_MEDIA_PROVIDER_CALLBACK_CREDENTIAL
   agentControlCredential: YUJIAN_AGENT_INTERNAL_CREDENTIAL
   agentControlAdminCredential: YUJIAN_AGENT_ADMIN_CREDENTIAL
   postgresUser: POSTGRES_USER

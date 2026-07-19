@@ -8,6 +8,12 @@
 {{ if not .Values.mediaOps.persistenceModulePath }}
 {{ fail "mediaOps.persistenceModulePath must be set when mediaOpsEnabled" }}
 {{ end }}
+{{ if not .Values.mediaOps.workloadIdentity.enabled }}
+{{ fail "mediaOps workload identity must be enabled when mediaOpsEnabled" }}
+{{ end }}
+{{ if not .Values.mediaOps.workloadIdentity.serviceAccountName }}
+{{ fail "mediaOps.workloadIdentity.serviceAccountName must be set when mediaOpsEnabled" }}
+{{ end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -22,6 +28,8 @@ spec:
       labels:
         app.kubernetes.io/component: media-ops
     spec:
+      automountServiceAccountToken: false
+      serviceAccountName: {{ .Values.mediaOps.workloadIdentity.serviceAccountName | quote }}
       securityContext:
         runAsNonRoot: true
         runAsUser: {{ .Values.security.runAsUser }}
@@ -49,6 +57,11 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.secrets.existingSecret }}
                   key: {{ .Values.secrets.mediaOpsCredential }}
+            - name: YUJIAN_MEDIA_PROVIDER_CALLBACK_CREDENTIAL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.existingSecret }}
+                  key: {{ .Values.secrets.mediaOpsProviderCallbackCredential }}
             - name: YUJIAN_SIP_ENABLED
               value: {{ .Values.features.sipEnabled | quote }}
             - name: YUJIAN_SIP_DEFAULT_TRUNK_ID
@@ -57,6 +70,10 @@ spec:
               value: {{ .Values.features.ingressEnabled | quote }}
             - name: YUJIAN_EGRESS_ENABLED
               value: {{ .Values.features.egressEnabled | quote }}
+            - name: YUJIAN_MEDIA_MAX_ACTIVE_INGRESS
+              value: {{ .Values.media.maxActiveIngress | quote }}
+            - name: YUJIAN_MEDIA_MAX_ACTIVE_EGRESS
+              value: {{ .Values.media.maxActiveEgress | quote }}
             - name: YUJIAN_MEDIA_PROVIDER_ENABLED
               value: {{ .Values.mediaOps.providerEnabled | quote }}
             {{ if .Values.mediaOps.persistenceModulePath }}
@@ -67,16 +84,8 @@ spec:
               value: {{ .Values.mediaOps.rtcPrimaryUrl | quote }}
             - name: YUJIAN_RTC_SECONDARY_URL
               value: {{ .Values.mediaOps.rtcSecondaryUrl | quote }}
-            - name: YUJIAN_RTC_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.secrets.existingSecret }}
-                  key: {{ .Values.secrets.rtcApiKey }}
-            - name: YUJIAN_RTC_API_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.secrets.existingSecret }}
-                  key: {{ .Values.secrets.rtcApiSecret }}
+            - name: YUJIAN_WORKLOAD_IDENTITY_TOKEN_FILE
+              value: /var/run/secrets/yujian-media-workload-identity/token
             - name: MEDIA_OPS_TLS_CERT_FILE
               value: /var/run/yujian-tls/tls.crt
             - name: MEDIA_OPS_TLS_KEY_FILE
@@ -87,6 +96,9 @@ spec:
           volumeMounts:
             - name: tls
               mountPath: /var/run/yujian-tls
+              readOnly: true
+            - name: workload-identity
+              mountPath: /var/run/secrets/yujian-media-workload-identity
               readOnly: true
           resources:
             {{ toYaml .Values.resources.mediaOps | nindent 12 }}
@@ -109,4 +121,12 @@ spec:
                 path: tls.crt
               - key: {{ .Values.mediaOps.tls.keyKey }}
                 path: tls.key
+        - name: workload-identity
+          projected:
+            defaultMode: 0400
+            sources:
+              - serviceAccountToken:
+                  audience: {{ .Values.mediaOps.workloadIdentity.audience | quote }}
+                  expirationSeconds: {{ .Values.mediaOps.workloadIdentity.expirationSeconds }}
+                  path: token
 {{ end }}

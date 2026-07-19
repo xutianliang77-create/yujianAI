@@ -19,6 +19,9 @@ export interface PlatformApiConfig {
   apiKeyGraceMs?: number;
   /** Optional exact browser origin; unset keeps the API same-origin/server-only. */
   corsOrigin?: string;
+  rtcCapacityCredential?: string;
+  requireRtcCapacity: boolean;
+  requireTurnCredentials: boolean;
 }
 
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/u;
@@ -80,6 +83,12 @@ function readApiKeyGraceMs(value: string | undefined): number | undefined {
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed < 0 || parsed > 86_400_000) throw new Error("YUJIAN_API_KEY_GRACE_MS must be 0-86400000");
   return parsed;
+}
+
+function readBoolean(value: string | undefined, name: string): boolean {
+  if (value === undefined || value === "false") return false;
+  if (value === "true") return true;
+  throw new Error(`${name} must be true or false`);
 }
 
 function readScopedCredentials(serialized: string): PlatformCredential[] {
@@ -221,6 +230,10 @@ export function loadPlatformApiConfig(
     environment,
     "YUJIAN_PLATFORM_ADMIN_CREDENTIAL",
   );
+  const rtcCapacityCredential = optionalCredential(environment, "YUJIAN_RTC_CAPACITY_CREDENTIAL");
+  const requireRtcCapacity = readBoolean(environment.YUJIAN_REQUIRE_RTC_CAPACITY, "YUJIAN_REQUIRE_RTC_CAPACITY");
+  const requireTurnCredentials = readBoolean(environment.YUJIAN_REQUIRE_TURN_CREDENTIALS, "YUJIAN_REQUIRE_TURN_CREDENTIALS");
+  if (requireRtcCapacity && rtcCapacityCredential === undefined) throw new Error("YUJIAN_RTC_CAPACITY_CREDENTIAL is required when RTC capacity is mandatory");
   const rtcNodes = [
     primary,
     ...(secondaryUrl === undefined
@@ -245,6 +258,9 @@ export function loadPlatformApiConfig(
     ...(mediaOps === undefined ? {} : { mediaOps }),
     ...(apiKeyGraceMs === undefined ? {} : { apiKeyGraceMs }),
     ...(corsOrigin === undefined ? {} : { corsOrigin: corsOrigin.replace(/\/$/u, "") }),
+    ...(rtcCapacityCredential === undefined ? {} : { rtcCapacityCredential }),
+    requireRtcCapacity,
+    requireTurnCredentials,
     rtcNodes,
     livekit: primary,
   };

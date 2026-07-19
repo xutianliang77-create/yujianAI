@@ -20,6 +20,26 @@ test("config loads environment-scoped platform credentials", () => {
     YUJIAN_PLATFORM_CREDENTIALS_JSON: JSON.stringify([credential]),
   });
   assert.deepEqual(config.platformCredentials, [credential]);
+  assert.equal(config.requireRtcCapacity, false);
+  assert.equal(config.requireTurnCredentials, false);
+});
+
+test("config requires an internal credential when distributed RTC capacity is mandatory", () => {
+  assert.throws(() => loadPlatformApiConfig({
+    ...baseEnvironment,
+    YUJIAN_PLATFORM_CREDENTIALS_JSON: JSON.stringify([credential]),
+    YUJIAN_REQUIRE_RTC_CAPACITY: "true",
+  }), /YUJIAN_RTC_CAPACITY_CREDENTIAL is required/u);
+
+  const config = loadPlatformApiConfig({
+    ...baseEnvironment,
+    YUJIAN_PLATFORM_CREDENTIALS_JSON: JSON.stringify([credential]),
+    YUJIAN_REQUIRE_RTC_CAPACITY: "true",
+    YUJIAN_RTC_CAPACITY_CREDENTIAL: "rtc-capacity-internal-credential-0001",
+    YUJIAN_REQUIRE_TURN_CREDENTIALS: "true",
+  });
+  assert.equal(config.requireRtcCapacity, true);
+  assert.equal(config.requireTurnCredentials, true);
 });
 
 test("config rejects the removed unscoped credential", () => {

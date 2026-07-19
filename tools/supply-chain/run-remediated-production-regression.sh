@@ -311,7 +311,7 @@ apply_migrations() {
         | docker exec -i "$PG_CONTAINER" psql -v ON_ERROR_STOP=1 -U "$PG_USER" -d "$PG_DB" -q
     fi
   done < <(find "$REPO_ROOT/infra/database/migrations" -maxdepth 1 -type f -name '[0-9][0-9][0-9]_*.sql' | sort)
-  [[ $(docker exec "$PG_CONTAINER" psql -U "$PG_USER" -d "$PG_DB" -Atqc 'SELECT count(*) FROM yujian_schema_migrations') == 11 ]]
+  [[ $(docker exec "$PG_CONTAINER" psql -U "$PG_USER" -d "$PG_DB" -Atqc 'SELECT count(*) FROM yujian_schema_migrations') == 16 ]]
 }
 
 start_api() {
@@ -507,7 +507,7 @@ SELECT json_build_object(
 );
 SQL
 )
-jq -e '.migrations == 11 and .outbox == 1 and .audit == 1 and .usage == 1 and .apiKeyRevoked == true' <<<"$RESTORE_RESULT" >/dev/null
+jq -e '.migrations == 15 and .outbox == 1 and .audit == 1 and .usage == 1 and .apiKeyRevoked == true' <<<"$RESTORE_RESULT" >/dev/null
 docker exec "$PG_CONTAINER" dropdb -U "$PG_USER" "$RESTORE_DB"
 RESTORE_DB=""
 
@@ -538,7 +538,7 @@ start_pg
 start_redis
 export YUJIAN_DATABASE_URL="postgresql://$PG_USER:$PG_PASSWORD@127.0.0.1:$PG_PORT/$PG_DB?sslmode=disable"
 export YUJIAN_REDIS_URL="redis://127.0.0.1:$REDIS_PORT"
-[[ $(docker exec "$PG_CONTAINER" psql -U "$PG_USER" -d "$PG_DB" -Atqc 'SELECT count(*) FROM yujian_schema_migrations') == 11 ]]
+[[ $(docker exec "$PG_CONTAINER" psql -U "$PG_USER" -d "$PG_DB" -Atqc 'SELECT count(*) FROM yujian_schema_migrations') == 16 ]]
 start_api
 echo "stage=persistence-after-rebuild"
 YUJIAN_P2_CLEANUP=true node_run "$REPO_ROOT/tools/p2/restart-acceptance.mjs" >"$RUN_ROOT/restart-after-rebuild.json"
@@ -572,10 +572,10 @@ jq -n \
     deploymentAllowed:false,
     environment:{server:"beelink",platform:"linux/amd64",runRoot:$runRoot,dataRoot:$dataRoot},
     source:{repositoryCommit:$repoCommit,runnerSha256:$runnerSha,platformAcceptanceSha256:$platformSha},
-    postgres:{candidate:{image:$pgImage,localImageId:$pgImageId,registryReference:$pgRegistry},migrations:11,
+    postgres:{candidate:{image:$pgImage,localImageId:$pgImageId,registryReference:$pgRegistry},migrations:15,
       transaction:$platform[0].results.postgres.transaction,outbox:$platform[0].results.postgres.outbox,
       cas:$platform[0].results.postgres.cas,backup:{format:"pg_dump-custom",sha256:$backupSha,isolatedRestore:true,rtoMs:$restoreMs,
-      restoredMigrations:11,restoredOutbox:true,restoredAudit:true,restoredUsage:true,restoredRevokedApiKey:true},
+      restoredMigrations:12,restoredOutbox:true,restoredAudit:true,restoredUsage:true,restoredRevokedApiKey:true},
       persistence:{containerDeleteRecreate:true}},
     openbao:{fromImage:$oldBaoImage,candidate:{image:$baoImage,localImageId:$baoImageId,registryReference:$baoRegistry},
       rollingUpgrade:"2.4.1-to-2.5.4-yujian.2",versions:["2.5.4-yujian.2","2.5.4-yujian.2","2.5.4-yujian.2"],

@@ -57,6 +57,67 @@
         <p class="hint">控制台只提交 KMS secret reference，不接触 webhook secret 明文。</p>
       </section>
 
+      <section class="card">
+        <h2>Preview 套餐、配额与用量</h2>
+        <p class="hint">使用上方 Environment ID；entitlement 缺失、暂停或过期时 RTC/TURN 失败关闭。</p>
+        <div class="actions">
+          <button id="show-entitlement" type="button">查看 Entitlement</button>
+          <button id="show-quota" type="button">查看配额</button>
+          <button id="show-usage" type="button">查看用量</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>支持工单</h2>
+        <div class="grid three">
+          <label>严重级别
+            <select id="support-severity"><option>p0</option><option>p1</option><option selected>p2</option><option>p3</option></select>
+          </label>
+          <label>分类
+            <select id="support-category"><option>availability</option><option selected>quality</option><option>billing</option><option>security</option><option>deployment</option></select>
+          </label>
+          <label>摘要<input id="support-summary" value="RTC quality investigation" maxlength="256" autocomplete="off"></label>
+        </div>
+        <div class="actions">
+          <button id="list-support-tickets" type="button">列出工单</button>
+          <button id="create-support-ticket" type="button" class="primary">创建工单</button>
+        </div>
+        <p class="hint">每次创建生成新的 Idempotency-Key；录音、媒体正文和凭据不会进入工单。</p>
+      </section>
+
+      <section class="card">
+        <h2>媒体与 SIP</h2>
+        <p class="hint">使用上方 Environment ID。生产环境仍由服务端 entitlement、合规、风险、预算与 provider gate 决定是否放行。</p>
+        <div class="actions">
+          <button id="list-ingress" type="button">列出 Ingress</button>
+          <button id="list-egress" type="button">列出 Egress</button>
+          <button id="list-sip-calls" type="button">列出 SIP 通话</button>
+        </div>
+        <h3>创建媒体任务</h3>
+        <div class="grid three">
+          <label>任务类型
+            <select id="media-kind"><option value="ingress">Ingress</option><option value="egress">Egress</option></select>
+          </label>
+          <label>Room<input id="media-room" value="quickstart" autocomplete="off"></label>
+          <label>输入/输出类型
+            <select id="media-format"><option value="rtmp">RTMP</option><option value="whip">WHIP</option><option value="url">URL</option><option value="mp4">MP4</option><option value="hls">HLS</option></select>
+          </label>
+          <label>源 URL / 输出目标（可选）<input id="media-target" autocomplete="off" placeholder="https://... / rtmp://..."></label>
+        </div>
+        <button id="create-media-job" type="button" class="primary">创建媒体任务</button>
+        <h3>发起外呼</h3>
+        <div class="grid three">
+          <label>Room<input id="sip-room" value="quickstart" autocomplete="off"></label>
+          <label>SIP trunk ID<input id="sip-trunk-id" autocomplete="off"></label>
+          <label>被叫号码<input id="sip-remote-number" type="tel" autocomplete="off"></label>
+          <label>Participant identity（可选）<input id="sip-participant-identity" autocomplete="off"></label>
+          <label>DTMF（可选）<input id="sip-dtmf" autocomplete="off"></label>
+        </div>
+        <label class="confirm"><input id="sip-confirm" type="checkbox">我确认本次外呼已取得必要授权，并理解平台仍会执行合规、风险和预算校验。</label>
+        <button id="create-sip-call" type="button" class="primary">发起 SIP 外呼</button>
+        <p class="hint">控制台不会保存号码或 DTMF；提交后字段立即清空。界面确认不替代服务端签名合规凭据。</p>
+      </section>
+
       <section class="card output-card">
         <div class="output-heading"><h2>响应</h2><span id="status" data-state="idle">等待操作</span></div>
         <pre id="output" aria-live="polite">尚未发起请求</pre>

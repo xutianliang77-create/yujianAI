@@ -1,0 +1,32 @@
+import { createHash, randomUUID } from "node:crypto";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+
+const [inputArg, outputArg] = process.argv.slice(2);
+if (inputArg === undefined || outputArg === undefined) throw new Error("usage: create-ga-decision <decision-input.json> <new-decision.json>");
+const input = JSON.parse(readFileSync(resolve(inputArg), "utf8"));
+if (typeof input.freezePath !== "string" || input.freezePath.length === 0) throw new Error("GA decision freezePath is required");
+const freezeBody = readFileSync(resolve(input.freezePath));
+const releaseCandidateArtifactDigest = `sha256:${createHash("sha256").update(freezeBody).digest("hex")}`;
+if (input.freezeSha256 !== releaseCandidateArtifactDigest) throw new Error("GA decision freeze artifact digest mismatch");
+const freeze = JSON.parse(freezeBody.toString("utf8"));
+const requiredOwners = ["product-owner", "sre-owner", "security-owner", "legal-owner", "compliance-owner", "finance-owner", "rtc-agent-owner", "release-owner"];
+const reference = /^(?:evidence|https|s3|gs|oss):\/\/[^\s?#]+$/u;
+if (input?.schemaVersion !== 1 || !["approve", "reject"].includes(input.decision) || freeze?.schemaVersion !== 1 || !Array.isArray(freeze.gateResults) || !/^rc-[0-9a-f-]{36}$/u.test(freeze.releaseCandidateId)) throw new Error("GA decision input is invalid");
+const gateIds = new Set(freeze.gateResults.map((gate) => gate?.gateId));
+if (gateIds.size !== 11 || Array.from({ length: 11 }, (_, index) => `gate-${index}`).some((gate) => !gateIds.has(gate)) || freeze.gateResults.some((gate) => !["passed", "failed", "not-run", "blocked"].includes(gate.status) || !reference.test(gate.evidenceRef) || !/^sha256:[0-9a-f]{64}$/u.test(gate.sha256))) throw new Error("GA decision RC gate snapshot is invalid");
+const receipts = input.ownerReceiptRefs;
+if (typeof receipts !== "object" || receipts === null || Array.isArray(receipts) || Object.values(receipts).some((value) => typeof value !== "string" || !reference.test(value))) throw new Error("GA owner receipts are invalid");
+if (input.decision === "approve") {
+  if (freeze.status !== "frozen" || !freeze.gateResults.every((gate) => gate.status === "passed")) throw new Error("GA approval requires a fully passed frozen RC");
+  if (requiredOwners.some((owner) => !reference.test(receipts[owner]))) throw new Error("GA approval requires all owner receipts");
+} else if (Object.keys(receipts).length === 0) throw new Error("GA rejection requires at least one owner receipt");
+const expectedFreezeStatus = freeze.gateResults.every((gate) => gate.status === "passed") ? "frozen" : "rejected";
+if (freeze.status !== expectedFreezeStatus || (freeze.status === "frozen") !== Number.isFinite(Date.parse(freeze.frozenAt ?? ""))) throw new Error("GA decision RC status conflicts with its gate snapshot");
+const canonicalGates = [...freeze.gateResults].sort((a, b) => Number(a.gateId.slice(5)) - Number(b.gateId.slice(5))).map(({ gateId, status, evidenceRef, sha256 }) => ({ gateId, status, evidenceRef, sha256 }));
+const gateSnapshotDigest = `sha256:${createHash("sha256").update(JSON.stringify(canonicalGates)).digest("hex")}`;
+const document = { schemaVersion: 1, decisionId: `ga-decision-${randomUUID()}`, releaseCandidateId: freeze.releaseCandidateId, releaseCandidateArtifactDigest, decision: input.decision, gateSnapshotDigest, ownerReceiptRefs: receipts, decidedAt: new Date().toISOString() };
+const output = resolve(outputArg);
+mkdirSync(dirname(output), { recursive: true, mode: 0o700 });
+writeFileSync(output, `${JSON.stringify(document, null, 2)}\n`, { flag: "wx", mode: 0o600 });
+process.stdout.write(`${JSON.stringify({ output, decisionId: document.decisionId, decision: document.decision })}\n`);

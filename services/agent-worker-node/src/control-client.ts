@@ -23,6 +23,8 @@ export interface WorkerControlClientOptions {
   fetchImpl?: typeof fetch;
 }
 
+export interface WorkerHeartbeatResult { cancelDispatchIds: readonly string[]; }
+
 export class WorkerControlError extends Error {
   constructor(message: string, readonly statusCode?: number) {
     super(message);
@@ -39,6 +41,7 @@ export class WorkerControlClient {
   constructor(private readonly options: WorkerControlClientOptions) {
     const url = new URL(options.baseUrl);
     if (url.protocol !== "https:" && url.hostname !== "127.0.0.1" && url.hostname !== "localhost") throw new TypeError("worker control URL must use HTTPS outside loopback");
+    if (url.username !== "" || url.password !== "" || url.search !== "" || url.hash !== "") throw new TypeError("worker control URL is invalid");
     this.baseUrl = options.baseUrl.replace(/\/$/u, "");
     this.timeoutMs = options.timeoutMs ?? 5_000;
     this.fetchImpl = options.fetchImpl ?? fetch;
@@ -49,8 +52,12 @@ export class WorkerControlClient {
     return this.post("/internal/v1/agent-workers/register", input);
   }
 
-  heartbeat(workerId: string, activeDispatchIds: readonly string[]): Promise<unknown> {
-    return this.post("/internal/v1/agent-workers/heartbeat", { workerId, activeDispatchIds });
+  async heartbeat(workerId: string, activeDispatchIds: readonly string[]): Promise<WorkerHeartbeatResult> {
+    const response = await this.post("/internal/v1/agent-workers/heartbeat", { workerId, activeDispatchIds });
+    if (typeof response !== "object" || response === null || !("cancelDispatchIds" in response) || !Array.isArray(response.cancelDispatchIds) || response.cancelDispatchIds.some((value) => typeof value !== "string")) {
+      throw new WorkerControlError("worker heartbeat response is invalid");
+    }
+    return { cancelDispatchIds: response.cancelDispatchIds as string[] };
   }
 
   start(workerId: string, dispatchId: string): Promise<unknown> {
@@ -86,8 +93,8 @@ export class WorkerControlClient {
         "content-type": "application/json",
         "x-yujian-worker-token": this.options.credential,
       },
-    }).catch((error) => {
-      throw new WorkerControlError(error instanceof Error ? error.message : "worker control request failed");
+    }).catch(() => {
+      throw new WorkerControlError("worker control request failed");
     });
     const text = await response.text();
     let parsed: unknown;

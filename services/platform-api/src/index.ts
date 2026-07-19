@@ -15,6 +15,7 @@ export type {
   PlatformServerDependencies,
   PlatformRoomService,
   PlatformTokenIssuer,
+  PlatformTurnCredentialIssuer,
   PlatformRegionRouter,
   PlatformResourceUsageProvider,
   PlatformResourceUsageSnapshot,
@@ -27,6 +28,7 @@ export type {
   PlatformOutboxReplayService,
   PlatformBackgroundWorker,
   PlatformTelemetryPersistence,
+  PlatformRemoteAssistanceService,
 } from "./server.js";
 export { CompositePlatformResourceUsageProvider } from "./composite-resource-usage.js";
 export type { ResourceUsageField, ResourceUsageSource } from "./composite-resource-usage.js";
@@ -39,13 +41,42 @@ export {
 export { RtcTelemetryBuffer } from "./rtc-telemetry.js";
 export { PostgresRtcTelemetryPersistence } from "./telemetry-persistence.js";
 export type { RtcTelemetryPersistence, RtcTelemetrySqlPool, RtcTelemetrySqlResult } from "./telemetry-persistence.js";
+export { RtcTelemetryRetentionWorker } from "./telemetry-retention-worker.js";
+export type { RtcTelemetryRetentionOptions } from "./telemetry-retention-worker.js";
 export { PlatformRateLimiter } from "./rate-limit.js";
 export type { RateLimitDecision, RateLimiter } from "./rate-limit.js";
 export { RedisRateLimiter } from "./redis-rate-limit.js";
 export { RedisTokenQuotaProvider } from "./redis-token-quota.js";
+export { RedisRtcCapacityProvider } from "./redis-rtc-capacity.js";
+export type { RedisRtcCapacityClient, RtcCapacityAdmissionLease, PlatformRtcCapacityProvider } from "./redis-rtc-capacity.js";
+export { EntitlementError, PostgresEnvironmentEntitlementService } from "./postgres-entitlements.js";
+export type { EntitlementSqlPool, EntitlementSqlResult, PlatformEntitlementService } from "./postgres-entitlements.js";
+export { PostgresSupportService, SupportServiceError } from "./postgres-support.js";
+export type { PlatformSupportService, SupportSqlPool, SupportSqlResult } from "./postgres-support.js";
+export { PostgresRemoteAssistanceService, RemoteAssistanceError } from "./postgres-remote-assistance.js";
+export type { IssuedRemoteAssistanceSession, RemoteAssistanceSession, RemoteCommandClass } from "./postgres-remote-assistance.js";
+export { PostgresCustomerAcceptanceArchive } from "./customer-acceptance.js";
+export type { AcceptanceArtifactStore, AcceptanceCheckStatus, CustomerAcceptanceCheck, CustomerAcceptanceInput, CustomerAcceptanceReport } from "./customer-acceptance.js";
+export { evaluateErrorBudget, PostgresReliabilityService } from "./postgres-reliability.js";
+export type { ErrorBudgetWindow, IncidentStatus, OncallIncident, ReleasePolicy, ReliabilitySqlConnection, ReliabilitySqlPool, ReliabilitySqlResult } from "./postgres-reliability.js";
+export { PostgresReleaseGovernanceService } from "./postgres-release-governance.js";
+export { PostgresControlPlaneBackupCoordinator } from "./postgres-backup-coordinator.js";
+export { HttpControlPlaneBackupProvider } from "./http-backup-provider.js";
+export type { HttpBackupProviderOptions } from "./http-backup-provider.js";
+export type {
+  BackupArtifactResult,
+  BackupRunStatus,
+  BackupSqlPool,
+  BackupSqlResult,
+  ControlPlaneBackupProvider,
+  ControlPlaneBackupRun,
+  ControlPlaneRestoreDrill,
+  RestoreDrillResult,
+} from "./postgres-backup-coordinator.js";
 export { DisabledMediaOps, HttpMediaOpsClient, MediaOpsRequestError, MediaOpsUnavailableError } from "./media-client.js";
 export type { MediaOpsClientOptions, PlatformMediaOps } from "./media-client.js";
 export { PlatformMetrics } from "./metrics.js";
+export { recordRtcQualityMetrics } from "./rtc-quality-metrics.js";
 export type {
   PlatformPersistenceAdapter,
   PlatformPersistenceOptions,

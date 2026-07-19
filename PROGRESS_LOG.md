@@ -292,6 +292,70 @@ npm run beelink:preflight
 npm run beelink:acceptance
 ```
 
+## 📌 SESSION HANDOFF STATUS — M3 收口、M4 Agent 与 M5 媒体 Runtime 开发完成，运行待执行
+
+### Current Work
+
+2026-07-19 按“开发完毕、测试先略过”继续完成以下源码切片：
+
+- M3-05/09/10：九格运营商采样 policy、24/72 小时 append-only runner、不可把 partial 当 pass
+  的证据 verifier，以及设计伙伴 version CAS、P0/P1 自动暂停和关闭门禁。真实运营商、客户、
+  长稳与故障注入未执行。
+- M4-01–10：exact OCI artifact verification receipt、canary/rollback reconciler、Redis Cluster
+  dispatch quota/rebuild、workload identity 短期 provider credential、OpenAI-compatible usage、
+  PostgreSQL 数值成本、tool approval/KMS 密文结果、Node/Python 取消传播、Agent 网络策略、
+  alert/dashboard 和 quickstart。源码 migration 新增 013。
+- M5-01–10：独立 provider callback credential、部署侧 edge-attestation verifier、provider
+  sequence/乱序保护、safe trunk/KMS ref/目的地区/fraud policy、Redis SIP 频率/并发/日费用和
+  Ingress/Egress active capacity；入呼只采用不主动 dial，外呼/DTMF/transfer/hangup 状态与租约
+  闭环；URL ingress SSRF guard、录制合规回执、稳定 object URI、retention/deletion evidence；
+  provider usage 不可变写入、确定性 reconciliation/CAS checkpoint、SIP PDD/接通时长/DTMF
+  摘要、provider allowlist metrics；platform-api entitlement/quota/audit 和控制台媒体入口。
+- migration 014 清除 002 表 legacy raw idempotency key，安全迁移 trunk 完整号码为不可逆 refs，
+  新增媒体账务/质量/checkpoint。所有“当前源码”预检、备份默认值和审计索引已同步到 001–014；
+  历史 001–011 Beelink 证据未改写。
+- M5 状态已写入 `docs/acceptance/M5_MEDIA_RUNTIME_IMPLEMENTATION.md` 和
+  `docs/acceptance/m5-media-runtime-implementation.json`；Gate 5 仍为 false。
+
+### Verification Boundary
+
+用户明确测试先略过。本阶段未运行 build、lint、任何单元/集成/合同测试、OpenAPI/YAML/JSON
+verifier、migration 013/014、Helm render/lint、Docker/Kubernetes、Redis/PostgreSQL/OpenBao、
+LiveKit SIP/Ingress/Egress、运营商/SBC、对象存储、provider/KMS、Prometheus/Grafana、浏览器或
+Beelink 命令。新增测试只作为待执行合同，不能视为通过证据。
+
+### Gate Status
+
+- M3、M4、M5 的开发状态均为 `implemented-not-run`。
+- Gate 3/4/5 未通过，`productionReleaseAuthorized=false`。
+- SIP/Egress 必须继续默认关闭；真实运营商合作、资质/法务签字、SBC/TLS/SRTP、号码、录音
+  告知、对象删除、provider 账单/质量和灾备证据不可由源码替代。
+- bbb Registry/KMS sequence 1 reject、ccc legal sequence 1 reject 及 Gate 0/1/7 既有阻断保持有效。
+
+### Background Tasks
+
+- 本轮未启动本机或 Beelink background process。
+- 未探测、停止、重启或修改 Beelink 服务。
+
+### Next Session Priorities
+
+1. 测试继续暂停时进入 M6：Operator/安装升级回滚、完整离线 bundle、国内 KMS/对象存储/日志、
+   SAML/SCIM/审计导出、license 签发/分发、巡检/远程协助、国内模型 provider 和客户验收报告。
+2. M6 收口后进入 M7：账单结算、区域故障、SLO/on-call、安全/数据权利、LTS/status、RC/GA gate。
+3. 只有用户恢复测试授权后，才执行 Node 22/24 build/test/OpenAPI/migration/Helm，再安排
+   Beelink `/data` 的真实 provider/HA/媒体/Agent/24–72 小时验收。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short
+cat docs/acceptance/m5-media-runtime-implementation.json
+sed -n '1,260p' docs/planning/DEVELOPMENT_COMPLETION_AUDIT.md
+sed -n '1,260p' infra/helm/yujian-platform/README.md
+# 测试仍暂停时不要执行 npm test/check/build、verifier、migration、Helm、Docker、Kubernetes 或 Beelink 命令。
+```
+
 ## 2026-07-17 继续开发补记
 
 本次继续按 M0-M7 任务补齐实现骨架；测试、构建、Docker、浏览器、Flutter 和 Beelink
@@ -2906,4 +2970,334 @@ npm run supply-chain:verify-remediated-evidence
 npm run test:supply-chain
 ssh beelink@100.110.127.117 \
   'cd /data/models/yujianAI/evidence/p1-m0-04/p1-m0-04-license-remediation-20260718T165733Z && sha256sum -c SHA256SUMS'
+```
+
+## 📌 SESSION HANDOFF STATUS — Registry/KMS freeze、恢复与 key lifecycle 开发完成，运行待执行
+
+### Current Work
+
+2026-07-19 已完成 bbb Registry/KMS reject 对应的技术整改实现，不覆盖 sequence 0/1 的
+decision、signature、receipt 或 OpenBao audit。新增
+`infra/registry/beelink/freeze-policy.json`，固定：
+
+- Registry host/bind、Tailscale TLS/basic-auth、四个生产 OCI digest、TLS 30 天续期窗口、
+  delete 禁用和手动 GC 边界；
+- 全部 data/backup/evidence 路径落到 Beelink `/data/models/yujianAI`；
+- Registry 与 OpenBao recovery 的 RPO 24 小时、RTO 4 小时目标和 loopback isolated restore；
+- `openbao://yujian-oci-release`、当前三 voter 单 Beelink 故障域、ECDSA P-256 非导出 key、
+  90 天轮换策略和禁止自动退役旧版本；
+- bbb sequence 1 reject 的 exact receipt path/hash，`productionReleaseAuthorized=false`。
+
+新增的 append-only 工具包括：
+
+- `prepare-registry-kms-freeze.mjs`：以 `wx` 创建只读计划，目标存在即失败；
+- `run-registry-recovery.sh`：显式维护确认后 quiesced backup，保存 registry data 与自举 OCI
+  image archive；恢复只启动 `127.0.0.1:55443` 临时 Registry，校验四个 manifest、所有 blob、
+  Cosign signature 和 SPDX attestation，没有生产覆盖 action；
+- `run-kms-recovery.sh`：保存 OpenBao 加密 Raft snapshot 与脱敏 key metadata/public key，
+  在 `127.0.0.1:19200` 临时单节点执行 restore，临时 init/unseal token 不归档；
+- `create-registry-kms-freeze-authorization.mjs`：只有 bbb 追加 sequence 2+ approve/
+  approve-with-conditions 且 aaa 当前批准时，才能生成绑定 exact policy hash 的维护授权；
+- `run-kms-key-lifecycle.sh`：轮换前强制要求 Registry/KMS 恢复通过和 superseding
+  authorization；轮换只给冻结 digest 添加 `candidate-not-authorized` probe 签名，保留旧 public
+  key 和旧签名回滚校验；
+- `create-kms-retirement-authorization.mjs`：旧版本 `min_available_version` 退役不可逆，必须在
+  rotation 后由 bbb 和 aaa 分别追加新 receipt，再显式输入 `RETIRE`；发布仍不自动授权。
+
+Registry compose 的运行镜像引用已改为签名后的 immutable digest；发生冷恢复时必须先从备份的
+OCI bootstrap archive `docker load`，避免自托管 Registry 的循环依赖。机器状态文件
+`docs/acceptance/p1-registry-kms-freeze-implementation.json` 明确记录“实现完成、运行未执行、测试
+未执行、Owner reject 仍有效”。README、设计索引、生产 OCI 合同和开发完成审计已同步。
+
+### Verification Boundary
+
+用户本轮明确“测试先略过”，因此未运行 Node test、verifier、shell runner、Docker/Beelink
+恢复或 key rotation。新增测试文件只作为后续验收合同保存，不能宣称 passed。未访问、未暂停、
+未重启或修改 Beelink 当前容器，服务器当前运行状态本轮未刷新。
+
+### Gate Status
+
+本项开发实现不改变专业决定：bbb Registry/KMS sequence 1 `reject`、ccc 法律 sequence 1
+`reject` 仍有效。Registry/KMS runtime evidence 全部为 `not-executed`；当前镜像 Critical、唯一
+pending-legal、Owner 专业资格和完整 Gate 1 等缺口仍在。P1-M0-04、Gate 0、完整 Gate 1、
+Gate 7、正式 Gate 2 和生产发布继续 **blocked/not-passed**。
+
+### Background Tasks
+
+- 本轮未启动任何本地或 Beelink background process。
+- 已存在的 Beelink 服务未被本轮探测，不能从历史状态推断当前健康。
+
+### Next Session Priorities
+
+1. 继续按开发计划区分“代码未实现”和“仅待测试/审批”；下一开发切片优先关闭 M3-01/02 的
+   生产 HA/TURN/capacity exporter 合同和部署实现，不把 24/72 小时运行证据提前写为通过。
+2. bbb 仅在审阅本冻结 policy 和未来真实恢复证据后决定是否 supersede；当前无需签发 token。
+3. 用户恢复测试授权后，先运行 policy/authorization verifier，再在 Beelink `/data` 依次执行
+   Registry backup/isolated restore、KMS snapshot/isolated restore；key rotation 必须最后且需要
+   bbb superseding approval。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short
+sed -n '1,220p' infra/registry/README.md
+cat docs/acceptance/p1-registry-kms-freeze-implementation.json
+# 测试仍暂停时不要执行 npm、Docker、Beelink 或 key lifecycle 命令。
+```
+
+## 📌 SESSION HANDOFF STATUS — M3-01/02 HA、TURN、capacity 与 drain 开发完成，运行待执行
+
+### Current Work
+
+2026-07-19 已完成 M3-01/02 的生产实现切片：
+
+- 新增 `@yujian/rtc-capacity-exporter`，通过官方 `RoomServiceClient` 汇总 Room、participant、
+  publisher 和 track，并以 `participants × published tracks` 记录 subscription 保守上界；
+  报告带短 TTL、单调 sequence、healthy/draining 状态，SIGTERM/SIGINT 在退出前尝试发送最终
+  drain 报告。
+- platform-api 新增独立认证的 `POST /internal/v1/rtc/capacity`、
+  `RedisRtcCapacityProvider` Lua 原子 publish/reserve/release，以及 token 签发前的节点和租户
+  quota 双重准入。报告过期、不健康、draining、Redis 不可用或全部节点超限时 fail-closed；
+  票据签发失败会释放 lease。
+- 新增 `POST /platform/v1/rtc/turn-credentials` 和 v1 合同，使用 coturn REST HMAC-SHA1
+  短期凭据。shared secret 仅由部署 runtime 通过 `YUJIAN_TURN_SECRET_REF` 从 OpenBao/KMS
+  解析，不进入 API 响应、chart values 或数据库。
+- Helm 生产默认切换为 `dataServices.mode=external-ha`，要求 PostgreSQL/Redis URL Secret key
+  和 NetworkPolicy CIDR；内置单副本数据库只在 `embedded-single` 开发模式渲染。新增双副本
+  digest-pinned coturn Deployment、TLS/config Secret、PDB、zone spread、UDP/TCP/TLS 及有限
+  relay 端口 Service；RTC 新增 PDB、90 秒 grace 和 capacity sidecar。
+- 新增 `values-production.example.yaml`、OpenAPI、配置合同、README 和机器状态
+  `docs/acceptance/m3-01-02-implementation.json`。package-lock 只更新了新 workspace 元数据。
+
+### Verification Boundary
+
+用户明确“测试先略过”，因此本切片未运行 TypeScript build/lint/unit tests、OpenAPI verifier、
+Helm schema/template/lint、Docker、Kubernetes 或 Beelink 命令。仅执行了
+`npm install --package-lock-only --ignore-scripts` 以登记 workspace；当前本机 Node v25.8.2
+不满足仓库声明的 `>=22 <25`，npm 输出 engine warning，该命令不构成测试通过证据。
+
+未运行 PostgreSQL/Redis HA、TURN UDP/TCP/TLS、容量竞争、过期报告、pod drain、AZ failover
+或自动扩缩。新增测试文件仅保存验收合同，所有 runtime/test 状态均为 `not-executed`。
+
+### Gate Status
+
+M3-01/02 的代码与部署合同已实现，但 Gate 3 仍为 **not-passed**。bbb Registry/KMS sequence 1
+reject、ccc 法律 sequence 1 reject 和其他 Gate 0/1/7 阻断未被本切片覆盖；
+`productionReleaseAuthorized=false`。
+
+### Background Tasks
+
+- 本轮未启动任何本地或 Beelink background process。
+- 未探测、暂停、重启或修改 Beelink 当前服务，不能从历史证据推断当前健康。
+
+### Next Session Priorities
+
+1. 测试继续暂停时，进入 M3-03/04：补生产入口/WAF-DDoS adapter 合同、证书轮换门禁，以及
+   低基数 RTC 质量指标持久化/导出和面板 provisioning；保持 provider/集群证据未执行。
+2. 随后开发 M3-06/07/08 的备份编排、Preview entitlement/usage 和 support ticket 闭环；
+   M3-05/09/10 主要依赖外部运营商、设计伙伴与 24/72 小时运行，保留为验收待执行。
+3. 恢复测试授权后先使用仓库要求的 Node 22/24，依次执行 build/unit/OpenAPI/Helm，再进入
+   Beelink `/data` 的真实 HA、TURN、capacity/drain/AZ 验收。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short
+cat docs/acceptance/m3-01-02-implementation.json
+sed -n '1,260p' services/rtc-capacity-exporter/README.md
+sed -n '1,300p' infra/helm/yujian-platform/README.md
+# 测试仍暂停时不要执行 npm test/check/build、Helm、Docker、Kubernetes 或 Beelink 命令。
+```
+
+## 📌 SESSION HANDOFF STATUS — M3-03/04 入口安全与 RTC 质量观测开发完成，运行待执行
+
+### Current Work
+
+2026-07-19 继续完成 M3-03/04 开发切片：
+
+- 新增 `infra/gateway/edge-security-contract.json`，冻结公网只暴露 `/platform/*` 与
+  `/healthz`，禁止公开 `/internal/*`、`/metrics`、`/readyz`；Helm 新增受控 Ingress，必须提供
+  精确 ingress controller namespace/pod selector、TLS Secret、WAF/DDoS policy 和证书 rollover
+  evidence ref。NetworkPolicy 同时补 KMS 与可选外部 HTTPS CIDR，避免生产 runtime 被默认拒绝
+  或反向放开全部 egress。
+- 新增 `verify-certificate-rollover.mjs`：只读当前/下一张 X.509 公钥证书，校验 immutable
+  SHA-256 fingerprint、SAN、有效期、激活/回滚 overlap 和证书不同；计划必须声明
+  `privateKeyReadRequired=false`。工具不会读取私钥、更新 Secret、切流或回写“已轮换”。
+- platform-api 在 RTC telemetry 成功持久化后输出全局低基数 RTT、jitter、packet loss、bitrate、
+  audio level histogram，不携带 tenant/project/environment、node、Room 或 participant 标签；
+  production 缺 durable `telemetryPersistence` 时启动 fail-closed。
+- 新增 P50/P95/P99 recording/alert rules、只读 Grafana dashboard provisioning、Kubernetes scrape
+  和 private remote-write 示例。remote-write token 只从挂载文件读取。
+- 新增 `RtcTelemetryRetentionWorker`，对带 participant identity 的 PostgreSQL 原始样本按 1–90
+  天策略分批删除；P2 runtime 默认 7 天并纳入可停止的 composite worker。Helm 同步
+  `observability.rtcTelemetryRetentionDays`。
+- 机器状态写入 `docs/acceptance/m3-03-04-implementation.json`；README、设计索引、Helm 和开发
+  完成审计已同步。
+
+### Verification Boundary
+
+按用户“测试先略过”要求，未运行新写入的 Node tests、TypeScript build/lint、JSON/YAML parser、
+Prometheus rule check、Grafana provisioning、Helm schema/template/lint、证书 verifier、Kubernetes、
+云 WAF/DDoS、Docker 或 Beelink 命令。当前只进行源码和文件范围只读核对；不能宣称配置可渲染、
+告警已触发、retention 已删除数据或证书 rollover 已通过。
+
+### Gate Status
+
+M3-03/04 的代码和配置合同已实现，所有 provider/runtime 验收均为 `not-executed`，Gate 3 继续
+**not-passed**。bbb Registry/KMS sequence 1 reject、ccc 法律 sequence 1 reject 及 Gate 0/1/7
+阻断仍有效；`productionReleaseAuthorized=false`。
+
+### Background Tasks
+
+- 本轮未启动本地或 Beelink background process。
+- 未探测或修改 Beelink 服务，历史健康状态不作为当前证据。
+
+### Next Session Priorities
+
+1. 测试继续暂停时开发 M3-06/07/08：可恢复 backup orchestration、Preview entitlement/usage
+   enforcement、support ticket 与短期授权/脱敏 bundle 证据闭环。
+2. 对 M3-05/09/10 只补执行合同和证据适配器；运营商矩阵、设计伙伴、容量与 24/72 小时属于
+   外部运行验收，不能用代码代替。
+3. M3 剩余开发收口后进入 M4 5090 Agent/provider 的生产 registry、分布式 quota 和运行合同。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short
+cat docs/acceptance/m3-03-04-implementation.json
+sed -n '1,260p' infra/gateway/README.md
+sed -n '1,280p' infra/observability/README.md
+# 测试仍暂停时不要运行 verifier、npm test/check/build、Helm、云网关或 Beelink 命令。
+```
+
+## 📌 SESSION HANDOFF STATUS — M3-06/07/08 备份恢复、Preview entitlement 与支持闭环开发完成，运行待执行
+
+### Current Work
+
+2026-07-19 继续完成 M3-06/07/08 开发切片：
+
+- 新增 `012_preview_operations.sql`，当前源码 schema 为 001–012；历史 P2/P1 的
+  001–011 已验收证据保持原样，新 migration 本轮未执行。现行 P2/私有化/
+  供应链回归脚本已对齐 12 migrations，历史 evidence verifier 仍允许 11 的不可变记录。
+- `PostgresControlPlaneBackupCoordinator` 实现 planned/running/verified/failed 持久状态、
+  CAS transition、KMS reference、无凭据对象 URI/sha256、RPO/RTO 和隔离 restore drill；
+  类型与 PostgreSQL CHECK 都禁止 production overwrite。新增无 userinfo/query/fragment
+  的 HTTPS provider adapter 和 `ops:control-plane-backup` 运维入口。
+- 新增 `preview-v1` 非 overage 计划、环境 entitlement PostgreSQL 真值、version CAS、
+  admin upsert/环境 read API/OpenAPI；RTC token 和 TURN credential 在 quota/签发前检查
+  status、validity 和 feature，缺失/暂停/过期/未授权时 fail-closed。P2 closure 将在
+  首个真实 Room 前显式创建 entitlement。
+- `PostgresSupportService` 实现工单 idempotency fingerprint、version CAS、脱敏 no-media
+  bundle，以及 hash-only、60–3600 秒、单 permission、ticket-bound 的一次性临时访问、
+  原子消费、admin 撤销和不记 token 的 audit。首次 token 响应设置
+  `Cache-Control: no-store`。`create-support-bundle.mjs` 仅保留 allowlist readiness，以
+  0600/exclusive create 写入 bundle 和 digest manifest。
+- 静态控制台已增加 Preview entitlement/配额/用量查看和支持工单创建/列表；
+  响应脱敏扩展到 `accessToken`/credential/authorization/cookie。OpenAPI、README、runbook、
+  开发完成审计和 `m3-06-08-implementation.json` 已同步。
+
+### Verification Boundary
+
+按用户“测试先略过”要求，本轮未运行 TypeScript build/lint/unit tests、OpenAPI
+verifier、JSON/YAML parser、migration apply、PostgreSQL/Redis/OpenBao、backup provider、对象存储、
+隔离恢复、浏览器、Docker、Helm、Kubernetes 或 Beelink 命令。新增测试文件只保存
+合同，不是通过证据。本轮只做文件范围和源码静态阅读。
+
+### Gate Status
+
+M3-06/07/08 实现状态为 **completed / not-executed**，Gate 3 继续 **not-passed**。
+M3-05/09/10 的运营商、设计伙伴、24/72 小时与故障注入仍是外部运行验收；
+bbb Registry/KMS sequence 1 reject、ccc legal sequence 1 reject 及 Gate 0/1/7 阻断未被覆盖，
+`productionReleaseAuthorized=false`。
+
+### Background Tasks
+
+- 本轮未启动任何本地或 Beelink background process。
+- 未探测、停止、重启或修改 Beelink 当前服务。
+
+### Next Session Priorities
+
+1. 测试继续暂停时，补 M3-05/09/10 的运营商 probe evidence adapter、设计伙伴
+   feedback/defect 状态机和长稳/故障注入报告 verifier；真实网络、客户和 24/72 小时仍留待执行。
+2. M3 开发合同收口后进入 M4：5090 Agent provider credentials、artifact registry/SBOM/signature、
+   distributed dispatch quota 与 canary/rollback 运行接线。
+3. 恢复测试授权后先用 Node 22/24 执行 build/unit/OpenAPI/migration dry-run，再进入
+   Beelink `/data` 的 provider、backup/restore、support/entitlement 真实验收。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short
+cat docs/acceptance/m3-06-08-implementation.json
+sed -n '1,280p' infra/runbooks/backup-restore.md
+sed -n '1,280p' services/platform-api/src/postgres-support.ts
+# 测试仍暂停时不要运行 npm test/check/build、OpenAPI verifier、migration、Docker、Helm 或 Beelink 命令。
+```
+
+## 📌 SESSION HANDOFF STATUS — M3–M7 计划内开发范围收口，测试与生产验收待执行
+
+### Current Work
+
+2026-07-19 按开发计划继续完成 M4–M7，并统一当前源码 schema 为 001–016：
+
+- M4 已实现 Agent artifact receipt、canary/rollback、Redis dispatch quota、短期 provider
+  workload identity、OpenAI-compatible provider/usage/cost、高风险工具审批与加密结果、Node/
+  Python 取消传播和 Agent 网络边界。
+- M5 已实现 SIP provider attestation、safe trunk/fraud/cost/capacity、入呼采用/外呼/DTMF/
+  转接/挂断、Ingress/Egress 合规留存删除、不可变 usage/reconcile、质量指标和控制台。
+- M6 已实现 CRD/Operator、digest Helm executor、离线包、external-HA、OpenBao Transit、
+  SAML/SCIM/审计导出、License、远程协助、国内 provider、HarmonyOS/小程序受限 bridge 和
+  客户验收归档。
+- M7 已实现 PostgreSQL finalized-usage 事务计费、发票 CAS 与不可变 approval transition、
+  provider statement/reconciliation/finance adjustment、内容寻址导出；健康观测过期失败关闭的
+  多区域 RTC 路由；error budget normal/slowdown/freeze 与 on-call 严格状态机；八类安全审计
+  manifest；LTS/迁移/status；Gate 0–10 RC freeze 和绑定 RC artifact digest/八类 Owner receipt
+  的不可覆盖 GA 决策。
+- 新增 `016_ga_commerce.sql`，历史 M6 的 001–015 实现快照保持不变；现行 migration/preflight/
+  runtime smoke/供应链回归和备份默认值已对齐 16。
+- `docs/planning/DEVELOPMENT_COMPLETION_AUDIT.md`、README、设计索引、M6/M7 实现文档和
+  `m7-ga-implementation.json` 已同步为 development implemented / runtime not executed。
+
+### Verification Boundary
+
+按用户“测试先略过”要求，本轮未运行 TypeScript build/lint/unit/contract、OpenAPI/JSON/YAML
+verifier、migration、PostgreSQL/Redis/OpenBao、财务/对象存储、RTC 区域故障、Prometheus、
+安全扫描/渗透、Helm/Operator/Kubernetes、商业压测、灾备、Beelink、浏览器、RC 或 GA 工具。
+新增测试文件、verifier 和实现 JSON 仅是合同，不是通过证据。
+
+### Gate Status
+
+- M0–M7 计划内开发范围：`implemented-not-run`。
+- M1 A–C 历史运行基线保持通过；完整 Gate 1 未通过，D/E 未执行。
+- Gate 6/8/9/10：代码已实现，真实验收未通过；Gate 7 继续 blocked。
+- bbb Registry/KMS sequence 1 reject、ccc legal sequence 1 reject 和其他 Owner/合规阻断保持
+  有效；`productionReleaseAuthorized=false`，未创建 RC，未作 GA 决定。
+
+### Background Tasks
+
+- 本轮未启动本地或 Beelink background process。
+- 未探测、停止、重启或修改 Beelink 当前服务；历史健康状态不作为当前证据。
+
+### Next Session Priorities
+
+1. 用户恢复测试授权后，先使用受支持 Node 22/24 执行 workspace build/lint/unit/contract、
+   OpenAPI、migration/preflight 和静态配置门禁，修复所有编译/合同问题。
+2. 在 Beelink `/data` 与本机/手机按 M1、M3–M7 顺序执行真实 RTC/TURN、Agent 5090、provider、
+   SIP/媒体、私有化、财务、长稳、压测、灾备和安全验收。
+3. 只有 Gate 0–10 均有当前版本 passed evidence 且八类 Owner receipt 齐全时，才生成 frozen RC
+   和 GA approve；任一缺口必须生成 rejected/blocked 记录。
+
+### Resume Checklist
+
+```bash
+cd /Users/xutianliang/Downloads/语见AI
+git status --short
+cat docs/acceptance/m7-ga-implementation.json
+sed -n '1,260p' docs/acceptance/M7_GA_IMPLEMENTATION_AND_EVIDENCE.md
+sed -n '145,220p' docs/planning/DEVELOPMENT_COMPLETION_AUDIT.md
+# 测试授权恢复前不要运行 npm test/check/build、verifier、migration、Docker/Helm/Kubernetes 或 Beelink 命令。
 ```

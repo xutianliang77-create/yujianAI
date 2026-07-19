@@ -323,10 +323,20 @@ export interface SipTrunkV1 {
   direction: "inbound" | "outbound" | "bidirectional";
   provider: string;
   region: string;
-  numbers: readonly string[];
+  /** KMS/provider references or irreversible hashes; never complete phone numbers. */
+  numberRefs: readonly string[];
   credentialRef: string;
-  allowedDestinations: readonly string[];
+  allowedDestinationPrefixes: readonly string[];
+  secureTransport: "tls-srtp" | "provider-managed";
+  fraudPolicyRef: string;
+  dispatchRuleRef: string;
+  maxConcurrentCalls: number;
+  maxCallsPerMinute: number;
+  maxDailyCostMicros: number;
+  allowInternational: boolean;
   status: "active" | "suspended" | "retiring";
+  version: number;
+  updatedAt: string;
 }
 
 export interface ProviderBindingV1 {

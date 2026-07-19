@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "evidenceType": "m3-01-02-implementation-status",
+  "generatedAt": "2026-07-19T00:00:00+08:00",
+  "scope": [
+    "M3-01",
+    "M3-02"
+  ],
+  "implementationStatus": "completed",
+  "runtimeStatus": "not-executed",
+  "testStatus": "not-executed-by-user-direction",
+  "components": {
+    "dataServices": {
+      "productionMode": "external-ha",
+      "embeddedSingleAllowedForProduction": false,
+      "failClosedInputs": [
+        "platformRuntime.postgresUrlSecretKey",
+        "platformRuntime.redisUrlSecretKey",
+        "dataServices.externalEgressCidrs"
+      ]
+    },
+    "turn": {
+      "minimumReplicas": 2,
+      "digestPinnedImageRequired": true,
+      "tlsRequired": true,
+      "protocols": [
+        "udp-3478",
+        "tcp-3478",
+        "tls-5349",
+        "udp-relay-range"
+      ],
+      "credentialMode": "coturn-rest-hmac-sha1-from-kms-reference",
+      "plaintextSharedSecretInValues": false
+    },
+    "rtcCapacity": {
+      "collector": "livekit-room-service-upper-bound",
+      "subscriptionAccounting": "participants-times-published-tracks-upper-bound",
+      "reportStorage": "redis-short-ttl-monotonic-sequence",
+      "admission": "redis-lua-node-and-tenant-quota-lease",
+      "drainSignal": "sigterm-final-report",
+      "staleOrUnhealthyBehavior": "fail-closed"
+    }
+  },
+  "evidence": [
+    "services/rtc-capacity-exporter/",
+    "services/platform-api/src/redis-rtc-capacity.ts",
+    "packages/livekit-compat/src/capacity-report.ts",
+    "packages/livekit-compat/src/turn-credentials.ts",
+    "packages/platform-contracts/src/turn.ts",
+    "docs/api/openapi.yaml",
+    "infra/helm/yujian-platform/",
+    "infra/turn/README.md"
+  ],
+  "notExecuted": [
+    "typescript-build",
+    "unit-tests",
+    "openapi-verifier",
+    "helm-schema-validation",
+    "helm-template-or-lint",
+    "kubernetes-deployment",
+    "postgresql-ha-failover",
+    "redis-ha-failover",
+    "turn-udp-tcp-tls-fallback",
+    "rtc-capacity-competition",
+    "rtc-pod-drain",
+    "az-failover",
+    "autoscaling"
+  ],
+  "gate": {
+    "gateId": "Gate 3",
+    "status": "not-passed",
+    "productionReleaseAuthorized": false
+  },
+  "ownerDecisionBoundary": {
+    "bbbRegistryKms": "reject-sequence-1-remains-effective",
+    "cccLegal": "reject-sequence-1-remains-effective",
+    "supersededByThisImplementation": false
+  }
+}

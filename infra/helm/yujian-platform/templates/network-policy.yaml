@@ -8,12 +8,42 @@ spec:
       app.kubernetes.io/component: platform-api
   policyTypes: [Ingress, Egress]
   ingress:
+{{ if .Values.gateway.enabled }}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml .Values.gateway.controllerNamespaceSelector | nindent 14 }}
+          podSelector:
+            matchLabels:
+              {{- toYaml .Values.gateway.controllerPodSelector | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: http
+{{ else }}
     - from:
         - namespaceSelector: {}
       ports:
         - protocol: TCP
           port: http
+{{ end }}
+{{ if .Values.features.rtcCapacityEnabled }}
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: rtc
+      ports:
+        - protocol: TCP
+          port: http
+{{ end }}
   egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+{{ if eq .Values.dataServices.mode "embedded-single" }}
     - to:
         - podSelector:
             matchLabels:
@@ -26,6 +56,29 @@ spec:
           port: 5432
         - protocol: TCP
           port: 6379
+{{ else }}
+    - to:
+{{ range .Values.dataServices.externalEgressCidrs }}
+        - ipBlock: { cidr: {{ . | quote }} }
+{{ end }}
+      ports:
+        - { protocol: TCP, port: {{ .Values.dataServices.postgresPort }} }
+        - { protocol: TCP, port: {{ .Values.dataServices.redisPort }} }
+{{ end }}
+    - to:
+{{ range .Values.platformRuntime.kmsEgressCidrs }}
+        - ipBlock: { cidr: {{ . | quote }} }
+{{ end }}
+      ports:
+        - { protocol: TCP, port: {{ .Values.platformRuntime.kmsPort }} }
+{{ if gt (len .Values.platformRuntime.externalHttpsEgressCidrs) 0 }}
+    - to:
+{{ range .Values.platformRuntime.externalHttpsEgressCidrs }}
+        - ipBlock: { cidr: {{ . | quote }} }
+{{ end }}
+      ports:
+        - { protocol: TCP, port: 443 }
+{{ end }}
     - to:
         - podSelector:
             matchLabels:
@@ -57,7 +110,7 @@ spec:
   podSelector:
     matchLabels:
       app.kubernetes.io/component: agent-control
-  policyTypes: [Ingress]
+  policyTypes: [Ingress, Egress]
   ingress:
     - from:
         - podSelector:
@@ -66,6 +119,50 @@ spec:
       ports:
         - protocol: TCP
           port: https
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+{{ if eq .Values.dataServices.mode "embedded-single" }}
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: postgres
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: redis
+      ports:
+        - { protocol: TCP, port: 5432 }
+        - { protocol: TCP, port: 6379 }
+{{ else }}
+    - to:
+{{ range .Values.dataServices.externalEgressCidrs }}
+        - ipBlock: { cidr: {{ . | quote }} }
+{{ end }}
+      ports:
+        - { protocol: TCP, port: {{ .Values.dataServices.postgresPort }} }
+        - { protocol: TCP, port: {{ .Values.dataServices.redisPort }} }
+{{ end }}
+{{ if gt (len .Values.platformRuntime.kmsEgressCidrs) 0 }}
+    - to:
+{{ range .Values.platformRuntime.kmsEgressCidrs }}
+        - ipBlock: { cidr: {{ . | quote }} }
+{{ end }}
+      ports:
+        - { protocol: TCP, port: {{ .Values.platformRuntime.kmsPort }} }
+{{ end }}
+{{ if gt (len .Values.agentControl.externalHttpsEgressCidrs) 0 }}
+    - to:
+{{ range .Values.agentControl.externalHttpsEgressCidrs }}
+        - ipBlock: { cidr: {{ . | quote }} }
+{{ end }}
+      ports:
+        - { protocol: TCP, port: 443 }
+{{ end }}
 {{ end }}
 
 {{ if .Values.features.agentWorkerEnabled }}
@@ -81,12 +178,43 @@ spec:
   policyTypes: [Egress]
   egress:
     - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    - to:
         - podSelector:
             matchLabels:
               app.kubernetes.io/component: agent-control
       ports:
         - protocol: TCP
           port: https
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: rtc
+      ports:
+        - { protocol: TCP, port: http }
+        - { protocol: TCP, port: rtc-tcp }
+        - { protocol: UDP, port: rtc-udp }
+{{ if gt (len .Values.platformRuntime.kmsEgressCidrs) 0 }}
+    - to:
+{{ range .Values.platformRuntime.kmsEgressCidrs }}
+        - ipBlock: { cidr: {{ . | quote }} }
+{{ end }}
+      ports:
+        - { protocol: TCP, port: {{ .Values.platformRuntime.kmsPort }} }
+{{ end }}
+{{ if gt (len .Values.agent.providerEgressCidrs) 0 }}
+    - to:
+{{ range .Values.agent.providerEgressCidrs }}
+        - ipBlock: { cidr: {{ . | quote }} }
+{{ end }}
+      ports:
+        - { protocol: TCP, port: 443 }
+{{ end }}
 {{ end }}
 
 {{ if .Values.features.rtcEnabled }}
@@ -103,6 +231,8 @@ spec:
   ingress:
     - from:
         - namespaceSelector: {}
+        - ipBlock: { cidr: 0.0.0.0/0 }
+        - ipBlock: { cidr: "::/0" }
       ports:
         - protocol: TCP
           port: http
@@ -112,12 +242,64 @@ spec:
           port: rtc-udp
   egress:
     - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+{{ if eq .Values.dataServices.mode "embedded-single" }}
+    - to:
         - podSelector:
             matchLabels:
               app.kubernetes.io/component: redis
       ports:
         - protocol: TCP
           port: redis
+{{ else }}
+    - to:
+{{ range .Values.dataServices.externalEgressCidrs }}
+        - ipBlock: { cidr: {{ . | quote }} }
+{{ end }}
+      ports:
+        - { protocol: TCP, port: {{ .Values.dataServices.redisPort }} }
+{{ end }}
+{{ if .Values.features.rtcCapacityEnabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: platform-api
+      ports:
+        - { protocol: TCP, port: http }
+{{ end }}
+{{ end }}
+
+{{ if .Values.features.turnEnabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "yujian-platform.fullname" . }}-turn
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: turn
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - ipBlock: { cidr: 0.0.0.0/0 }
+        - ipBlock: { cidr: "::/0" }
+      ports:
+        - { protocol: UDP, port: 3478 }
+        - { protocol: TCP, port: 3478 }
+        - { protocol: TCP, port: 5349 }
+{{- range $port := untilStep (int .Values.turn.relayPortMin) (add1 (int .Values.turn.relayPortMax) | int) 1 }}
+        - { protocol: UDP, port: {{ $port }} }
+{{- end }}
+  egress:
+    - to:
+        - ipBlock: { cidr: 0.0.0.0/0 }
+        - ipBlock: { cidr: "::/0" }
 {{ end }}
 
 {{ if .Values.features.mediaOpsEnabled }}
@@ -130,7 +312,7 @@ spec:
   podSelector:
     matchLabels:
       app.kubernetes.io/component: media-ops
-  policyTypes: [Ingress]
+  policyTypes: [Ingress, Egress]
   ingress:
     - from:
         - podSelector:
@@ -139,4 +321,54 @@ spec:
       ports:
         - protocol: TCP
           port: https
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: rtc
+      ports:
+        - { protocol: TCP, port: http }
+{{ if eq .Values.dataServices.mode "embedded-single" }}
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: postgres
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: redis
+      ports:
+        - { protocol: TCP, port: 5432 }
+        - { protocol: TCP, port: 6379 }
+{{ else }}
+    - to:
+{{ range .Values.dataServices.externalEgressCidrs }}
+        - ipBlock: { cidr: {{ . | quote }} }
+{{ end }}
+      ports:
+        - { protocol: TCP, port: {{ .Values.dataServices.postgresPort }} }
+        - { protocol: TCP, port: {{ .Values.dataServices.redisPort }} }
+{{ end }}
+{{ if gt (len .Values.platformRuntime.kmsEgressCidrs) 0 }}
+    - to:
+{{ range .Values.platformRuntime.kmsEgressCidrs }}
+        - ipBlock: { cidr: {{ . | quote }} }
+{{ end }}
+      ports:
+        - { protocol: TCP, port: {{ .Values.platformRuntime.kmsPort }} }
+{{ end }}
+{{ if gt (len .Values.mediaOps.externalHttpsEgressCidrs) 0 }}
+    - to:
+{{ range .Values.mediaOps.externalHttpsEgressCidrs }}
+        - ipBlock: { cidr: {{ . | quote }} }
+{{ end }}
+      ports:
+        - { protocol: TCP, port: 443 }
+{{ end }}
 {{ end }}

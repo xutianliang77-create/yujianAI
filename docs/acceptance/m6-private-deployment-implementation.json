@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "milestone": "M6",
+  "status": "implemented-not-run",
+  "sourceSchema": "001-015",
+  "implemented": [
+    "digest-verified-yujian-platform-operator",
+    "offline-bundle-builder",
+    "external-ha-topology-contract-and-capacity-plan",
+    "openbao-transit-kms-adapter",
+    "oidc-saml-scim-and-audit-export-adapters",
+    "forward-only-upgrade-and-approved-rollback",
+    "ed25519-license-issuance-and-verification",
+    "approval-bound-remote-assistance-audit",
+    "domestic-compatible-model-provider",
+    "restricted-harmonyos-mini-program-bridge",
+    "customer-acceptance-report-archive"
+  ],
+  "notRun": [
+    "build-lint-test",
+    "json-yaml-openapi-verification",
+    "migration-015",
+    "helm-kubernetes-operator",
+    "offline-oci-bundle",
+    "postgres-redis-ha",
+    "openbao-transit",
+    "enterprise-identity",
+    "domestic-model-provider",
+    "harmonyos-mini-program-device",
+    "customer-install-upgrade-rollback-restore"
+  ],
+  "gatePassed": false
+}

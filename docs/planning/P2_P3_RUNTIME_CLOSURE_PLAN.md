@@ -9,7 +9,8 @@ P2/P3 不能用内存 adapter、健康检查或一次性演示替代。2026-07-1
 migration、事务 outbox/CAS、Redis 竞争、OpenBao 三节点 HTTPS/Raft 和 API key 生命周期验收。
 2026-07-18 持久化数据迁移到 Beelink 大盘 `/data/models/yujianAI/p2`，clean 验收 worktree
 位于 `/data/models/yujianAI/worktrees/p2-acceptance`；原系统盘数据保留作回滚副本。
-当次 8 条 migration 是历史运行事实；随后应用 009–011，当前 schema 为 11/11。最终双机运行
+当次 8 条 migration 是历史运行事实；随后应用 009–011，该次 P2 closure schema 为 11/11。
+2026-07-19 当前源码已新增 012，但尚未执行，不能覆盖 11/11 的历史验收记录。最终双机运行
 `p2-closure-20260718051008-653ebfee` 由 Beelink 作服务器、本机 Mac 作真实 RTC 客户端，
 P2-04/05/06 完整通过并完成清理。
 

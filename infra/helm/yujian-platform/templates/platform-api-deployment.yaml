@@ -1,6 +1,18 @@
 {{ if not .Values.platformRuntime.modulePath }}
 {{ fail "platformRuntime.modulePath must be set for production platform-api" }}
 {{ end }}
+{{ if and (eq .Values.dataServices.mode "external-ha") (or (not .Values.platformRuntime.postgresUrlSecretKey) (not .Values.platformRuntime.redisUrlSecretKey)) }}
+{{ fail "external-ha dataServices require platformRuntime postgresUrlSecretKey and redisUrlSecretKey" }}
+{{ end }}
+{{ if and (eq .Values.dataServices.mode "external-ha") (eq (len .Values.dataServices.externalEgressCidrs) 0) }}
+{{ fail "external-ha dataServices require at least one NetworkPolicy externalEgressCidrs entry" }}
+{{ end }}
+{{ if eq (len .Values.platformRuntime.kmsEgressCidrs) 0 }}
+{{ fail "production platform-api requires at least one explicit KMS egress CIDR" }}
+{{ end }}
+{{ if and .Values.features.turnEnabled (or (eq (len .Values.turn.publicUrls) 0) (not .Values.turn.secretRef)) }}
+{{ fail "turnEnabled requires turn.publicUrls and a KMS turn.secretRef" }}
+{{ end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -51,6 +63,8 @@ spec:
               value: {{ .Values.service.platformApiPort | quote }}
             - name: PLATFORM_API_HOST
               value: 0.0.0.0
+            - name: YUJIAN_RTC_TELEMETRY_RETENTION_DAYS
+              value: {{ .Values.observability.rtcTelemetryRetentionDays | quote }}
             - name: YUJIAN_PLATFORM_CREDENTIALS_JSON
               valueFrom:
                 secretKeyRef:
@@ -77,12 +91,29 @@ spec:
             - name: YUJIAN_RTC_SECONDARY_URL
               value: {{ .Values.rtc.secondaryWsUrl | quote }}
             {{ end }}
+            {{ if .Values.features.rtcCapacityEnabled }}
+            - name: YUJIAN_REQUIRE_RTC_CAPACITY
+              value: "true"
+            - name: YUJIAN_RTC_CAPACITY_CREDENTIAL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.existingSecret }}
+                  key: {{ .Values.secrets.rtcCapacityCredential }}
+            {{ end }}
+            {{ if .Values.features.turnEnabled }}
+            - name: YUJIAN_REQUIRE_TURN_CREDENTIALS
+              value: "true"
+            - name: YUJIAN_TURN_URLS
+              value: {{ .Values.turn.publicUrls | toJson | quote }}
+            - name: YUJIAN_TURN_SECRET_REF
+              value: {{ .Values.turn.secretRef | quote }}
+            {{ end }}
             {{ if .Values.platformRuntime.modulePath }}
             - name: YUJIAN_PLATFORM_RUNTIME_MODULE
               value: {{ .Values.platformRuntime.modulePath | quote }}
             {{ end }}
             {{ if .Values.platformRuntime.postgresUrlSecretKey }}
-            - name: YUJIAN_POSTGRES_URL
+            - name: YUJIAN_DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.secrets.existingSecret }}

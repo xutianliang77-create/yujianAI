@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "product": "yujian-realtime",
+  "architecture": ["linux/amd64"],
+  "artifacts": [
+    { "name": "yujian-platform-api.oci.tar", "sourcePath": "/data/releases/yujian-platform-api.oci.tar", "mediaType": "application/vnd.oci.image.layer.v1.tar" },
+    { "name": "livekit-server.oci.tar", "sourcePath": "/data/releases/livekit-server.oci.tar", "mediaType": "application/vnd.oci.image.layer.v1.tar" },
+    { "name": "yujian-platform-chart.tgz", "sourcePath": "/data/releases/yujian-platform-chart.tgz", "mediaType": "application/vnd.cncf.helm.chart.content.v1.tar+gzip" },
+    { "name": "sbom.spdx.json", "sourcePath": "/data/releases/sbom.spdx.json", "mediaType": "application/spdx+json" },
+    { "name": "signature.bundle", "sourcePath": "/data/releases/signature.bundle", "mediaType": "application/vnd.dev.sigstore.bundle+json" }
+  ],
+  "externalServices": ["postgresql", "redis", "kms-or-license-public-key", "object-storage", "oidc"]
+}

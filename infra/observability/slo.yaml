@@ -13,3 +13,17 @@ services:
     alerts:
       - node_readiness < 100% for 2m
       - participant_join_success < 99% for 10m
+  - name: yujian-agent-control
+    availabilityTarget: 0.999
+    p95LatencyMs: 500
+    errorBudgetMinutesPerMonth: 43.2
+    alerts:
+      - dispatch_start_success < 99% for 10m
+      - dispatch_queue_p95_ms > 1000 for 10m
+  - name: yujian-media-ops
+    availabilityTarget: 0.999
+    p95LatencyMs: 500
+    errorBudgetMinutesPerMonth: 43.2
+    alerts:
+      - media_operation_success < 99% for 10m
+      - media_provider_callback_lag_p95_ms > 2000 for 10m

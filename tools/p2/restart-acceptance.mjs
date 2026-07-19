@@ -30,7 +30,7 @@ await client.quit();
 
 const pool = new pg.Pool({ connectionString: required("YUJIAN_DATABASE_URL"), max: 2 });
 const migrations = await pool.query("SELECT count(*)::int AS count FROM yujian_schema_migrations");
-if (Number(migrations.rows[0]?.count) !== 11) throw new Error("PostgreSQL migration state did not survive restart");
+if (Number(migrations.rows[0]?.count) !== 15) throw new Error("PostgreSQL migration state did not survive restart");
 if (cleanup) {
   await pool.query("DELETE FROM platform_store_snapshots WHERE snapshot_id = 'default'");
   await pool.query("DELETE FROM outbox_events WHERE event_id = $1", [report.cleanup.outboxId]);
@@ -38,4 +38,4 @@ if (cleanup) {
   await pool.query("DELETE FROM usage_records WHERE usage_record_id = $1", [report.cleanup.usageId]);
 }
 await pool.end();
-console.log(JSON.stringify({ platformApi: "snapshot-restored", redis: "sentinel-restored-after-rebuild", postgres: "11-migrations-restored", cleanup: cleanup ? "complete" : "deferred" }));
+console.log(JSON.stringify({ platformApi: "snapshot-restored", redis: "sentinel-restored-after-rebuild", postgres: "12-migrations-restored", cleanup: cleanup ? "complete" : "deferred" }));

@@ -1,0 +1,48 @@
+{{- if .Values.gateway.enabled }}
+{{- if or (not .Values.gateway.ingressClassName) (not .Values.gateway.host) (not .Values.gateway.tlsSecret) }}
+{{ fail "gateway enabled requires ingressClassName, host and tlsSecret" }}
+{{- end }}
+{{- if or (empty .Values.gateway.controllerNamespaceSelector) (empty .Values.gateway.controllerPodSelector) }}
+{{ fail "gateway enabled requires exact controller namespace and pod selectors" }}
+{{- end }}
+{{- if or (not .Values.gateway.wafPolicyRef) (not .Values.gateway.ddosPolicyRef) (not .Values.gateway.certificateRolloverPlanRef) }}
+{{ fail "gateway enabled requires WAF, DDoS and certificate rollover evidence references" }}
+{{- end }}
+{{- range $key, $_ := .Values.gateway.annotations }}
+{{- if or (hasPrefix "ai.yujian/" $key) (contains "snippet" $key) }}
+{{ fail "gateway annotations cannot override ai.yujian evidence or inject snippets" }}
+{{- end }}
+{{- end }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "yujian-platform.fullname" . }}-platform-api
+  annotations:
+    ai.yujian/waf-policy-ref: {{ .Values.gateway.wafPolicyRef | quote }}
+    ai.yujian/ddos-policy-ref: {{ .Values.gateway.ddosPolicyRef | quote }}
+    ai.yujian/certificate-rollover-plan-ref: {{ .Values.gateway.certificateRolloverPlanRef | quote }}
+    {{- with .Values.gateway.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.gateway.ingressClassName | quote }}
+  tls:
+    - hosts: [{{ .Values.gateway.host | quote }}]
+      secretName: {{ .Values.gateway.tlsSecret | quote }}
+  rules:
+    - host: {{ .Values.gateway.host | quote }}
+      http:
+        paths:
+          - path: /platform
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "yujian-platform.fullname" . }}-platform-api
+                port: { name: http }
+          - path: /healthz
+            pathType: Exact
+            backend:
+              service:
+                name: {{ include "yujian-platform.fullname" . }}-platform-api
+                port: { name: http }
+{{- end }}

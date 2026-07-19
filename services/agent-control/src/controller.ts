@@ -1,12 +1,14 @@
 import { randomUUID } from "node:crypto";
 import type {
   AgentArtifactV1,
+  AgentArtifactVerificationV1,
   AgentDeploymentV1,
   AgentDispatchRuleV1,
   AgentDispatchV1,
   AgentToolPolicyV1,
   AgentWorkerRuntimeV1,
 } from "@yujian/platform-contracts";
+import type { AgentControlClock, AgentControlSnapshot, AgentWorkerRegistrationV1, AgentWorkerStateV1 } from "./control-types.js";
 
 export class AgentControlError extends Error {
   constructor(readonly code: "NOT_FOUND" | "CONFLICT" | "QUOTA_EXCEEDED" | "POLICY_DENIED", message: string) {
@@ -15,44 +17,23 @@ export class AgentControlError extends Error {
   }
 }
 
-export interface AgentControlClock { now(): Date }
-
 export interface AgentArtifactVerificationInput {
+  tenantId: string;
+  projectId: string;
   image: string;
   digest: string;
+  runtime: AgentWorkerRuntimeV1;
   signatureRef: string;
   sbomUri?: string;
 }
 
 export interface AgentControlOptions {
-  verifyArtifact?: (input: AgentArtifactVerificationInput) => boolean;
+  verifyArtifact?: (input: AgentArtifactVerificationInput) => Promise<AgentArtifactVerificationV1>;
 }
 
 function requiredText(value: string, field: string): string {
   if (value.length === 0 || value.length > 256 || value.trim() !== value || /[\u0000-\u001f\u007f]/u.test(value)) throw new AgentControlError("CONFLICT", `${field} is invalid`);
   return value;
-}
-
-export interface AgentWorkerRegistrationV1 {
-  workerId: string;
-  environmentId: string;
-  runtime: AgentWorkerRuntimeV1;
-  capabilities: readonly string[];
-}
-
-export interface AgentWorkerStateV1 extends AgentWorkerRegistrationV1 {
-  status: "ready" | "draining" | "offline";
-  activeDispatchIds: readonly string[];
-  lastHeartbeatAt: string;
-}
-
-export interface AgentControlSnapshot {
-  artifacts: readonly AgentArtifactV1[];
-  deployments: readonly AgentDeploymentV1[];
-  rules: readonly AgentDispatchRuleV1[];
-  dispatches: readonly AgentDispatchV1[];
-  tools: readonly AgentToolPolicyV1[];
-  workers: readonly AgentWorkerStateV1[];
 }
 
 function mapFromSnapshot<T extends object>(values: readonly T[], field: string): Map<string, T> {
@@ -103,7 +84,8 @@ export class AgentControlPlane {
       return mapFromSnapshot(values, field);
     });
     for (const artifact of maps[0]!.values() as Iterable<AgentArtifactV1>) {
-      if (!/^sha256:[0-9a-f]{64}$/u.test(artifact.digest) || typeof artifact.signatureRef !== "string" || artifact.signatureRef.length === 0) throw new Error("invalid artifact snapshot");
+      if (!/^sha256:[0-9a-f]{64}$/u.test(artifact.digest) || typeof artifact.signatureRef !== "string" || artifact.signatureRef.length === 0 ||
+        !/^sha256:[0-9a-f]{64}$/u.test(artifact.verification?.policyDigest ?? "") || !/^sha256:[0-9a-f]{64}$/u.test(artifact.verification?.receiptDigest ?? "")) throw new Error("invalid artifact snapshot");
     }
     this.artifacts.clear();
     this.deployments.clear();
@@ -119,7 +101,7 @@ export class AgentControlPlane {
     for (const [id, value] of maps[5]!) this.workers.set(id, value as AgentWorkerStateV1);
   }
 
-  registerArtifact(input: Omit<AgentArtifactV1, "artifactId" | "createdAt">): AgentArtifactV1 {
+  async registerArtifact(input: Omit<AgentArtifactV1, "artifactId" | "createdAt" | "verification">): Promise<AgentArtifactV1> {
     requiredText(input.tenantId, "tenantId");
     requiredText(input.projectId, "projectId");
     requiredText(input.image, "image");
@@ -127,8 +109,15 @@ export class AgentControlPlane {
     if (!/^sha256:[0-9a-f]{64}$/u.test(input.digest)) throw new AgentControlError("POLICY_DENIED", "artifact digest must be a sha256 hex digest");
     if (typeof input.signatureRef !== "string" || input.signatureRef.length === 0 || input.signatureRef.length > 512 || input.signatureRef.trim() !== input.signatureRef || /[\u0000-\u001f\u007f]/u.test(input.signatureRef)) throw new AgentControlError("POLICY_DENIED", "signed artifact reference is invalid");
     if (input.sbomUri !== undefined && (input.sbomUri.length === 0 || input.sbomUri.length > 2048 || input.sbomUri.trim() !== input.sbomUri || /[\u0000-\u001f\u007f]/u.test(input.sbomUri))) throw new AgentControlError("POLICY_DENIED", "artifact SBOM reference is invalid");
-    if (this.options.verifyArtifact !== undefined && !this.options.verifyArtifact({ image: input.image, digest: input.digest, signatureRef: input.signatureRef, ...(input.sbomUri === undefined ? {} : { sbomUri: input.sbomUri }) })) throw new AgentControlError("POLICY_DENIED", "artifact signature verification failed");
-    const artifact: AgentArtifactV1 = { ...input, artifactId: `artifact-${randomUUID()}`, createdAt: this.clock.now().toISOString() };
+    if (this.options.verifyArtifact === undefined) throw new AgentControlError("POLICY_DENIED", "artifact verifier is required");
+    let verification: AgentArtifactVerificationV1;
+    try {
+      verification = await this.options.verifyArtifact({ tenantId: input.tenantId, projectId: input.projectId, image: input.image, digest: input.digest, runtime: input.runtime, signatureRef: input.signatureRef, ...(input.sbomUri === undefined ? {} : { sbomUri: input.sbomUri }) });
+    } catch {
+      throw new AgentControlError("POLICY_DENIED", "artifact verification failed");
+    }
+    if (!/^sha256:[0-9a-f]{64}$/u.test(verification.policyDigest) || !/^sha256:[0-9a-f]{64}$/u.test(verification.receiptDigest) || !Number.isFinite(Date.parse(verification.verifiedAt)) || verification.verifierId.length === 0 || verification.verifierId.length > 128) throw new AgentControlError("POLICY_DENIED", "artifact verification receipt is invalid");
+    const artifact: AgentArtifactV1 = { ...input, verification, artifactId: `artifact-${randomUUID()}`, createdAt: this.clock.now().toISOString() };
     this.artifacts.set(artifact.artifactId, artifact);
     return artifact;
   }
@@ -160,7 +149,7 @@ export class AgentControlPlane {
     const updated: AgentDeploymentV1 = {
       ...current,
       observedReplicas,
-      status: observedReplicas === current.desiredReplicas ? "active" : current.status,
+      status: observedReplicas === current.desiredReplicas && current.canaryPercent === 100 ? "active" : current.status,
       updatedAt: this.clock.now().toISOString(),
     };
     this.deployments.set(deploymentId, updated);
@@ -174,12 +163,29 @@ export class AgentControlPlane {
     return updated;
   }
 
+  promote(deploymentId: string): AgentDeploymentV1 {
+    const current = this.requireDeployment(deploymentId);
+    if (current.status !== "canary" || current.observedReplicas < 1) throw new AgentControlError("CONFLICT", "deployment canary is not ready for promotion");
+    const updated = { ...current, canaryPercent: 100, status: "active" as const, generation: current.generation + 1, updatedAt: this.clock.now().toISOString() };
+    this.deployments.set(deploymentId, updated);
+    return updated;
+  }
+
+  failDeployment(deploymentId: string): AgentDeploymentV1 {
+    const current = this.requireDeployment(deploymentId);
+    if (current.status === "rolled_back") throw new AgentControlError("CONFLICT", "rolled back deployment cannot fail again");
+    const updated = { ...current, status: "failed" as const, updatedAt: this.clock.now().toISOString() };
+    this.deployments.set(deploymentId, updated);
+    return updated;
+  }
+
   dispatch(environmentId: string, deploymentId: string, roomName: string, deadlineAt: string): AgentDispatchV1 {
     const deployment = this.requireDeployment(deploymentId);
     requiredText(environmentId, "environmentId");
     requiredText(roomName, "roomName");
     if (deployment.environmentId !== environmentId || deployment.status === "failed" || deployment.status === "rolled_back") throw new AgentControlError("POLICY_DENIED", "deployment cannot receive dispatch");
-    if (!Number.isFinite(Date.parse(deadlineAt)) || Date.parse(deadlineAt) <= this.clock.now().getTime()) throw new AgentControlError("CONFLICT", "dispatch deadline is invalid or elapsed");
+    const deadlineMs = Date.parse(deadlineAt);
+    if (!Number.isFinite(deadlineMs) || deadlineMs <= this.clock.now().getTime() || deadlineMs - this.clock.now().getTime() > 86_400_000) throw new AgentControlError("CONFLICT", "dispatch deadline is invalid, elapsed or exceeds 24 hours");
     const dispatch: AgentDispatchV1 = {
       dispatchId: `dispatch-${randomUUID()}`,
       environmentId,

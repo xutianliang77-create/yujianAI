@@ -1,7 +1,7 @@
 # 语见AI设计文档索引
 
-版本：v2.1
-日期：2026-07-18
+版本：v2.2
+日期：2026-07-19
 状态：M1 A-C 运行基线通过；完整 Gate 1 未通过；D/E 尚未执行
 
 ## 目标
@@ -33,6 +33,46 @@ Beelink 私有 Registry、OpenBao transit key、四个 OCI 签名/SPDX attestati
 与 ccc 法律均为 sequence 1 reject。PostgreSQL/OpenBao 隔离生产回归也已通过，且当前 P2
 未切换；335 条原始许可证声明已由独立签名结论层全部分类，实际 OpenBao 源码随包，
 `reedsolomon v1.0.0` 保留 1 个法律待判项。两项驳回和专业资格材料仍是阻断项。
+Registry/KMS freeze 的技术整改代码已补齐冻结 policy、`/data` append-only plan、Registry
+备份/回环隔离恢复、OpenBao Raft snapshot/隔离恢复、key rotation、旧版本不可逆退役双 Owner
+门禁和 rollback digest verification；本轮未运行这些工具。bbb sequence 1 reject 保持有效，
+只能在新证据审阅后追加 superseding authorization。
+
+2026-07-19 的 M3-01/02 开发切片新增 external-HA PostgreSQL/Redis chart 门禁、digest-pinned
+双副本 TURN/TLS/relay 拓扑、RTC capacity exporter、短 TTL/drain 报告、Redis 原子 capacity
+lease 和 KMS-backed TURN REST 临时凭据。当前仅为实现状态：未执行 Helm 渲染、真实 TURN、
+容量竞争、AZ failover 或 drain 验收，不能升级 Gate 3。
+
+同日 M3-03/04 开发切片增加只公开 `/platform/*`/`healthz` 的生产 Ingress、精确 controller
+NetworkPolicy、WAF/DDoS/证书 rollover 证据引用、只读双证书 overlap/SAN/fingerprint 校验、
+低基数 RTC 质量 Prometheus rules/Grafana dashboard/private remote-write 和 PostgreSQL 原始样本
+保留 worker。所有云网关、证书切换和观测运行状态仍为未执行。
+
+同日 M3-06/07/08 开发切片新增 PostgreSQL 备份/隔离恢复状态机、无凭据 HTTPS provider
+adapter、RPO/RTO 记录、Preview entitlement CAS/API 与 RTC/TURN fail-closed、持久 support
+ticket、脱敏 bundle 登记，以及哈希存储、单 permission、ticket-bound 的一次性临时访问和撤销。
+当前源码 migration 为 001–016；本轮未执行 migration、provider、对象存储、恢复、API 或测试，
+因此只是实现完成，Gate 3 未通过。
+
+M3-05/09/10 开发切片进一步增加移动/联通/电信 × 华北/华东/华南的九格
+policy、可重复 HTTP sampler、24/72 小时 append-only/fsync runner、不可伪造 partial
+pass 的综合 verifier，以及设计伙伴 version CAS、P0/P1 自动暂停和关闭门禁状态机。
+仓库不提供一键破坏生产的 fault runner；真实运营商、客户、长稳和故障注入均未执行。
+
+M4-01–10 开发切片已补全异步制品验证回执、canary/回滚 runtime 边界、Redis
+分布式 dispatch 配额、workload identity 凭据换取、provider 协议/usage/成本、高风险工具
+审批和加密持久化、Node/Python 取消传播、Agent 专用网络策略和 quickstart。
+全部状态为 `implemented-not-run`；本轮按用户要求没有运行任何测试或服务。
+
+M5-01–10 开发切片已补全 provider edge attestation/sequence、safe trunk/fraud policy、Redis
+SIP 频率/并发/费用与 Ingress/Egress capacity、录制合规/留存删除、不可变 usage/对账、SIP
+质量 lifecycle、平台 entitlement/quota/audit 和控制台。状态仍为 `implemented-not-run`；
+真实运营商/SBC、法务、对象存储、账单和电话质量尚未执行，Gate 5 未通过。
+
+M6-01–10 与 M7-01–10 开发切片已收口。M6 提供 Operator、离线包、License、企业 adapter、
+远程协助和客户验收；M7 提供生产计费/对账、健康感知区域路由、error budget/on-call、
+安全审计、LTS/迁移/status、RC 冻结和 GA 决策账本。当前均为 `implemented-not-run`；
+migration 015–016、真实依赖、客户环境、财务、安全、压测、灾备和 Owner 发布决定未执行。
 
 ## 核心交付
 
@@ -58,6 +98,25 @@ Beelink 私有 Registry、OpenBao transit key、四个 OCI 签名/SPDX attestati
 | [P1 安全重建证据](acceptance/p1-remediated-candidate-evidence.json) | PostgreSQL/OpenBao 零 Critical 复扫、High/许可证与 pre-registry 边界 |
 | [P1 LICENSE/NOTICE 整改证据](acceptance/p1-license-remediation-evidence.json) | 335 条逐项结论、实际 OpenBao 源码、NOTICE、签名 manifest 与唯一法律待判项 |
 | [P1 生产 OCI 证据](acceptance/p1-production-oci-evidence.json) | Beelink Registry、OpenBao KMS、四个签名/attestation 与外部逐 blob 校验 |
+| [Registry/KMS 冻结与恢复](../infra/registry/README.md) | 四个 digest、备份/隔离恢复、RPO/RTO、KMS 轮换/退役和 superseding Owner 门禁 |
+| [Registry/KMS 实现状态](acceptance/p1-registry-kms-freeze-implementation.json) | 开发完成、运行与测试未执行、发布未授权的机器边界 |
+| [生产 Helm 拓扑](../infra/helm/yujian-platform/README.md) | external-HA 数据服务、双 RTC/TURN、capacity sidecar、PDB/NetworkPolicy 和生产门禁 |
+| [RTC capacity exporter](../services/rtc-capacity-exporter/README.md) | RoomService 保守容量计数、短 TTL、drain 和内部上报边界 |
+| [M3-01/02 实现状态](acceptance/m3-01-02-implementation.json) | HA/TURN/capacity/drain 已开发、全部运行验证未执行的机器边界 |
+| [M6 私有化实现状态](acceptance/M6_PRIVATE_DEPLOYMENT_IMPLEMENTATION.md) | Operator、离线包、OpenBao、企业身份、License、远程协助、国内 provider、受限客户端和客户报告的 implemented-not-run 边界 |
+| [M7 GA 实现与证据](acceptance/M7_GA_IMPLEMENTATION_AND_EVIDENCE.md) | 计费、区域健康、SLO/值班、安全、LTS、status、RC/GA 的 implemented-not-run 与真实证据合同 |
+| [私有化升级迁移](migration/PRIVATE_DEPLOYMENT_UPGRADE.md) | digest、migration、备份、atomic upgrade 与 forward-only rollback 边界 |
+| [公网入口安全合同](../infra/gateway/README.md) | 公共/内部路径隔离、WAF/DDoS 证据、证书轮换和 origin 防绕过边界 |
+| [RTC 质量观测](../infra/observability/README.md) | 低基数指标、P50/P95/P99 rules、Grafana、remote-write 和原始样本保留 |
+| [M3-03/04 实现状态](acceptance/m3-03-04-implementation.json) | 入口安全与质量观测已开发、provider/runtime 验收未执行的机器边界 |
+| [M3-06/07/08 实现状态](acceptance/m3-06-08-implementation.json) | 备份恢复、Preview entitlement 与支持闭环已开发、运行与测试未执行的机器边界 |
+| [M3-05/09/10 实现状态](acceptance/m3-05-09-10-implementation.json) | 运营商矩阵、试用状态机、长稳与 fault 证据门禁已开发，外部执行未开始 |
+| [M3 Preview 执行与证据](acceptance/M3_PREVIEW_EXECUTION_AND_EVIDENCE.md) | 九格运营商、设计伙伴、24/72 小时和五类故障证据合同 |
+| [M4 Agent Runtime 实现](acceptance/M4_AGENT_RUNTIME_IMPLEMENTATION.md) | 制品、发布、配额、Provider、Tool、取消和观测的实现/运行边界 |
+| [M4 实现状态](acceptance/m4-agent-runtime-implementation.json) | `implemented-not-run`、Gate 4 未通过的机器可读边界 |
+| [M5 媒体 Runtime 实现](acceptance/M5_MEDIA_RUNTIME_IMPLEMENTATION.md) | SIP/Ingress/Egress 准入、生命周期、计量、质量和控制台的实现/运行边界 |
+| [M5 实现状态](acceptance/m5-media-runtime-implementation.json) | `implemented-not-run`、Gate 5 未通过的机器可读边界 |
+| [Agent quickstart](api/agent-quickstart.md) | workload identity、制品验证、Node/Python handler 和 Helm 接线顺序 |
 | [P1 Owner key registry](acceptance/p1-owner-key-registry.json) | 四把独立不可导出 key、最小 policy、ACL 负向测试和未签发个人凭据边界 |
 | [P1 Owner acceptance v2](acceptance/p1-m0-04-owner-signoffs.json) | 四位 Owner、五项不可变 receipt/history、OpenBao audit 与 fail-closed Gate 归一化合同 |
 | [Owner 本人决定与模板](governance/owner-decisions/README.md) | 五项已签 receipt、审计覆盖边界及 5 分钟 wrapped token 操作流程 |
@@ -75,6 +134,8 @@ Beelink 私有 Registry、OpenBao transit key、四个 OCI 签名/SPDX attestati
 | [Owner 责任矩阵](governance/OWNERS.md) | 角色责任、签字 Gate 和个人 owner 状态 |
 | [媒体 quickstart](api/media-quickstart.md) | Ingress/Egress/SIP 幂等、保留和合规约束 |
 | [LTS 与支持](operations/LTS_AND_SUPPORT.md) | 版本支持、升级窗口和发布边界 |
+| [On-call 与 Error Budget](operations/ONCALL_AND_ERROR_BUDGET.md) | release policy、事故状态机、状态页和 RC 阻断条件 |
+| [GA 安全审计](security/GA_SECURITY_AUDIT.md) | 当前 RC 八类安全证据、零 High/Critical 和不可覆盖归档合同 |
 
 ## 已冻结基线
 

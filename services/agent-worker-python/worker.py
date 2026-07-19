@@ -134,18 +134,16 @@ class AgentDispatchRunner:
             await self.control.fail(self.worker_id, dispatch_id, str(error)[:256])
             return True
         self.worker.active.add(dispatch_id)
-        current = asyncio.current_task()
-        if current is not None:
-            self.worker.tasks[dispatch_id] = current
+        handler_task = asyncio.create_task(self.handler(dispatch))
+        self.worker.tasks[dispatch_id] = handler_task
         try:
             async with asyncio.timeout(deadline):
-                await self.handler(dispatch)
+                await handler_task
             await self.control.complete(self.worker_id, dispatch_id)
         except asyncio.CancelledError:
-            await self.control.fail(self.worker_id, dispatch_id, "cancelled")
-        except Exception as error:
-            reason = str(error)[:256] or "dispatch handler failed"
-            await self.control.fail(self.worker_id, dispatch_id, reason)
+            await self.control.fail(self.worker_id, dispatch_id, "dispatch cancelled")
+        except Exception:
+            await self.control.fail(self.worker_id, dispatch_id, "dispatch handler failed")
         finally:
             self.worker.tasks.pop(dispatch_id, None)
             self.worker.active.discard(dispatch_id)
@@ -202,6 +200,7 @@ async def main() -> None:
     environment_id = os.environ.get("YUJIAN_AGENT_ENVIRONMENT_ID")
     heartbeat_task: asyncio.Task[None] | None = None
     dispatch_task: asyncio.Task[None] | None = None
+    runner: AgentDispatchRunner | None = None
     if control_url and control_credential and environment_id:
         control = WorkerControlClient(control_url, control_credential)
         worker_id = f"worker-python-{os.getpid()}"
@@ -220,7 +219,11 @@ async def main() -> None:
         async def heartbeat() -> None:
             while not stop.is_set():
                 try:
-                    await control.heartbeat(worker_id, sorted(worker.active))
+                    result = await control.heartbeat(worker_id, sorted(worker.active))
+                    if isinstance(result, dict) and isinstance(result.get("cancelDispatchIds"), list):
+                        for dispatch_id in result["cancelDispatchIds"]:
+                            if isinstance(dispatch_id, str):
+                                worker.cancel(dispatch_id)
                 except WorkerControlError:
                     pass
                 try:
@@ -233,6 +236,8 @@ async def main() -> None:
     if heartbeat_task is not None:
         heartbeat_task.cancel()
     if dispatch_task is not None:
+        if runner is not None:
+            runner.stop()
         dispatch_task.cancel()
         await asyncio.gather(dispatch_task, return_exceptions=True)
     await worker.drain()

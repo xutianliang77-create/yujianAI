@@ -45,7 +45,7 @@ export class MediaOpsLiveKitProvider implements MediaOpsProvider {
     if (input.sourceUrl !== undefined) {
       let parsed: URL;
       try { parsed = new URL(input.sourceUrl); } catch { throw new Error("sourceUrl must be a valid URL"); }
-      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error("sourceUrl must use HTTPS or HTTP");
+      if (parsed.protocol !== "https:") throw new Error("sourceUrl must use HTTPS");
       if (parsed.username !== "" || parsed.password !== "") throw new Error("sourceUrl must not contain credentials");
     }
     const result = await this.client.createIngress(IngressInput[inputType], {
@@ -71,8 +71,9 @@ export class MediaOpsLiveKitProvider implements MediaOpsProvider {
     return { providerEgressId: String((result as { egressId?: string }).egressId ?? "") };
   }
 
-  async requestSipCall(input: { callId: string; environmentId: string; roomName: string; sipTrunkId?: string; participantIdentity?: string; dtmf?: string; direction: SipCallV1["direction"]; remoteNumber: string; idempotencyKey: string }): Promise<{ providerCallId: string; participantIdentity?: string }> {
+  async requestSipCall(input: { callId: string; environmentId: string; roomName: string; sipTrunkId?: string; participantIdentity?: string; dtmf?: string; direction: SipCallV1["direction"]; remoteNumber: string; idempotencyKey: string }): Promise<{ providerCallId: string; participantIdentity?: string; sipTrunkId?: string }> {
     if (!this.features.sip) throw new MediaProviderDisabledError("SIP");
+    if (input.direction !== "outbound") throw new Error("inbound SIP calls must be adopted from an authenticated provider callback");
     const trunkId = input.sipTrunkId ?? this.defaultSipTrunkId;
     if (trunkId === undefined || trunkId.length === 0) throw new Error("SIP trunk selection is required");
     const result = await this.client.dialSipParticipant(trunkId, input.remoteNumber, input.roomName, input.participantIdentity === undefined && input.dtmf === undefined ? undefined : {
@@ -81,16 +82,17 @@ export class MediaOpsLiveKitProvider implements MediaOpsProvider {
     });
     return {
       providerCallId: String((result as { callId?: string }).callId ?? ""),
+      sipTrunkId: trunkId,
       ...(input.participantIdentity === undefined ? {} : { participantIdentity: input.participantIdentity }),
     };
   }
 
-  async transferSipCall(input: { callId: string; roomName: string; participantIdentity: string; transferTo: string; idempotencyKey: string }): Promise<void> {
+  async transferSipCall(input: { callId: string; environmentId: string; roomName: string; participantIdentity: string; transferTo: string; sipTrunkId?: string; idempotencyKey: string }): Promise<void> {
     if (!this.features.sip) throw new MediaProviderDisabledError("SIP");
     await this.client.transferSipParticipant(input.roomName, input.participantIdentity, input.transferTo);
   }
 
-  async hangupSipCall(input: { callId: string; roomName: string; participantIdentity: string; idempotencyKey: string }): Promise<void> {
+  async hangupSipCall(input: { callId: string; environmentId: string; roomName: string; participantIdentity: string; sipTrunkId?: string; idempotencyKey: string }): Promise<void> {
     if (!this.features.sip) throw new MediaProviderDisabledError("SIP");
     await this.client.hangupSipParticipant(input.roomName, input.participantIdentity);
   }

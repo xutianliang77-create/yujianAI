@@ -2,18 +2,25 @@ import { Buffer } from "node:buffer";
 import pg from "pg";
 import { createClient } from "redis";
 import { PostgresDataRightsExecutor, PostgresDataRightsService, PostgresDataRightsWorker } from "@yujian/data-rights";
+import { PostgresBillingReadModel } from "@yujian/billing";
 import { OidcIdentityAdapter, OidcPlatformIdentityBridge, PostgresOidcPlatformScopeResolver } from "@yujian/platform-adapters";
+import { TurnCredentialIssuer } from "@yujian/livekit-compat";
 import {
   OutboxPublisher,
   OutboxPublisherWorker,
   PersistentWebhookDestinationProvider,
   PostgresPlatformPersistence,
+  PostgresEnvironmentEntitlementService,
   PostgresPlatformResourceUsageProvider,
+  PostgresSupportService,
+  PostgresRemoteAssistanceService,
   PostgresPlatformStorePersistence,
   PostgresRtcTelemetryPersistence,
   PostgresWebhookDestinationPersistence,
   RedisRateLimiter,
+  RedisRtcCapacityProvider,
   RedisTokenQuotaProvider,
+  RtcTelemetryRetentionWorker,
 } from "@yujian/platform-api";
 
 const { Pool } = pg;
@@ -101,15 +108,28 @@ export async function createPlatformRuntime({ config: _config }) {
   const redisEval = createRedisEvalClient(redis);
   const persistence = new PostgresPlatformPersistence(pool);
   const destinations = new PostgresWebhookDestinationPersistence(pool);
+  const secretResolver = createOpenBaoSecretResolver(required("YUJIAN_KMS_ADDR"), required("YUJIAN_KMS_TOKEN"));
+  let turnCredentials;
+  if (_config.requireTurnCredentials) {
+    let urls;
+    try { urls = JSON.parse(required("YUJIAN_TURN_URLS")); } catch { throw new Error("YUJIAN_TURN_URLS must be a JSON array"); }
+    if (!Array.isArray(urls) || urls.some((value) => typeof value !== "string")) throw new Error("YUJIAN_TURN_URLS must be a JSON string array");
+    turnCredentials = new TurnCredentialIssuer(await secretResolver.resolve(required("YUJIAN_TURN_SECRET_REF")), urls);
+  }
   const dataRights = new PostgresDataRightsService(pool);
+  const support = new PostgresSupportService(pool);
   const dataRightsExecutor = new PostgresDataRightsExecutor(pool, `${required("YUJIAN_DATA_ROOT")}/p2/data-rights`);
   const publisher = new OutboxPublisher(
     persistence,
-    new PersistentWebhookDestinationProvider(destinations, createOpenBaoSecretResolver(required("YUJIAN_KMS_ADDR"), required("YUJIAN_KMS_TOKEN"))),
+    new PersistentWebhookDestinationProvider(destinations, secretResolver),
     { maxAttempts: 5, timeoutMs: 5_000, baseBackoffMs: 1_000, claimHeartbeatMs: Number(process.env.YUJIAN_OUTBOX_CLAIM_HEARTBEAT_MS ?? 20_000) },
   );
   const outboxWorker = new OutboxPublisherWorker(publisher);
   const dataRightsWorker = new PostgresDataRightsWorker(pool, dataRights, dataRightsExecutor);
+  const telemetryRetentionWorker = new RtcTelemetryRetentionWorker(pool, {
+    retentionDays: Number(process.env.YUJIAN_RTC_TELEMETRY_RETENTION_DAYS ?? 7),
+    onError: (error) => console.error(JSON.stringify({ level: "error", message: "RTC telemetry retention failed", errorName: error instanceof Error ? error.name : "unknown" })),
+  });
   return {
     close: async () => {
       if (redis.isOpen) await redis.quit();
@@ -120,10 +140,16 @@ export async function createPlatformRuntime({ config: _config }) {
     dataRights,
     storePersistence: new PostgresPlatformStorePersistence(pool),
     resourceUsage: new PostgresPlatformResourceUsageProvider(pool),
+    entitlements: new PostgresEnvironmentEntitlementService(pool),
+    support,
+    remoteAssistance: new PostgresRemoteAssistanceService(pool, support),
+    billing: new PostgresBillingReadModel(pool),
     rateLimiter: new RedisRateLimiter(redisEval),
     tokenQuota: new RedisTokenQuotaProvider(redisEval),
+    ...(_config.requireRtcCapacity ? { rtcCapacity: new RedisRtcCapacityProvider(redisEval) } : {}),
+    ...(turnCredentials === undefined ? {} : { turnCredentials }),
     outboxReplay: publisher,
-    outboxWorker: new CompositeWorker([outboxWorker, dataRightsWorker]),
+    outboxWorker: new CompositeWorker([outboxWorker, dataRightsWorker, telemetryRetentionWorker]),
     webhookDestinations: destinations,
     telemetryPersistence: new PostgresRtcTelemetryPersistence(pool),
   };

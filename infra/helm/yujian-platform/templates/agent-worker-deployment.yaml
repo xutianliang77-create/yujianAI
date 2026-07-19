@@ -2,6 +2,12 @@
 {{ if not .Values.features.agentControlEnabled }}
 {{ fail "agentControlEnabled must be true when agentWorkerEnabled" }}
 {{ end }}
+{{ if not .Values.agent.workloadIdentity.enabled }}
+{{ fail "agent workload identity must be enabled when agentWorkerEnabled" }}
+{{ end }}
+{{ if not .Values.agent.workloadIdentity.serviceAccountName }}
+{{ fail "agent.workloadIdentity.serviceAccountName must be set when agentWorkerEnabled" }}
+{{ end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -16,6 +22,13 @@ spec:
       labels:
         app.kubernetes.io/component: agent-worker
     spec:
+      automountServiceAccountToken: false
+      serviceAccountName: {{ .Values.agent.workloadIdentity.serviceAccountName | quote }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: {{ .Values.security.runAsUser }}
+        runAsGroup: {{ .Values.security.runAsGroup }}
+        seccompProfile: { type: RuntimeDefault }
       nodeSelector:
         {{ toYaml .Values.agent.nodeSelector | nindent 8 }}
       containers:
@@ -25,6 +38,7 @@ spec:
           securityContext:
             allowPrivilegeEscalation: false
             capabilities: { drop: [ALL] }
+            readOnlyRootFilesystem: {{ .Values.security.readOnlyRootFilesystem }}
           env:
             - name: YUJIAN_AGENT_ENVIRONMENT_ID
               value: {{ required "agent.environmentId must be set when agentWorkerEnabled" .Values.agent.environmentId | quote }}
@@ -41,10 +55,25 @@ spec:
             {{ end }}
             - name: NVIDIA_VISIBLE_DEVICES
               value: "0"
+            - name: YUJIAN_WORKLOAD_IDENTITY_TOKEN_FILE
+              value: /var/run/secrets/yujian-workload-identity/token
+          volumeMounts:
+            - name: workload-identity
+              mountPath: /var/run/secrets/yujian-workload-identity
+              readOnly: true
           resources:
             requests:
               {{ toYaml .Values.resources.agentWorker.requests | nindent 14 }}
             limits:
               {{ toYaml .Values.resources.agentWorker.limits | nindent 14 }}
               {{ .Values.agent.gpuResource }}: {{ .Values.agent.gpuCount | quote }}
+      volumes:
+        - name: workload-identity
+          projected:
+            defaultMode: 0400
+            sources:
+              - serviceAccountToken:
+                  audience: {{ .Values.agent.workloadIdentity.audience | quote }}
+                  expirationSeconds: {{ .Values.agent.workloadIdentity.expirationSeconds }}
+                  path: token
 {{ end }}

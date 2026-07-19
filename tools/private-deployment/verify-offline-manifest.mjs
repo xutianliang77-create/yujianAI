@@ -11,6 +11,14 @@ if (!Array.isArray(manifest.requiredArtifacts) || manifest.requiredArtifacts.len
 if (new Set(manifest.requiredArtifacts).size !== manifest.requiredArtifacts.length) throw new Error("offline manifest contains duplicate artifacts");
 if (!Array.isArray(manifest.externalServices) || manifest.externalServices.some((item) => typeof item !== "string" || item.length === 0)) throw new Error("offline manifest externalServices is invalid");
 if (!Array.isArray(manifest.forbiddenDefaults) || manifest.forbiddenDefaults.some((item) => typeof item !== "string" || item.length === 0)) throw new Error("offline manifest forbiddenDefaults is invalid");
+if (manifest.containsSecrets !== undefined && manifest.containsSecrets !== false) throw new Error("offline manifest must declare containsSecrets=false");
+if (manifest.artifacts !== undefined) {
+  if (!Array.isArray(manifest.artifacts) || manifest.artifacts.length !== manifest.requiredArtifacts.length) throw new Error("offline artifact details are invalid");
+  for (const detail of manifest.artifacts) {
+    if (typeof detail !== "object" || detail === null || typeof detail.name !== "string" || typeof detail.mediaType !== "string" || !Number.isSafeInteger(detail.sizeBytes) || detail.sizeBytes < 1 || typeof detail.sha256 !== "string" || !/^sha256:[0-9a-f]{64}$/u.test(detail.sha256)) throw new Error("offline artifact detail is invalid");
+    if (!manifest.requiredArtifacts.includes(`${detail.name}@${detail.sha256}`)) throw new Error(`offline artifact detail is not in requiredArtifacts: ${detail.name}`);
+  }
+}
 const artifactRoot = process.env.YUJIAN_OFFLINE_ARTIFACT_ROOT;
 const placeholders = manifest.requiredArtifacts.filter((item) => /<[^>]+>/u.test(item));
 if (artifactRoot === undefined) {
@@ -29,8 +37,11 @@ for (const artifact of manifest.requiredArtifacts) {
   const artifactPath = resolve(artifactRoot, fileName);
   if (!existsSync(artifactPath)) throw new Error(`offline artifact is missing: ${fileName}`);
   if (expectedDigest !== undefined) {
-    const actualDigest = createHash("sha256").update(readFileSync(artifactPath)).digest("hex");
+    const bytes = readFileSync(artifactPath);
+    const actualDigest = createHash("sha256").update(bytes).digest("hex");
     if (actualDigest !== expectedDigest) throw new Error(`offline artifact digest mismatch: ${fileName}`);
+    const detail = manifest.artifacts?.find((item) => item.name === fileName);
+    if (detail !== undefined && detail.sizeBytes !== bytes.byteLength) throw new Error(`offline artifact size mismatch: ${fileName}`);
   }
 }
 process.stdout.write(`offline manifest verified; artifacts=${manifest.requiredArtifacts.length}\n`);

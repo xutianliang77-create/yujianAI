@@ -1,7 +1,11 @@
-import type { ProviderCapabilityV1 } from "@yujian/platform-contracts";
+import type { ProviderCapabilityV1, ProviderCostAttributionV1, ProviderUsageV1 } from "@yujian/platform-contracts";
 import { ProviderFailoverError, ProviderHttpError } from "./http-json-provider.js";
 
 export interface ProviderRequest {
+  tenantId: string;
+  environmentId: string;
+  deploymentId: string;
+  dispatchId: string;
   traceId: string;
   deadlineAt: string;
   idempotencyKey: string;
@@ -13,16 +17,27 @@ export interface ProviderAdapter<TRequest, TResult> {
 }
 
 export interface ProviderInvocationObservation {
+  tenantId: string;
+  environmentId: string;
+  deploymentId: string;
+  dispatchId: string;
   providerId: string;
   capability: ProviderCapabilityV1["capability"];
   outcome: "success" | "failure" | "cancelled";
   durationMs: number;
   traceId: string;
-  error?: string;
+  errorCode?: string;
+  usage?: ProviderUsageV1;
+  cost?: ProviderCostAttributionV1;
 }
 
 export interface ProviderInvocationObserver {
   observe(observation: ProviderInvocationObservation): void | Promise<void>;
+}
+
+export interface ProviderObservationOptions<TResult> {
+  extractUsage?: (result: TResult) => ProviderUsageV1 | undefined;
+  attributeCost?: (usage: ProviderUsageV1) => ProviderCostAttributionV1;
 }
 
 /** Adds low-cardinality provider telemetry without exposing request bodies or credentials. */
@@ -32,6 +47,7 @@ export class ObservedProviderAdapter<TRequest, TResult> implements ProviderAdapt
   constructor(
     private readonly adapter: ProviderAdapter<TRequest, TResult>,
     private readonly observer: ProviderInvocationObserver,
+    private readonly options: ProviderObservationOptions<TResult> = {},
   ) {
     this.capability = adapter.capability;
   }
@@ -40,10 +56,13 @@ export class ObservedProviderAdapter<TRequest, TResult> implements ProviderAdapt
     const startedAt = Date.now();
     try {
       const result = await this.adapter.invoke(request, context, signal);
-      this.observe({ providerId: this.capability.providerId, capability: this.capability.capability, outcome: "success", durationMs: Date.now() - startedAt, traceId: context.traceId });
+      const usage = this.options.extractUsage?.(result);
+      const cost = usage === undefined ? undefined : this.options.attributeCost?.(usage);
+      this.observe({ tenantId: context.tenantId, environmentId: context.environmentId, deploymentId: context.deploymentId, dispatchId: context.dispatchId, providerId: this.capability.providerId, capability: this.capability.capability, outcome: "success", durationMs: Date.now() - startedAt, traceId: context.traceId, ...(usage === undefined ? {} : { usage }), ...(cost === undefined ? {} : { cost }) });
       return result;
     } catch (error) {
-      this.observe({ providerId: this.capability.providerId, capability: this.capability.capability, outcome: signal.aborted ? "cancelled" : "failure", durationMs: Date.now() - startedAt, traceId: context.traceId, error: error instanceof Error ? error.message.slice(0, 256) : "provider invocation failed" });
+      const errorCode = error instanceof ProviderHttpError ? error.code : "INTERNAL";
+      this.observe({ tenantId: context.tenantId, environmentId: context.environmentId, deploymentId: context.deploymentId, dispatchId: context.dispatchId, providerId: this.capability.providerId, capability: this.capability.capability, outcome: signal.aborted ? "cancelled" : "failure", durationMs: Date.now() - startedAt, traceId: context.traceId, errorCode });
       throw error;
     }
   }
@@ -166,4 +185,18 @@ export {
   ProviderHttpError,
   invokeWithProviderFailover,
 } from "./http-json-provider.js";
-export type { HttpJsonProviderOptions } from "./http-json-provider.js";
+export type { HttpJsonProviderOptions, ProviderHttpErrorCode } from "./http-json-provider.js";
+export { FixedProviderPricing, normalizeProviderUsage } from "./provider-usage.js";
+export type { ProviderUnitPrices } from "./provider-usage.js";
+export { resolveProviderHeaders, validateProviderEndpoint } from "./provider-credentials.js";
+export type { ProviderCredentialLease, ProviderCredentialProvider, ProviderCredentialRequest } from "./provider-credentials.js";
+export { PostgresProviderInvocationObserver } from "./postgres-observer.js";
+export type { ProviderUsageSqlPool } from "./postgres-observer.js";
+export { FileWorkloadIdentityTokenProvider, HttpsProviderCredentialProvider } from "./workload-identity-credentials.js";
+export type { HttpsProviderCredentialProviderOptions, WorkloadIdentityTokenProvider } from "./workload-identity-credentials.js";
+export { CompositeProviderInvocationObserver, ProviderMetricsObserver } from "./metrics-observer.js";
+export type { ProviderMetricsSink } from "./metrics-observer.js";
+export { extractCompatibleChatUsage, OpenAiCompatibleChatProvider } from "./openai-compatible-chat.js";
+export type { CompatibleChatMessage, CompatibleChatRequest, CompatibleChatResult } from "./openai-compatible-chat.js";
+export { createDomesticCompatibleChatProvider } from "./domestic-compatible-chat.js";
+export type { DomesticCompatibleChatOptions } from "./domestic-compatible-chat.js";

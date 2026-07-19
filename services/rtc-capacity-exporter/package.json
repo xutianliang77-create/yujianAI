@@ -1,0 +1,25 @@
+{
+  "name": "@yujian/rtc-capacity-exporter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "语见 RTC 节点容量与 drain 上报 sidecar",
+  "files": ["dist"],
+  "scripts": {
+    "prebuild": "npm run build -w @yujian/livekit-compat",
+    "build": "tsc -p tsconfig.json",
+    "prelint": "npm run build -w @yujian/livekit-compat",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@yujian/livekit-compat": "0.1.0",
+    "livekit-server-sdk": "2.17.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.2"
+  },
+  "engines": { "node": ">=22 <25" }
+}

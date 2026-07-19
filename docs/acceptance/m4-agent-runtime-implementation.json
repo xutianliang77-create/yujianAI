@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "task": "M4-01-10-agent-runtime-development",
+  "status": "implemented-not-run",
+  "gate4Passed": false,
+  "productionReleaseAuthorized": false,
+  "sourceSchema": "001-014",
+  "implemented": [
+    "async-exact-artifact-verification-receipt",
+    "canary-promotion-and-runtime-rollback-boundary",
+    "redis-cluster-atomic-dispatch-quota-and-rebuild",
+    "workload-identity-provider-credential-exchange",
+    "openai-compatible-chat-usage-mapping",
+    "provider-usage-cost-postgres-and-low-cardinality-metrics",
+    "verifiable-tool-approval-and-encrypted-result-store",
+    "node-python-heartbeat-cancellation-propagation",
+    "helm-workload-identity-and-egress-boundaries"
+  ],
+  "notExecuted": [
+    "build-lint-test",
+    "migration-013",
+    "helm-render",
+    "oci-signature-service",
+    "redis-multi-replica-contention",
+    "provider-kms-exchange",
+    "node-python-room-job",
+    "canary-rollback",
+    "prometheus-grafana-load",
+    "beelink-rtx5090-runtime"
+  ]
+}

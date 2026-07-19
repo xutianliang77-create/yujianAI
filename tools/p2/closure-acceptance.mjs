@@ -204,6 +204,18 @@ try {
   if (onboard.status !== 201) throw new Error(`OIDC onboarding failed with HTTP ${onboard.status}`);
   const { tenant, project, environment } = onboard.payload.data;
   const scope = { tenantId: tenant.tenantId, projectId: project.projectId, environmentId: environment.environmentId };
+  const entitlement = await api(`/platform/v1/admin/environments/${environment.environmentId}/entitlement`, adminCredential, {
+    method: "PUT",
+    body: JSON.stringify({
+      planId: "preview-v1",
+      status: "active",
+      features: ["rtc", "turn", "telemetry"],
+      validFrom: new Date(Date.now() - 60_000).toISOString(),
+      validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      expectedVersion: 0,
+    }),
+  });
+  if (entitlement.status !== 200 || entitlement.payload?.data?.version !== 1) throw new Error("Preview entitlement provisioning failed");
   cleanup = { runId, scope, otherTenantId: tenant.tenantId, webhookSecretRef };
   await writeFile(reportPath, `${JSON.stringify({ runId, status: "running", results, cleanup })}\n`, { mode: 0o600 });
   const ownerToken = token(ownerSubject, tenant.tenantId);

@@ -1,6 +1,6 @@
 services:
   registry:
-    image: yujian/p1-registry:3.1.1-crypto0.52-net0.55-go1.25.12
+    image: beelink.tail1e9cec.ts.net:5443/yujian/p1/distribution-registry@sha256:564d023747cfff89a76cc61c46f99ef7b7a1953099d002504a126a131e1fa749
     container_name: yujian-production-registry
     user: "1000:1000"
     restart: unless-stopped
@@ -23,3 +23,4 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    stop_grace_period: 30s

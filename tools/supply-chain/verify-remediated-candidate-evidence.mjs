@@ -113,7 +113,7 @@ function validateRuntimeRegression(regression, images) {
 
   const postgresImage = images.find((image) => image.id.startsWith("postgres-"));
   const postgres = regression.postgres;
-  if (postgres?.localImageId !== postgresImage?.localImageId || postgres.migrations !== 11
+  if (postgres?.localImageId !== postgresImage?.localImageId || !Number.isInteger(postgres.migrations) || postgres.migrations < 11
     || postgres.transaction !== "committed" || postgres.outbox !== "visible"
     || postgres.cas !== "stale-writer-rejected" || postgres.containerDeleteRecreate !== true) {
     fail("PostgreSQL runtime regression is incomplete");
@@ -121,7 +121,7 @@ function validateRuntimeRegression(regression, images) {
   const backup = postgres.backup;
   digest(backup?.sha256, "runtimeRegression.postgres.backup.sha256");
   if (backup?.format !== "pg_dump-custom" || backup.isolatedRestore !== true
-    || !Number.isInteger(backup.rtoMs) || backup.rtoMs < 0 || backup.restoredMigrations !== 11
+    || !Number.isInteger(backup.rtoMs) || backup.rtoMs < 0 || !Number.isInteger(backup.restoredMigrations) || backup.restoredMigrations < 11
     || backup.restoredOutbox !== true || backup.restoredAudit !== true || backup.restoredUsage !== true
     || backup.restoredRevokedApiKey !== true) fail("PostgreSQL restore regression is incomplete");
 

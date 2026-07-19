@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "evidenceType": "m3-06-08-implementation-status",
+  "generatedAt": "2026-07-19T00:00:00+08:00",
+  "scope": ["M3-06", "M3-07", "M3-08"],
+  "implementationStatus": "completed",
+  "runtimeStatus": "not-executed",
+  "testStatus": "not-executed-by-user-direction",
+  "backupRestore": {
+    "durableStateMachine": ["planned", "running", "verified", "failed"],
+    "providerBoundary": "credential-free-https-with-deployment-owned-authorization",
+    "artifactIntegrity": "sha256-and-kms-reference",
+    "restoreTarget": "isolated-only",
+    "productionOverwriteRepresentable": false,
+    "rpoRtoPersisted": true
+  },
+  "previewEntitlement": {
+    "truth": "postgresql-environment-entitlements",
+    "updateConcurrency": "version-cas",
+    "featureAllowlist": ["rtc", "turn", "telemetry", "agent", "ingress", "egress", "sip"],
+    "rtcTokenFailClosed": true,
+    "turnCredentialFailClosed": true,
+    "defaultAllow": false,
+    "plan": "preview-v1-non-overage"
+  },
+  "support": {
+    "ticketPersistence": "postgresql",
+    "ticketCreation": "idempotency-key-and-request-fingerprint",
+    "ticketUpdate": "version-cas",
+    "bundle": "sha256-redacted-no-media-expiring-object-reference",
+    "accessTokenStorage": "sha256-only",
+    "accessTtlSeconds": [60, 3600],
+    "permissionsPerToken": 1,
+    "consumption": "atomic-one-time-ticket-bound",
+    "revocation": true,
+    "auditTokenRecorded": false
+  },
+  "schema": {
+    "currentMigrations": "001-014",
+    "migration": "infra/database/migrations/012_preview_operations.sql"
+  },
+  "evidence": [
+    "services/platform-api/src/postgres-backup-coordinator.ts",
+    "services/platform-api/src/http-backup-provider.ts",
+    "services/platform-api/src/postgres-entitlements.ts",
+    "services/platform-api/src/postgres-support.ts",
+    "tools/ops/run-control-plane-backup.mjs",
+    "packages/platform-contracts/src/preview-operations.ts",
+    "apps/console/",
+    "docs/api/openapi.yaml",
+    "infra/runbooks/backup-restore.md",
+    "tools/ops/create-support-bundle.mjs"
+  ],
+  "notExecuted": [
+    "typescript-build",
+    "unit-tests",
+    "openapi-verifier",
+    "migration-apply",
+    "postgresql-backup-provider",
+    "object-storage-write",
+    "isolated-restore-drill",
+    "rpo-rto-measurement",
+    "entitlement-runtime",
+    "support-ticket-runtime",
+    "support-access-runtime"
+  ],
+  "gate": {
+    "gateId": "Gate 3",
+    "status": "not-passed",
+    "productionReleaseAuthorized": false
+  },
+  "ownerDecisionBoundary": {
+    "bbbRegistryKms": "reject-sequence-1-remains-effective",
+    "cccLegal": "reject-sequence-1-remains-effective",
+    "supersededByThisImplementation": false
+  }
+}
